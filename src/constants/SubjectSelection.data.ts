@@ -1,0 +1,16 @@
+export const subjectOptions = [
+  'Mathematics',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'Programming',
+  'English',
+  'Economics',
+  'History',
+  'Geography',
+  'Art',
+  'Music',
+  'Business',
+  'Psychology',
+  'Philosophy',
+];
