@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import useUi from '../../../ui/useUi';
+import useUi from '../../../hooks/ui/useUi';
 import AuthCard from '../../../components/AuthCard/AuthCard';
 import { IconButton } from 'react-native-paper';
 import { OrDivider } from '../../../components/OrDrivider/OrDivider';

@@ -1,5 +1,5 @@
 import Images from "../assets/images";
-import useUi from "../ui/useUi";
+import useUi from "../hooks/ui/useUi";
 // const {colors} = useUi();
 export const getOnboardingData = (colors: any) =>   [
   {

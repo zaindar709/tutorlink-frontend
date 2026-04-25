@@ -5,6 +5,6 @@ const Images = {
   VerifiedIcon: require('../images/shield.png'),
   OneOnOne: require('../images/OneOnOne.jpeg'),
   AIPoweredInsights: require('../images/aipowerd.jpeg'),
-  TrackProgress: require('../images/Trackingprogress.webpack'),
+  TrackProgress: require('../images/trackprogress.jpeg'),
 };
 export default Images;

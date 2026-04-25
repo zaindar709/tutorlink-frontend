@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, View, StyleSheet, Image } from 'react-native';
-import useUi from '../../ui/useUi';
+import useUi from '../../hooks/ui/useUi';
 import Images from '../../assets/images';
 
 export default function AuthCard({ title, subtitle, onPress, type }: any) {

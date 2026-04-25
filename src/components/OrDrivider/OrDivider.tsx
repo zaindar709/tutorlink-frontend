@@ -1,5 +1,5 @@
 import { StyleSheet, View, Text } from 'react-native';
-import useUi from '../../ui/useUi';
+import useUi from '../../hooks/ui/useUi';
 import { Divider } from 'react-native-paper';
 
 export const OrDivider = () => {

@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 
-import useUi from '../../../../ui/useUi';
+import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
 import { useNavigation } from '@react-navigation/native';
 

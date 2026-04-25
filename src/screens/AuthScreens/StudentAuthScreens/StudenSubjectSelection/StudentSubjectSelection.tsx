@@ -8,7 +8,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Chip, Menu, TextInput, IconButton } from 'react-native-paper';
-import useUi from '../../../../ui/useUi';
+import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
 import { subjectOptions } from '../../../../constants/SubjectSelection.data';
 

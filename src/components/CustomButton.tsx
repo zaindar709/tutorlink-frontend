@@ -9,7 +9,7 @@ import {
   ColorValue,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import useUi from '../ui/useUi';
+import useUi from '../hooks/ui/useUi';
 
 interface CustomButtonProps {
   title: string;

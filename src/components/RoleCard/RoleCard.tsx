@@ -5,7 +5,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import useUi from '../../ui/useUi';
+import useUi from '../../hooks/ui/useUi';
 
 function RoleCard({ role, isSelected, onSelect }: any) {
   const { colors, resp } = useUi();

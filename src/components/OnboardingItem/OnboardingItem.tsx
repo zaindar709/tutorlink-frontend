@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Animated, Image, Dimensions } from 'react-native';
 import { createStyles } from '../../screens/SharedScreens/Onboarding/Onboarding.styles';
-import useUi from '../../ui/useUi';
+import useUi from '../../hooks/ui/useUi';
 
 const { width } = Dimensions.get('window');
 

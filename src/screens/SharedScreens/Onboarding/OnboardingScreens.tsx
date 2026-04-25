@@ -7,7 +7,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import useUi from '../../../ui/useUi';
+import useUi from '../../../hooks/ui/useUi';
 import { createStyles } from './Onboarding.styles';
 import { useOnboarding } from '../../../hooks/useOnboarding';
 import OnboardingItem from '../../../components/OnboardingItem/OnboardingItem';

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
+import useUi from '../../hooks/ui/useUi';
 
 const CustomInput = ({
   label,
@@ -12,6 +13,8 @@ const CustomInput = ({
   style,
   ...props
 }:any) => {
+  const { colors } = useUi();
+
   return (
     <View style={[styles.container, style]}>
       {label && <Text style={styles.label}>{label}</Text>}
@@ -23,11 +26,11 @@ const CustomInput = ({
         placeholderTextColor="#999"
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
-        style={[styles.input, error && styles.errorBorder]}
+        style={[styles.input, error && { borderColor: colors.ERROR_COLOR }]}
         {...props}
       />
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[styles.errorText, { color: colors.ERROR_COLOR }]}>{error}</Text> : null}
     </View>
   );
 };
@@ -53,12 +56,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: '#fff',
   },
-  errorBorder: {
-    borderColor: 'red',
-  },
   errorText: {
     marginTop: 4,
     fontSize: 12,
-    color: 'red',
   },
 });

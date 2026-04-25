@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,49 +8,44 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import useUi from '../../../../ui/useUi';
+import { IconButton } from 'react-native-paper';
+import useUi from '../../../../hooks/ui/useUi';
+import useStudentSignUpForm from '../../../../hooks/forms/useStudentSignUpForm';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import CustomButton from '../../../../components/CustomButton';
-import { IconButton } from 'react-native-paper';
 
 const StudentSignUpScreen = () => {
   const { colors, resp } = useUi();
-  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const navigation = useNavigation<any>();
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
 
-  const handleNext = () => {
-    navigation.navigate('StudentSubjectSelection');
-  };
-
-  const handleLogin = () => {
-    navigation.navigate('StudentLoginScreen');
-  };
+  const {
+   fullName,
+    email,
+    password,
+    confirmPassword,
+    errors,
+    handleFullName,
+    handleEmail,
+    handlePassword,
+    handleConfirmPassword,
+    handleNext,
+  } = useStudentSignUpForm();
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior="padding">
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <IconButton
-            icon="arrow-left"
-            size={resp.df(16)}
-            onPress={() => navigation.goBack()}
-            iconColor={colors.BLACK_COLOR as string}
-          />
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+
+        {/* Back Button */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <IconButton icon="arrow-left" size={18} iconColor={colors.BLACK_COLOR  as string} />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
+
+        {/* Header */}
         <View style={styles.brandHeader}>
           <Text style={styles.brandTitle}>TutorLink</Text>
-          {/* <View style={styles.brandAccent} /> */}
         </View>
 
         <View style={styles.headerContent}>
@@ -60,13 +55,14 @@ const StudentSignUpScreen = () => {
           </Text>
         </View>
 
+        {/* Form */}
         <View style={styles.formCard}>
           <CustomInput
             label="Full Name"
             placeholder="John Doe"
             value={fullName}
-            onChangeText={setFullName}
-            style={styles.inputField}
+            onChangeText={handleFullName}
+            error={errors.fullName}
           />
 
           <CustomInput
@@ -74,36 +70,40 @@ const StudentSignUpScreen = () => {
             placeholder="student@example.com"
             keyboardType="email-address"
             value={email}
-            onChangeText={setEmail}
-            style={styles.inputField}
+            onChangeText={handleEmail}
+            error={errors.email}
           />
 
           <CustomInput
             label="Password"
-            placeholder="Enter your password"
+            placeholder="Enter password"
             secureTextEntry
             value={password}
-            onChangeText={setPassword}
-            style={styles.inputField}
+            onChangeText={handlePassword}
+            error={errors.password}
           />
 
-          <Text style={styles.passwordHint}>
-            Must be at least 8 characters long
-          </Text>
+          <CustomInput
+            label="Confirm Password"
+            placeholder="Confirm password"
+            secureTextEntry
+            value={confirmPassword}
+            onChangeText={handleConfirmPassword}
+            error={errors.confirmPassword}
+          />
         </View>
 
-        <CustomButton
-          title="Next"
-          onPress={handleNext}
-          style={styles.nextButton}
-        />
+        {/* Button */}
+        <CustomButton title="Next" onPress={handleNext} />
 
+        {/* Login */}
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account?</Text>
-          <TouchableOpacity onPress={handleLogin}>
+          <TouchableOpacity onPress={() => navigation.navigate('StudentLoginScreen')}>
             <Text style={styles.footerLink}> Log In</Text>
           </TouchableOpacity>
         </View>
+
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -166,13 +166,6 @@ const createStyles = (colors: any, resp: any) =>
     inputField: {
       marginBottom: resp.dy(16),
     },
-    passwordHint: {
-      color: colors.GRAY_COLOR,
-      fontSize: resp.df(13),
-      fontWeight: '400',
-      marginTop: resp.dy(-8),
-      paddingLeft: resp.dx(2),
-    },
     nextButton: {
       marginBottom: resp.dy(24),
       width: resp.dx(380),
@@ -181,6 +174,7 @@ const createStyles = (colors: any, resp: any) =>
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      marginTop: resp.dy(16),
     },
     footerText: {
       color: colors.GRAY_COLOR,
