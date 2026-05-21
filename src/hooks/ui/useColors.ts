@@ -38,7 +38,7 @@ const useColors = () => {
     SECONDARY_COLOR: getColor("#262626", "#262626"),
     DARK_GRAY_COLOR: getColor("#1E1E1E", "#1E1E1E"),
     Dolphin_GARY: getColor("#787879", "#787879"),
-    GRAY_COLOR: getColor("#757575", "#757575"),
+    GRAY_COLOR: getColor("#D1D5DB", "#D1D5DB"),
     TAB_GRAY_COLOR: getColor("#8C8C8C", "#8C8C8C"),
     PRIMARY_COLOR: getColor("rgba(117,72,245,1)"),
     WHITE_COLOR: getColor("#fff", "#fff"),

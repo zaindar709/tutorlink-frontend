@@ -17,6 +17,8 @@ interface CustomButtonProps {
   backgroundColor?: ColorValue;
   textColor?: ColorValue;
   disabled?: boolean;
+  borderColor?: ColorValue;
+  borderWidth?: number;
   style?: ViewStyle;
   textStyle?: TextStyle;
   icon?: string;
@@ -33,6 +35,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   style,
   textStyle,
   icon,
+  borderColor,
+  borderWidth,
   iconPosition = 'left',
   iconSize,
 }) => {
@@ -50,6 +54,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
           backgroundColor: disabled
             ? '#babbbc'
             : backgroundColor ?? colors.PRIMARY_COLOR,
+          borderColor: borderColor ?? 'transparent',
+          borderWidth: borderWidth ?? 0,
         },
         style,
       ]}

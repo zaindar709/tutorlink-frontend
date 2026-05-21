@@ -34,12 +34,13 @@ export default function OnboardingScreens({
     onViewableItemsChanged,
   } = useOnboarding(onboardingData.length, onComplete);
   const handleComplete = () => {
+    onComplete?.();
     (navigation as any).replace('RoleSelectionScreen');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <TouchableOpacity style={styles.skipBtn} onPress={onComplete}>
+      <TouchableOpacity style={styles.skipBtn} onPress={handleComplete}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
       <View style={styles.itemContainer}>
