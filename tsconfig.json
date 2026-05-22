@@ -3,6 +3,6 @@
   "compilerOptions": {
     "types": ["jest"]
   },
-  "include": ["**/*.ts", "**/*.tsx"],
+  "include": ["**/*.ts", "**/*.tsx", "src/hooks/auth/useAuth.js", "react-native.config.js"],
   "exclude": ["**/node_modules", "**/Pods"]
 }

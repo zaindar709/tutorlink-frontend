@@ -1,11 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import useUi from '../../../ui/useUi';
+import useUi from '../../../hooks/ui/useUi';
 import AuthCard from '../../../components/AuthCard/AuthCard';
-import { IconButton } from 'react-native-paper';
 import { OrDivider } from '../../../components/OrDrivider/OrDivider';
 import Images from '../../../assets/images';
+import BackButton from '../../../components/BackButton/BackButton';
 
 export default function AuthSelectionScreen() {
   const { colors, resp } = useUi();
@@ -24,8 +31,8 @@ export default function AuthSelectionScreen() {
       signup: 'StudentSignUpScreen',
     },
     tutor: {
-      login: 'null',
-      signup: 'null',
+      login: 'TutorLoginScreen',
+      signup: 'TutorSignUpScreen',
     },
     parent: {
       login: 'StudentLoginScreen',
@@ -36,10 +43,12 @@ export default function AuthSelectionScreen() {
   const currentRoutes = authRoutes[role] || authRoutes.student;
 
   const goLogin = () => {
+    if (!currentRoutes.login) return;
     navigation.navigate(currentRoutes.login, { role });
   };
 
   const goSignup = () => {
+    if (!currentRoutes.signup) return;
     navigation.navigate(currentRoutes.signup, { role });
   };
 
@@ -76,28 +85,14 @@ export default function AuthSelectionScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <IconButton
-            icon="arrow-left"
-            size={resp.df(16)}
-            onPress={() => navigation.goBack()}
-            iconColor={colors.BLACK_COLOR as string}
-          />
-          <Text style={styles.backText}>Back</Text>
-        </TouchableOpacity>
-
+        <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.logo}>TutorLink</Text>
 
         <Text style={styles.title}>
           Welcome {role === 'parent' ? 'Parent' : role || 'Student'}
         </Text>
 
-        <Text style={styles.subtitle}>
-          Login or signup to continue
-        </Text>
+        <Text style={styles.subtitle}>Login or signup to continue</Text>
       </View>
 
       {/* BODY */}
@@ -131,9 +126,7 @@ export default function AuthSelectionScreen() {
 
         <View style={styles.textBox}>
           <Text style={styles.trustTitle}>
-            <Text style={{ fontWeight: '700' }}>
-              {trust.title}
-            </Text>{' '}
+            <Text style={{ fontWeight: '700' }}>{trust.title}</Text>{' '}
             {trust.text}
           </Text>
         </View>

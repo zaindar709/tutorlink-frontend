@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "750381394371",
+    "project_id": "tutor-link-62ed9",
+    "storage_bucket": "tutor-link-62ed9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750381394371:android:6ff22e6681a85dcf8db576",
+        "android_client_info": {
+          "package_name": "com.tutorlink"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_bCK0XJZG7cveYRZe1zztJQhDzC5RfXA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

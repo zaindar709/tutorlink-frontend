@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useState, useRef } from 'react';
 import { Animated, FlatList } from 'react-native';
 
@@ -8,6 +9,7 @@ export const useOnboarding = (
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const navigation = useNavigation();
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     const index = viewableItems?.[0]?.index;

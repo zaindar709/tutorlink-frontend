@@ -5,14 +5,13 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import RoleCard from '../../../components/RoleCard/RoleCard';
 import CustomButton from '../../../components/CustomButton';
 
 import { useRoleController } from '../../../controllers/roleController';
-import useUi from '../../../ui/useUi';
+import useUi from '../../../hooks/ui/useUi';
 import { roles } from '../../../constants/RoleSelection.data';
 
 
@@ -24,15 +23,13 @@ export default function RoleSelectionScreen({ navigation }: any) {
 
   const renderRoleItem = useCallback(
     ({ item, index }: any) => (
-      <Animated.View
-        entering={FadeInDown.duration(400).delay(index * 80)}
-      >
+      <View>
         <RoleCard
           role={item}
           isSelected={selectedRole === item.id}
           onSelect={() => setSelectedRole(item.id as any)}
         />
-      </Animated.View>
+      </View>
     ),
     [selectedRole, setSelectedRole],
   );

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, Animated, StyleSheet } from 'react-native';
 import Images from '../../../assets/images';
-import useUi from '../../../ui/useUi';
+import useUi from '../../../hooks/ui/useUi';
 import { useSplash } from '../../../hooks/useSplash';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
