@@ -1,32 +1,31 @@
 import { AppDispatch } from '../store';
-import { signupAPI, SignupPayload } from '../../api/auth.api';
+import { registerWithEmail, AuthSignupData } from '../../services/auth/authService';
 import { setLoading, setUser } from './authSlice';
-import { saveToken } from '../../services/storage';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 export const signupUser =
-  (data: SignupPayload, navigation: NativeStackNavigationProp<any>) =>
+  (data: AuthSignupData, navigation: NativeStackNavigationProp<any>) =>
   async (dispatch: AppDispatch) => {
     try {
       dispatch(setLoading(true));
 
-      const res = await signupAPI(data);
-
-      const { user, token } = res.data;
-
-      await saveToken(token);
+      const session = await registerWithEmail(data);
 
       dispatch(
         setUser({
-          user,
-          token,
-          role: data.role,
+          user: session.user,
+          token: session.token,
+          role: session.role,
         })
       );
 
-      navigation.replace('StudentSubjectSelection', {
-        role: data.role,
-      });
+      if (session.role === 'student') {
+        navigation.replace('StudentSubjectSelection');
+      } else if (session.role === 'tutor') {
+        navigation.replace('DocumentUploadScreen');
+      } else {
+        navigation.replace('MyTabs', { screen: 'Home' });
+      }
     } catch (err) {
       console.log('SIGNUP ERROR:', err);
     } finally {

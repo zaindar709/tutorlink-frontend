@@ -9,11 +9,23 @@ import {
   validateFullName,
   validatePassword,
 } from '../../utils/validations/authValidation';
-import { loginWithEmail, registerWithEmail, AuthRole } from '../../services/auth/authService';
+import {
+  loginWithEmail,
+  registerWithEmail,
+  AuthRole,
+} from '../../services/auth/authService';
+import { getApiErrorMessage } from '../../utils/api/errorHandler';
 
 type Mode = 'login' | 'signup';
 
-export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
+export const useAuthForm = (
+  mode: Mode,
+  role: AuthRole,
+  options?: {
+    subjects?: string[];
+    selectedClass?: string;
+  }
+) => {
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
 
@@ -25,7 +37,7 @@ export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
     phone: '',
     confirmPassword: '',
   });
-  const [errors, setErrors] = useState<any>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoadingState] = useState(false);
 
   const handleChange = (field: string, value: string) => {
@@ -38,11 +50,11 @@ export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
     if (field === 'confirmPassword')
       error = validateConfirmPassword(form.password, value);
 
-    setErrors((prev: any) => ({ ...prev, [field]: error }));
+    setErrors(prev => ({ ...prev, [field]: error }));
   };
 
   const validateForm = () => {
-    const newErrors: any = {};
+    const newErrors: Record<string, string> = {};
 
     if (mode === 'signup') {
       newErrors.fullName = validateFullName(form.fullName);
@@ -57,6 +69,42 @@ export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
 
     setErrors(newErrors);
     return Object.values(newErrors).every(value => !value);
+  };
+
+  const navigateAfterAuth = (sessionRole: AuthRole, isSignup: boolean) => {
+    if (isSignup && sessionRole === 'student') {
+      navigation.replace('StudentSubjectSelection');
+      return;
+    }
+
+    if (isSignup && sessionRole === 'tutor') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'DocumentUploadScreen' }],
+      });
+      return;
+    }
+
+    if (sessionRole === 'parent') {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'ParentLinkRedeemScreen' }],
+      });
+      return;
+    }
+
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'MyTabs',
+          params: {
+            role: sessionRole,
+            screen: 'Home',
+          },
+        },
+      ],
+    });
   };
 
   const submit = async () => {
@@ -80,6 +128,8 @@ export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
               role,
               phone: form.phone || undefined,
               expertise: form.expertise || undefined,
+              subjects: options?.subjects,
+              selectedClass: options?.selectedClass,
             });
 
       dispatch(
@@ -90,25 +140,28 @@ export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
         })
       );
 
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: 'MyTabs',
-            params: {
-              role: session.role,
-              screen: 'Home',
-            },
-          },
-        ],
-      });
-    } catch (error: any) {
-      console.log('AUTH ERROR:', error?.response?.data || error?.message);
+      navigateAfterAuth(session.role, mode === 'signup');
+    } catch (error) {
+      const message = getApiErrorMessage(error);
+      const isExistingAccount =
+        message.toLowerCase().includes('already') ||
+        message.toLowerCase().includes('exists');
+
       Alert.alert(
-        'Authentication failed',
-        error?.response?.data?.message ||
-          error?.message ||
-          'Unable to complete the request. Please try again.'
+        isExistingAccount ? 'Account already exists' : 'Authentication failed',
+        isExistingAccount
+          ? 'This email is already registered. Please log in instead.'
+          : message,
+        isExistingAccount
+          ? [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Go to Login',
+                onPress: () =>
+                  navigation.replace('StudentLoginScreen', { role }),
+              },
+            ]
+          : undefined
       );
     } finally {
       setLoadingState(false);

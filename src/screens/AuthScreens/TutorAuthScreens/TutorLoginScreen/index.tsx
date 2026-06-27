@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 
@@ -17,13 +16,18 @@ import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { OrDivider } from '../../../../components/OrDrivider/OrDivider';
 import { useMemo, useState } from 'react';
-import { googleLoginAPI } from '../../../../api/auth.api';
-import { signInWithGoogle } from '../../../../services/googleSignin';
+import { useGoogleAuth } from '../../../../hooks/auth/useGoogleAuth';
 
 const TutorLoginScreen = () => {
   const { colors, resp } = useUi();
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
-  const { form, errors, handleChange, submit } = useAuthForm('login', 'tutor');
+  const { form, errors, handleChange, submit, loading } = useAuthForm('login', 'tutor');
+  const { signIn: handleContinueWithGoogle } = useGoogleAuth('tutor');
+
+  const handleContinueWithApple = () => {
+    console.log('Continue with Apple tapped');
+  };
+
   const [rememberMe, setRememberMe] = useState(true);
   const [secureEntry, setSecureEntry] = useState(true);
   const navigation = useNavigation<any>();
@@ -34,20 +38,6 @@ const TutorLoginScreen = () => {
 
   const handleForgotPassword = () => {
     navigation.navigate('ForgotPasswordScreen', { role });
-  };
-
-  const handleContinueWithGoogle = async () => {
-    try {
-      const { firebaseUid, name, email } = await signInWithGoogle();
-      await googleLoginAPI({ name, email, firebaseUid, role });
-    } catch (err: any) {
-      console.log('Google sign-in error', err);
-      Alert.alert('Google sign-in failed', err?.message || String(err));
-    }
-  };
-
-  const handleContinueWithApple = () => {
-    console.log('Continue with Apple tapped');
   };
 
   const handleSignup = () => {
@@ -133,14 +123,8 @@ const TutorLoginScreen = () => {
         <CustomButton
           title="Login"
           style={styles.loginButton}
-          onPress={() =>
-            navigation.navigate('MyTabs', {
-              screen: 'HomeStack',
-              params: {
-                screen: 'DashboardScreen',
-              },
-            })
-          }
+          onPress={submit}
+          loading={loading}
         />
         <OrDivider />
         <CustomButton

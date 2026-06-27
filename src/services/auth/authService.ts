@@ -7,11 +7,10 @@ import {
   deleteFirebaseUser,
 } from './firebaseAuthService';
 import {
-  getProfileAPI,
+  getAuthProfileAPI,
+  googleLoginAPI,
   loginAPI,
-  signupAPI,
-  LoginPayload,
-  SignupPayload,
+  registerAPI,
 } from '../../api/auth.api';
 import {
   AuthSession,
@@ -19,6 +18,9 @@ import {
   getAuthSession,
   saveAuthSession,
 } from '../storage';
+import { ApiUser } from '../../types/api.types';
+import { getUserId } from '../../utils/api/userId';
+import { AxiosError } from 'axios';
 
 export type AuthRole = 'student' | 'tutor' | 'parent';
 
@@ -36,107 +38,155 @@ export interface AuthSignupData extends AuthCredentials {
   selectedClass?: string;
 }
 
+const buildSession = (
+  user: ApiUser,
+  role: AuthRole,
+  firebaseUid?: string
+): AuthSession => {
+  return {
+    token: '',
+    role: (user.role as AuthRole) || role,
+    user: {
+      ...user,
+      id: user.id || user._id,
+      _id: user._id || user.id,
+      uid: firebaseUid,
+    },
+  };
+};
+
+const persistSession = async (
+  user: ApiUser,
+  role: AuthRole,
+  firebaseUid?: string
+): Promise<AuthSession> => {
+  const idToken = await getFirebaseIdToken();
+  const session: AuthSession = {
+    ...buildSession(user, role, firebaseUid),
+    token: idToken,
+  };
+  await saveAuthSession(session);
+  return session;
+};
+
+const isEmailAlreadyInUse = (error: unknown): boolean => {
+  const firebaseCode = (error as { code?: string })?.code;
+  return firebaseCode === 'auth/email-already-in-use';
+};
+
+const isProfileAlreadyExists = (error: unknown): boolean => {
+  if (!(error instanceof AxiosError)) return false;
+  const status = error.response?.status;
+  const message = String(error.response?.data?.message || '').toLowerCase();
+  return status === 400 && message.includes('already');
+};
+
+const isProfileNotFound = (error: unknown): boolean => {
+  return error instanceof AxiosError && error.response?.status === 404;
+};
+
 export const loginWithEmail = async (
   credentials: AuthCredentials
 ): Promise<AuthSession> => {
-  const firebaseUser = await firebaseSignIn(credentials.email, credentials.password);
-  const idToken = await getFirebaseIdToken();
+  const firebaseUser = await firebaseSignIn(
+    credentials.email,
+    credentials.password
+  );
 
   const response = await loginAPI({
     email: credentials.email,
     firebaseUid: firebaseUser.uid,
-    idToken,
-    role: credentials.role,
   });
 
-  const { user, token } = response.data;
-  const sessionToken = token ?? idToken;
-
-  const session: AuthSession = {
-    token: sessionToken,
-    role: credentials.role,
-    user: { ...user, uid: firebaseUser.uid } as any,
-  };
-
-  await saveAuthSession(session);
-  return session;
+  const { user } = response.data;
+  return persistSession(user, credentials.role, firebaseUser.uid);
 };
 
 export const registerWithEmail = async (
   payload: AuthSignupData
 ): Promise<AuthSession> => {
+  let firebaseUser;
+
   try {
-    // Try Firebase signup first
-    const firebaseUser = await firebaseSignUp(payload.email, payload.password);
-    const idToken = await getFirebaseIdToken();
-
-    try {
-      const response = await signupAPI({
-        firebaseUid: firebaseUser.uid,
-        idToken,
-        email: payload.email,
-        name: payload.fullName,
-        fullName: payload.fullName,
-        role: payload.role,
-        phoneNumber: payload.phone,
-        expertise: payload.expertise,
-        subjects: payload.subjects,
-        selectedClass: payload.selectedClass,
-      });
-
-      const { user, token } = response.data;
-      const sessionToken = token ?? idToken;
-
-      const session: AuthSession = {
-        token: sessionToken,
-        role: payload.role,
-        user: { ...user, uid: firebaseUser.uid } as any,
-      };
-
-      await saveAuthSession(session);
-      return session;
-    } catch (error) {
-      try {
-        await deleteFirebaseUser();
-      } catch (deleteError) {
-        console.error('Failed to delete Firebase user after signup error:', deleteError);
-      }
+    firebaseUser = await firebaseSignUp(payload.email, payload.password);
+  } catch (error) {
+    if (!isEmailAlreadyInUse(error)) {
       throw error;
     }
-  } catch (firebaseError: any) {
-    // If Firebase signup fails, fall back to direct backend signup
-    // This allows signup without Firebase configuration
-    console.log('Firebase signup failed, trying direct backend registration', firebaseError?.message);
-    
+
+    firebaseUser = await firebaseSignIn(payload.email, payload.password);
+
     try {
-      const response = await signupAPI({
-        firebaseUid: `local_${Date.now()}`, // Generate a local UID for direct signup
+      const loginResponse = await loginAPI({
         email: payload.email,
-        name: payload.fullName,
-        fullName: payload.fullName,
-        role: payload.role,
-        password: payload.password,
-        phoneNumber: payload.phone,
-        expertise: payload.expertise,
-        subjects: payload.subjects,
-        selectedClass: payload.selectedClass,
+        firebaseUid: firebaseUser.uid,
       });
-
-      const { user, token } = response.data;
-
-      const session: AuthSession = {
-        token,
-        role: payload.role,
-        user: user as any,
-      };
-
-      await saveAuthSession(session);
-      return session;
-    } catch (backendError: any) {
-      console.error('Backend signup error:', backendError?.response?.data || backendError?.message);
-      throw backendError;
+      return persistSession(
+        loginResponse.data.user,
+        payload.role,
+        firebaseUser.uid
+      );
+    } catch (loginError) {
+      if (!isProfileNotFound(loginError)) {
+        throw loginError;
+      }
     }
   }
+
+  try {
+    const response = await registerAPI({
+      firebaseUid: firebaseUser.uid,
+      name: payload.fullName,
+      email: payload.email,
+      role: payload.role,
+      phoneNumber: payload.phone,
+    });
+
+    return persistSession(
+      response.data.user,
+      payload.role,
+      firebaseUser.uid
+    );
+  } catch (error) {
+    if (isProfileAlreadyExists(error)) {
+      const loginResponse = await loginAPI({
+        email: payload.email,
+        firebaseUid: firebaseUser.uid,
+      });
+      return persistSession(
+        loginResponse.data.user,
+        payload.role,
+        firebaseUser.uid
+      );
+    }
+
+    try {
+      await deleteFirebaseUser();
+    } catch (deleteError) {
+      console.error(
+        'Failed to delete Firebase user after signup error:',
+        deleteError
+      );
+    }
+    throw error;
+  }
+};
+
+export const loginWithGoogle = async (
+  name: string,
+  email: string,
+  firebaseUid: string,
+  role: AuthRole
+): Promise<AuthSession> => {
+  const response = await googleLoginAPI({
+    name,
+    email,
+    firebaseUid,
+    role,
+  });
+
+  const { user } = response.data;
+  return persistSession(user, role, firebaseUid);
 };
 
 export const logoutUser = async () => {
@@ -157,19 +207,27 @@ export const restoreAuthSession = async (): Promise<AuthSession | null> => {
   }
 
   try {
-    await getFirebaseIdToken(true);
-    const userId = session.user.id || session.user._id;
+    const idToken = await getFirebaseIdToken(true);
+    const userId = getUserId(session.user);
+
     if (!userId) {
       await clearAuthSession();
       return null;
     }
 
-    const profileResponse = await getProfileAPI(userId);
+    const profileResponse = await getAuthProfileAPI(userId);
     const persistedUser = profileResponse.data?.user || session.user;
 
     const restoredSession: AuthSession = {
       ...session,
-      user: { ...session.user, ...persistedUser },
+      token: idToken,
+      role: (persistedUser.role as AuthRole) || session.role,
+      user: {
+        ...session.user,
+        ...persistedUser,
+        id: persistedUser.id || persistedUser._id || userId,
+        _id: persistedUser._id || persistedUser.id || userId,
+      },
     };
 
     await saveAuthSession(restoredSession);

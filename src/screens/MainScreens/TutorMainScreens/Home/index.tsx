@@ -1,94 +1,86 @@
-// TutorDashboardScreen.tsx
-
-import React from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView } from 'react-native';
-import { Icon } from 'react-native-paper';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import useUi from '../../../../hooks/ui/useUi';
 import Header from '../../../../components/Tutor/DashBoard/DashBoardHeader';
 import BalanceCard from '../../../../components/Tutor/DashBoard/BalanceCard';
 import StatCard from '../../../../components/Tutor/DashBoard/StatCard';
 import { BookingRequestCard } from '../../../../components/Tutor/DashBoard/BookingCard';
 import { TodaySessionCard } from '../../../../components/Tutor/DashBoard/TodaySession';
-
-const statsData = [
-  {
-    id: '1',
-    title: 'Sessions',
-    value: '12',
-    icon: 'calendar-month-outline',
-    bg: '#EEF2FF',
-    iconColor: '#3B82F6',
-  },
-  {
-    id: '2',
-    title: 'Students',
-    value: '8',
-    icon: 'account-outline',
-    bg: '#FFF7ED',
-    iconColor: '#F59E0B',
-  },
-  {
-    id: '3',
-    title: 'Rating',
-    value: '4.9',
-    icon: 'currency-usd',
-    bg: '#ECFDF3',
-    iconColor: '#16A34A',
-  },
-];
-
-const bookingRequests = [
-  {
-    id: '1',
-    name: 'Sarah Ahmed',
-    time: '2 hours ago',
-    subject: 'Mathematics',
-    grade: 'Grade 10',
-  },
-  {
-    id: '2',
-    name: 'Hassan Khan',
-    time: '5 hours ago',
-    subject: 'Physics',
-    grade: 'O-Levels',
-  },
-];
-const todaySessions = [
-  {
-    id: '1',
-    name: 'Ahmed Raza',
-    subject: 'Mathematics',
-    time: '4:00 PM',
-    duration: '60 min',
-  },
-  {
-    id: '2',
-    name: 'Zainab Hassan',
-    subject: 'Physics',
-    time: '5:30 PM',
-    duration: '90 min',
-  },
-  {
-    id: '3',
-    name: 'Ali Hamza',
-    subject: 'Chemistry',
-    time: '7:00 PM',
-    duration: '60 min',
-  },
-];
+import { useBookings } from '../../../../hooks/api/useBookings';
+import { useWallet } from '../../../../hooks/api/useWallet';
+import { getBookingParticipantName } from '../../../../utils/api/bookingHelpers';
 
 export default function DashboardScreen() {
   const { colors, resp } = useUi();
+  const { balance } = useWallet();
+  const pendingBookings = useBookings('pending');
+  const activeBookings = useBookings('active');
+
+  const statsData = useMemo(
+    () => [
+      {
+        id: '1',
+        title: 'Sessions',
+        value: String(activeBookings.bookings.length),
+        icon: 'calendar-month-outline',
+        bg: '#EEF2FF',
+        iconColor: '#3B82F6',
+      },
+      {
+        id: '2',
+        title: 'Requests',
+        value: String(pendingBookings.bookings.length),
+        icon: 'account-outline',
+        bg: '#FFF7ED',
+        iconColor: '#F59E0B',
+      },
+      {
+        id: '3',
+        title: 'Escrow',
+        value: `Rs. ${(balance?.escrowBalance ?? 0).toLocaleString()}`,
+        icon: 'currency-usd',
+        bg: '#ECFDF3',
+        iconColor: '#16A34A',
+      },
+    ],
+    [
+      activeBookings.bookings.length,
+      pendingBookings.bookings.length,
+      balance?.escrowBalance,
+    ]
+  );
+
+  const bookingRequests = pendingBookings.bookings.map(booking => ({
+    id: booking._id,
+    name: getBookingParticipantName(booking, 'tutor'),
+    time: booking.startTime,
+    subject: booking.subject,
+    grade: booking.status,
+  }));
+
+  const todaySessions = activeBookings.bookings.map(booking => ({
+    id: booking._id,
+    name: getBookingParticipantName(booking, 'tutor'),
+    subject: booking.subject,
+    time: booking.startTime,
+    duration: `${booking.startTime} - ${booking.endTime}`,
+  }));
+
+  const screenStyles = styles(colors, resp);
 
   return (
-    <View style={styles(colors, resp).container}>
+    <View style={screenStyles.container}>
       <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
         nestedScrollEnabled
-        contentContainerStyle={styles(colors, resp).contentContainer}
+        contentContainerStyle={screenStyles.contentContainer}
       >
-        <BalanceCard colors={colors} resp={resp} />
+        <BalanceCard
+          colors={colors}
+          resp={resp}
+          balance={balance?.totalBalance ?? 0}
+        />
         <View style={{ alignSelf: 'center', flex: 1 }}>
           <FlatList
             data={statsData}
@@ -101,37 +93,59 @@ export default function DashboardScreen() {
           />
         </View>
 
-        <View style={styles(colors, resp).sectionHeader}>
-          <Text style={styles(colors, resp).sectionTitle}>
-            New Booking Requests
-          </Text>
-
-          <View style={styles(colors, resp).badge}>
-            <Text style={styles(colors, resp).badgeText}>3</Text>
+        <View style={screenStyles.sectionHeader}>
+          <Text style={screenStyles.sectionTitle}>New Booking Requests</Text>
+          <View style={screenStyles.badge}>
+            <Text style={screenStyles.badgeText}>
+              {pendingBookings.bookings.length}
+            </Text>
           </View>
         </View>
 
-        <FlatList
-          data={bookingRequests}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <BookingRequestCard item={item} colors={colors} resp={resp} />
-          )}
-        />
-        <View style={styles(colors, resp).sectionHeader}>
-          <Text style={styles(colors, resp).sectionTitle}>
-            Today's Sessions
-          </Text>
+        {pendingBookings.loading ? (
+          <ActivityIndicator />
+        ) : (
+          <FlatList
+            data={bookingRequests}
+            keyExtractor={item => item.id}
+            ListEmptyComponent={
+              <Text style={screenStyles.emptyText}>No pending requests.</Text>
+            }
+            renderItem={({ item }) => (
+              <BookingRequestCard
+                item={item}
+                colors={colors}
+                resp={resp}
+                onAccept={() =>
+                  pendingBookings.confirmBooking(item.id, {
+                    meetingLink: 'https://meet.google.com/new',
+                  })
+                }
+                onDecline={() => pendingBookings.cancelBooking(item.id)}
+              />
+            )}
+          />
+        )}
+
+        <View style={screenStyles.sectionHeader}>
+          <Text style={screenStyles.sectionTitle}>Today's Sessions</Text>
         </View>
 
-        <FlatList
-          data={todaySessions}
-          scrollEnabled={false}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TodaySessionCard item={item} colors={colors} resp={resp} />
-          )}
-        />
+        {activeBookings.loading ? (
+          <ActivityIndicator />
+        ) : (
+          <FlatList
+            data={todaySessions}
+            scrollEnabled={false}
+            keyExtractor={item => item.id}
+            ListEmptyComponent={
+              <Text style={screenStyles.emptyText}>No sessions today.</Text>
+            }
+            renderItem={({ item }) => (
+              <TodaySessionCard item={item} colors={colors} resp={resp} />
+            )}
+          />
+        )}
       </ScrollView>
     </View>
   );
@@ -143,13 +157,10 @@ const styles = (colors: any, resp: any) =>
       flex: 1,
       backgroundColor: '#F8FAFC',
     },
-
     contentContainer: {
       paddingHorizontal: resp.dx(16),
       paddingBottom: resp.dy(30),
     },
-    // SECTION
-
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -157,13 +168,11 @@ const styles = (colors: any, resp: any) =>
       marginTop: resp.dy(28),
       marginBottom: resp.dx(14),
     },
-
     sectionTitle: {
       fontSize: resp.df(20),
       fontWeight: '700',
       color: '#111827',
     },
-
     badge: {
       minWidth: resp.dx(24),
       height: resp.dy(24),
@@ -173,10 +182,13 @@ const styles = (colors: any, resp: any) =>
       alignItems: 'center',
       paddingHorizontal: resp.dx(6),
     },
-
     badgeText: {
       color: '#fff',
       fontSize: resp.df(11),
       fontWeight: '700',
+    },
+    emptyText: {
+      color: '#6B7280',
+      marginBottom: resp.dy(12),
     },
   });

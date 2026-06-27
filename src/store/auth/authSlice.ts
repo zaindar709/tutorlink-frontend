@@ -1,9 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { ApiUser } from '../../types/api.types';
 
-export interface User {
-  fullName?: string;
-  email?: string;
-}
+export type User = ApiUser;
 
 interface AuthState {
   user: User | null;
@@ -44,7 +42,6 @@ const authSlice = createSlice({
       state.isLoggedIn = true;
     },
 
-    // NEW
     setRole: (
       state,
       action: PayloadAction<'student' | 'tutor' | 'parent'>

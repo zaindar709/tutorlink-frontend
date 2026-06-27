@@ -3,7 +3,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 
 import CustomButton from '../../../CustomButton';
 
-const BalanceCard = ({colors, resp}: any) => {
+const BalanceCard = ({colors, resp, balance = 0}: any) => {
   return (
     <View style={styles(colors, resp).balanceCard}>
       <View style={styles(colors, resp).balanceTopRow}>
@@ -13,7 +13,7 @@ const BalanceCard = ({colors, resp}: any) => {
           </Text>
 
           <Text style={styles(colors, resp).balanceAmount}>
-            Rs. 15,000
+            Rs. {balance.toLocaleString()}
           </Text>
 
           <Text style={styles(colors, resp).balanceGrowth}>

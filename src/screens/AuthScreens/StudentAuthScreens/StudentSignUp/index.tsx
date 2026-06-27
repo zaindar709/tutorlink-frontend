@@ -23,7 +23,7 @@ const StudentSignUpScreen = () => {
   const [secureEntry, setSecureEntry] = useState(true);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
 
-  const { form, errors, handleChange, submit } = useAuthForm(
+  const { form, errors, handleChange, submit, loading } = useAuthForm(
     'signup',
     role || 'student', 
   );
@@ -90,7 +90,11 @@ const StudentSignUpScreen = () => {
             error={errors.confirmPassword}
           />
         </View>
-        <CustomButton title="Create Account" onPress={()=>navigation.navigate('StudentSubjectSelection')} />
+        <CustomButton
+          title="Create Account"
+          onPress={submit}
+          loading={loading}
+        />
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity

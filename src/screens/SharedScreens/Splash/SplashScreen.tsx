@@ -5,7 +5,9 @@ import useUi from '../../../hooks/ui/useUi';
 import { useSplash } from '../../../hooks/useSplash';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useDispatch } from 'react-redux';
 import { restoreAuthSession } from '../../../services/auth/authService';
+import { setUser } from '../../../store/auth/authSlice';
 
 export default function SplashScreen() {
   type RootStackParamList = {
@@ -16,6 +18,7 @@ export default function SplashScreen() {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const dispatch = useDispatch();
   const {
     logoScale,
     logoOpacity,
@@ -33,6 +36,16 @@ export default function SplashScreen() {
     const navigateAfterSplash = async () => {
       const session = await restoreAuthSession();
       if (!isMounted) return;
+
+      if (session) {
+        dispatch(
+          setUser({
+            user: session.user,
+            token: session.token,
+            role: session.role,
+          })
+        );
+      }
 
       navigation.reset({
         index: 0,
@@ -53,7 +66,7 @@ export default function SplashScreen() {
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [navigation]);
+  }, [dispatch, navigation]);
 
   return (
     <View style={styles.container}>

@@ -7,6 +7,7 @@ import {
   ViewStyle,
   TextStyle,
   ColorValue,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../hooks/ui/useUi';
@@ -24,6 +25,7 @@ interface CustomButtonProps {
   icon?: string;
   iconPosition?: 'left' | 'right';
   iconSize?: number;
+  loading?: boolean;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({
@@ -39,21 +41,25 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   borderWidth,
   iconPosition = 'left',
   iconSize,
+  loading = false,
 }) => {
   const { resp, colors } = useUi();
   const styles = createStyles(colors, resp);
+  const isDisabled = disabled || loading;
+  const resolvedTextColor = String(textColor || colors.WHITE_COLOR);
+  const resolvedBackgroundColor = isDisabled
+    ? '#babbbc'
+    : backgroundColor ?? colors.PRIMARY_COLOR;
 
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled}
+      disabled={isDisabled}
       activeOpacity={0.7}
       style={[
         styles.button,
         {
-          backgroundColor: disabled
-            ? '#babbbc'
-            : backgroundColor ?? colors.PRIMARY_COLOR,
+          backgroundColor: resolvedBackgroundColor,
           borderColor: borderColor ?? 'transparent',
           borderWidth: borderWidth ?? 0,
         },
@@ -61,33 +67,36 @@ const CustomButton: React.FC<CustomButtonProps> = ({
       ]}
     >
       <View style={styles.content}>
-        {/* 🔹 Left Icon */}
-        {icon && iconPosition === 'left' && (
-          <Icon
-            source={icon}
-            size={iconSize || resp.df(20)}
-            color={String(textColor || colors.WHITE_COLOR)}
-          />
-        )}
+        {loading ? (
+          <ActivityIndicator color={resolvedTextColor} size="small" />
+        ) : (
+          <>
+            {icon && iconPosition === 'left' && (
+              <Icon
+                source={icon}
+                size={iconSize || resp.df(20)}
+                color={resolvedTextColor}
+              />
+            )}
 
-        {/* 🔹 Button Text */}
-        <Text
-          style={[
-            styles.text,
-            { color: textColor || colors.WHITE_COLOR },
-            textStyle,
-          ]}
-        >
-          {title}
-        </Text>
+            <Text
+              style={[
+                styles.text,
+                { color: textColor || colors.WHITE_COLOR },
+                textStyle,
+              ]}
+            >
+              {title}
+            </Text>
 
-        {/* 🔹 Right Icon */}
-        {icon && iconPosition === 'right' && (
-          <Icon
-            source={icon}
-            size={iconSize || resp.df(20)}
-            color={String(textColor || colors.WHITE_COLOR)}
-          />
+            {icon && iconPosition === 'right' && (
+              <Icon
+                source={icon}
+                size={iconSize || resp.df(20)}
+                color={resolvedTextColor}
+              />
+            )}
+          </>
         )}
       </View>
     </TouchableOpacity>

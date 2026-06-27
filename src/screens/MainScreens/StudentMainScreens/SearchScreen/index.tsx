@@ -1,5 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+} from 'react-native';
 import * as MapLibreGL from '@maplibre/maplibre-react-native';
 import { Icon } from 'react-native-paper';
 import TutorNearbyCard from '../../../../components/TutorNearbyCard/TutorNearbyCard';
@@ -7,96 +14,59 @@ import useUi from '../../../../hooks/ui/useUi';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
+import { useTutorSearch } from '../../../../hooks/api/useTutorSearch';
 
-const tutorLocations = [
-  {
-    id: '1',
-    name: 'Dr. Sarah Ahmed',
-    subject: 'Mathematics',
-    rating: '4.9',
-    distance: '0.8 km away',
-    image: 'https://randomuser.me/api/portraits/women/44.jpg',
-    coordinate: {
-      latitude: 31.5204,
-      longitude: 74.3587,
-    },
-  },
-  {
-    id: '2',
-    name: 'Mr. Adam Blake',
-    subject: 'Physics',
-    rating: '4.6',
-    distance: '1.1 km away',
-    image: 'https://randomuser.me/api/portraits/men/32.jpg',
-    coordinate: {
-      latitude: 31.5224,
-      longitude: 74.361,
-    },
-  },
-  {
-    id: '3',
-    name: 'Ms. Aisha Khan',
-    subject: 'English',
-    rating: '4.8',
-    distance: '0.4 km away',
-    image: 'https://randomuser.me/api/portraits/women/68.jpg',
-    coordinate: {
-      latitude: 31.519,
-      longitude: 74.355,
-    },
-  },
-  {
-    id: '4',
-    name: 'Prof. James Lee',
-    subject: 'Chemistry',
-    rating: '4.7',
-    distance: '1.4 km away',
-    image: 'https://randomuser.me/api/portraits/men/71.jpg',
-    coordinate: {
-      latitude: 31.5175,
-      longitude: 74.364,
-    },
-  },
-];
+const DEFAULT_SEARCH_FILTERS = {
+  availability: true,
+  studentLat: 31.5204,
+  studentLng: 74.3587,
+  radiusInKm: 20,
+};
 
 const SearchScreen = () => {
   const { colors, resp } = useUi();
-
   const [search, setSearch] = useState('');
-  const [selectedTutorId, setSelectedTutorId] = useState('1');
-
+  const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
   const cameraRef = useRef(null);
-
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
+  const { tutors, loading, search: runSearch } = useTutorSearch(
+    DEFAULT_SEARCH_FILTERS
+  );
+
+  const handleRefresh = useCallback(() => {
+    runSearch({
+      ...DEFAULT_SEARCH_FILTERS,
+      subject: search.trim() || undefined,
+    });
+  }, [runSearch, search]);
 
   const selectedTutor =
-    tutorLocations.find(tutor => tutor.id === selectedTutorId) ??
-    tutorLocations[0];
+    tutors.find(tutor => tutor._id === selectedTutorId) ?? tutors[0];
 
-  // const handleSelectTutor = (id: string) => {
-  //   const tutor = tutorLocations.find(item => item.id === id);
+  const filteredTutors = tutors.filter(tutor => {
+    const query = search.toLowerCase().trim();
+    if (!query) return true;
 
-  //   if (!tutor) return;
+    const name = tutor.user?.name?.toLowerCase() || '';
+    const subjects = (tutor.subjects || []).join(' ').toLowerCase();
+    return name.includes(query) || subjects.includes(query);
+  });
 
-  //   setSelectedTutorId(id);
+  const getCoordinate = (tutor: (typeof tutors)[number], index: number) => {
+    const coords = tutor.location?.coordinates;
+    if (coords?.length === 2) {
+      return { latitude: coords[1], longitude: coords[0] };
+    }
 
-  //   cameraRef.current?.setCamera({
-  //     centerCoordinate: [tutor.coordinate.longitude, tutor.coordinate.latitude],
-  //     zoomLevel: 15,
-  //     animationDuration: 1200,
-  //   });
-  // };
-
-  const filteredTutors = tutorLocations.filter(
-    tutor =>
-      tutor.name.toLowerCase().includes(search.toLowerCase()) ||
-      tutor.subject.toLowerCase().includes(search.toLowerCase()),
-  );
+    return {
+      latitude: 31.5204 + index * 0.002,
+      longitude: 74.3587 + index * 0.002,
+    };
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.screen}>
-        {/* MAP */}
         <View style={styles.mapWrapper}>
           <MapLibreGL.Map
             style={styles.map}
@@ -105,72 +75,81 @@ const SearchScreen = () => {
             <MapLibreGL.Camera
               ref={cameraRef}
               zoom={14}
-              center={[
-                selectedTutor.coordinate.longitude,
-                selectedTutor.coordinate.latitude,
-              ]}
+              center={
+                selectedTutor
+                  ? [
+                      getCoordinate(selectedTutor, 0).longitude,
+                      getCoordinate(selectedTutor, 0).latitude,
+                    ]
+                  : [74.3587, 31.5204]
+              }
             />
 
-            {tutorLocations.map(tutor => (
-              <MapLibreGL.ViewAnnotation
-                key={tutor.id}
-                id={tutor.id}
-                lngLat={[tutor.coordinate.longitude, tutor.coordinate.latitude]}
-              >
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={styles.markerContainer}
-                >
-                  <View style={styles.ratingBadge}>
-                    <Text style={styles.ratingText}>⭐ {tutor.rating}</Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.imageWrapper,
-                      tutor.id === selectedTutorId &&
-                        styles.imageWrapperSelected,
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: tutor.image }}
-                      style={styles.markerImage}
-                    />
+            {filteredTutors.map((tutor, index) => {
+              const coordinate = getCoordinate(tutor, index);
 
-                    <View style={styles.onlineDot} />
-                  </View>
-                </TouchableOpacity>
-              </MapLibreGL.ViewAnnotation>
-            ))}
+              return (
+                <MapLibreGL.ViewAnnotation
+                  key={tutor._id}
+                  id={tutor._id}
+                  lngLat={[coordinate.longitude, coordinate.latitude]}
+                >
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={styles.markerContainer}
+                    onPress={() => setSelectedTutorId(tutor._id)}
+                  >
+                    <View style={styles.ratingBadge}>
+                      <Text style={styles.ratingText}>
+                        ⭐ {tutor.rating?.toFixed(1) || '4.0'}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.imageWrapper,
+                        tutor._id === selectedTutor?._id &&
+                          styles.imageWrapperSelected,
+                      ]}
+                    >
+                      <Image
+                        source={{
+                          uri:
+                            tutor.user?.avatarUrl ||
+                            'https://randomuser.me/api/portraits/lego/1.jpg',
+                        }}
+                        style={styles.markerImage}
+                      />
+                      <View style={styles.onlineDot} />
+                    </View>
+                  </TouchableOpacity>
+                </MapLibreGL.ViewAnnotation>
+              );
+            })}
           </MapLibreGL.Map>
           <View style={styles.searchOverlay}>
-            <View style={styles.searchOverlay}>
-              <CustomInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Find tutors near you"
-                style={styles.customSearchInput}
-                leftIcon={
-                  <Icon
-                    source="magnify"
-                    size={20}
-                    color={colors.PLACEHOLDER_TEXTCOLOR as string}
-                  />
-                }
-                rightIcon={
-                  <Icon
-                    source="tune-variant"
-                    size={22}
-                    color={colors.BLACK_COLOR as string}
-                  />
-                }
-                onRightIconPress={() => {
-                  console.log('Filter clicked');
-                }}
-              />
-            </View>
+            <CustomInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Find tutors near you"
+              style={styles.customSearchInput}
+              leftIcon={
+                <Icon
+                  source="magnify"
+                  size={20}
+                  color={colors.PLACEHOLDER_TEXTCOLOR as string}
+                />
+              }
+              rightIcon={
+                <Icon
+                  source="tune-variant"
+                  size={22}
+                  color={colors.BLACK_COLOR as string}
+                />
+              }
+              onRightIconPress={handleRefresh}
+            />
           </View>
 
-          {/* LOCATION BUTTON */}
           <TouchableOpacity style={styles.locationButton} activeOpacity={0.8}>
             <Icon
               source="crosshairs-gps"
@@ -180,39 +159,51 @@ const SearchScreen = () => {
           </TouchableOpacity>
         </View>
 
-        {/* BOTTOM CARD */}
         <View style={styles.bottomSheet}>
           <View style={styles.listHeader}>
             <View>
               <Text style={styles.listTitle}>Featured Tutors Nearby</Text>
-
               <Text style={styles.listCount}>
-                {filteredTutors.length} tutors available
+                {loading
+                  ? 'Searching...'
+                  : `${filteredTutors.length} tutors available`}
               </Text>
             </View>
 
-            <TouchableOpacity activeOpacity={0.8}>
-              <Text style={styles.viewAllText}>View All</Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleRefresh}
+              disabled={loading}
+            >
+              <Text style={styles.viewAllText}>Refresh</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={styles.listContainer}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {filteredTutors.map(tutor => (
-              <TutorNearbyCard
-                key={tutor.id}
-                name={tutor.name}
-                subject={tutor.subject}
-                distance={tutor.distance}
-                rate={tutor.rating}
-                isSelected={tutor.id === selectedTutorId}
-                onPress={() => {}}
-              />
-            ))}
-          </ScrollView>
+          {loading ? (
+            <ActivityIndicator style={{ marginTop: 20 }} />
+          ) : (
+            <ScrollView
+              style={styles.listContainer}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {filteredTutors.map(tutor => (
+                <TutorNearbyCard
+                  key={tutor._id}
+                  name={tutor.user?.name || 'Tutor'}
+                  subject={(tutor.subjects || []).join(', ') || 'General'}
+                  distance={
+                    tutor.distanceKm
+                      ? `${tutor.distanceKm.toFixed(1)} km away`
+                      : 'Nearby'
+                  }
+                  rate={String(tutor.rating || 4)}
+                  isSelected={tutor._id === selectedTutor?._id}
+                  onPress={() => setSelectedTutorId(tutor._id)}
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
     </SafeAreaView>

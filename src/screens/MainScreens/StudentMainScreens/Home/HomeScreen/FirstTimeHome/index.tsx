@@ -6,15 +6,20 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../../../hooks/ui/useUi';
 import CustomButton from '../../../../../../components/CustomButton';
 import Images from '../../../../../../assets/images';
 import TopTutorCard from '../../../../../../components/StudentHome/TopTutorCard';
 import ExploreTile from '../../../../../../components/StudentHome/ExploreTile';
+import { useDashboard } from '../../../../../../hooks/api/useDashboard';
+import { useTutorSearch } from '../../../../../../hooks/api/useTutorSearch';
+import { getDisplayName } from '../../../../../../utils/api/bookingHelpers';
 
 type FirstTimeHomeProps = {
   onFindTutorPress?: () => void;
@@ -49,9 +54,26 @@ const homeExploreItems = [
 
 const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
   const { colors, resp } = useUi();
-  const userName =
-    useSelector((state: any) => state.auth.user?.name) || 'Student';
+  const navigation = useNavigation<any>();
+  const user = useSelector((state: any) => state.auth.user);
+  const userName = getDisplayName(user);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
+  const { data: dashboard, loading: dashboardLoading } = useDashboard();
+  const { tutors, loading: tutorsLoading } = useTutorSearch({
+    availability: true,
+    minRating: 4,
+  });
+
+  const topTutor = tutors[0];
+  const nextLesson = dashboard?.todaySchedule?.currentLessons?.[0];
+
+  const handleFindTutor = () => {
+    if (onFindTutorPress) {
+      onFindTutorPress();
+      return;
+    }
+    navigation.navigate('Search');
+  };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -59,7 +81,11 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
         <View style={styles.greetingGroup}>
           <Text style={styles.greeting}>Hello, {userName}!</Text>
           <Text style={styles.subheading}>
-            Find the best tutor to grow with confidence.
+            {dashboardLoading
+              ? 'Loading your dashboard...'
+              : nextLesson
+                ? `Next up: ${nextLesson.subject} at ${nextLesson.startTime}`
+                : 'Find the best tutor to grow with confidence.'}
           </Text>
         </View>
 
@@ -69,6 +95,9 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
             size={24}
             color={colors.PRIMARY_COLOR as string}
           />
+          {dashboard?.notifications?.hasUnread ? (
+            <View style={styles.notificationDot} />
+          ) : null}
         </TouchableOpacity>
       </View>
 
@@ -82,7 +111,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
         <Text style={styles.promoSubtitle}>Start your journey today!</Text>
         <CustomButton
           title="Find a Tutor"
-          onPress={onFindTutorPress ?? (() => null)}
+          onPress={handleFindTutor}
           backgroundColor={colors.WHITE_COLOR}
           textColor={colors.PRIMARY_COLOR}
           style={styles.ctaButton}
@@ -99,24 +128,35 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
           placeholder="Search Subjects (e.g. Physics)"
           placeholderTextColor={colors.PLACEHOLDER_TEXTCOLOR as string}
           style={styles.searchInput}
+          onFocus={handleFindTutor}
         />
       </View>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Top Tutors for You</Text>
-        <TouchableOpacity activeOpacity={0.8}>
+        <TouchableOpacity activeOpacity={0.8} onPress={handleFindTutor}>
           <Text style={styles.viewAll}>View all</Text>
         </TouchableOpacity>
       </View>
 
-      <TopTutorCard
-        image={Images.OneOnOne}
-        name="Dr. Sarah Johnson"
-        subject="Mathematics"
-        rating={4.9}
-        badge="Authentic Badge"
-        onHire={() => null}
-      />
+      {tutorsLoading ? (
+        <ActivityIndicator style={{ marginBottom: resp.dy(16) }} />
+      ) : topTutor ? (
+        <TopTutorCard
+          image={
+            topTutor.user?.avatarUrl
+              ? { uri: topTutor.user.avatarUrl }
+              : Images.OneOnOne
+          }
+          name={topTutor.user?.name || 'Top Tutor'}
+          subject={(topTutor.subjects || []).join(', ') || 'General'}
+          rating={topTutor.rating || 4}
+          badge={topTutor.isVerified ? 'Verified Tutor' : 'Recommended'}
+          onHire={handleFindTutor}
+        />
+      ) : (
+        <Text style={styles.emptyText}>No tutors available right now.</Text>
+      )}
 
       <View style={styles.sectionHeaderWithMargin}>
         <Text style={styles.sectionTitle}>Explore</Text>
@@ -186,6 +226,15 @@ const createStyles = (colors: any, resp: any) =>
       shadowOffset: { width: 0, height: 8 },
       elevation: 4,
     },
+    notificationDot: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#EF4444',
+    },
     promoCard: {
       borderRadius: resp.dx(28),
       padding: resp.dx(24),
@@ -204,9 +253,7 @@ const createStyles = (colors: any, resp: any) =>
       lineHeight: resp.dy(20),
       marginBottom: resp.dy(20),
     },
-    ctaButton: {
-      // width: resp.dx(150),
-    },
+    ctaButton: {},
     searchCard: {
       width: '100%',
       flexDirection: 'row',
@@ -259,5 +306,9 @@ const createStyles = (colors: any, resp: any) =>
       flexWrap: 'wrap',
       justifyContent: 'space-between',
       gap: resp.dx(12),
+    },
+    emptyText: {
+      color: colors.SPACES_COLOR,
+      marginBottom: resp.dy(16),
     },
   });

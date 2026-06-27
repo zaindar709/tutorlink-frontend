@@ -7,6 +7,8 @@ export const BookingRequestCard = ({
   item,
   colors,
   resp,
+  onAccept,
+  onDecline,
 }: any) => {
   return (
     <View style={styles(colors, resp).requestCard}>
@@ -59,14 +61,14 @@ export const BookingRequestCard = ({
       <View style={styles(colors, resp).actionRow}>
         <CustomButton
           title="Accept"
-          onPress={() => {}}
+          onPress={onAccept}
           style={styles(colors, resp).acceptBtn}
         />
 
         <CustomButton
           title="Decline"
           textColor="#374151"
-          onPress={() => {}}
+          onPress={onDecline}
           style={styles(colors, resp).declineBtn}
         />
       </View>

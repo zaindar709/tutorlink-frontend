@@ -33,7 +33,7 @@ const TutorSignupScreen = () => {
   const { colors, resp } = useUi();
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
 
-  const { form, errors, handleChange, submit } = useAuthForm(
+  const { form, errors, handleChange, submit, loading } = useAuthForm(
     'signup',
     role || 'tutor',
   );
@@ -206,6 +206,7 @@ const TutorSignupScreen = () => {
             <CustomButton
               title="Create Account"
               onPress={submit}
+              loading={loading}
               disabled={!isFormValid}
               textStyle={{ fontSize: resp.df(16) }}
               style={StyleSheet.flatten([
