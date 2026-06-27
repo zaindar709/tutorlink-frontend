@@ -4,6 +4,7 @@ import AuthNavigator from '../AuthNavigator/AuthNavigator';
 import { MyTabs } from '../TabNavigator/TabNavigator';
 import SplashScreen from '../../screens/SharedScreens/Splash/SplashScreen';
 import { useSelector } from 'react-redux';
+import HomeNavigator from '../HomeNavigator';
 
 const Stack = createNativeStackNavigator();
 export default function RootNavigator() {
@@ -18,6 +19,7 @@ export default function RootNavigator() {
     >
       <Stack.Screen name="SplashScreen" component={SplashScreen} />
       <Stack.Screen name="AuthNavigator" component={AuthNavigator} />
+      <Stack.Screen name="HomeNavigator" component={HomeNavigator} />
       <Stack.Screen name="MyTabs">
         {props => <MyTabs {...props} role={role} />}
       </Stack.Screen>

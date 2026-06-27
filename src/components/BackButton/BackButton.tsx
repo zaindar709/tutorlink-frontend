@@ -7,29 +7,36 @@ type Props = {
   title?: string;
   onPress?: () => void;
   iconSize?: number;
-  color?: string; // 👈 new prop
+  color?: string;
+  showText?: boolean;
 };
-
 const BackButton = ({
   title = 'Back',
   onPress,
   iconSize,
-   color,
+  color,
+  showText = true, // 👈 default true
 }: Props) => {
   const { colors, resp } = useUi();
-   const finalColor = color || colors.BLACK_COLOR;
+  const finalColor = color || colors.BLACK_COLOR;
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
+      
       <IconButton
         icon="arrow-left"
         size={iconSize || resp.df(16)}
         iconColor={finalColor as string}
         onPress={onPress}
       />
-      <Text style={[styles.text,  { color: finalColor }]}>
-        {title}
-      </Text>
+
+      {/* 👇 conditionally show text */}
+      {showText && (
+        <Text style={[styles.text, { color: finalColor }]}>
+          {title}
+        </Text>
+      )}
+
     </TouchableOpacity>
   );
 };

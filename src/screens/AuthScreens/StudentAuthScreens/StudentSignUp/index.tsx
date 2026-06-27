@@ -90,7 +90,7 @@ const StudentSignUpScreen = () => {
             error={errors.confirmPassword}
           />
         </View>
-        <CustomButton title="Next" onPress={()=>navigation.navigate('StudentSubjectSelection')} />
+        <CustomButton title="Create Account" onPress={()=>navigation.navigate('StudentSubjectSelection')} />
         <View style={styles.footerRow}>
           <Text style={styles.footerText}>Already have an account?</Text>
           <TouchableOpacity

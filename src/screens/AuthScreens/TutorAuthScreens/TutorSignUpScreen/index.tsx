@@ -204,10 +204,10 @@ const TutorSignupScreen = () => {
               })}
             </View>
             <CustomButton
-              title="Next: And Verify Documents"
-              onPress={() =>navigation.navigate('DocumentUploadScreen')}
+              title="Create Account"
+              onPress={submit}
               disabled={!isFormValid}
-              textStyle={{fontSize: resp.df(16)}}
+              textStyle={{ fontSize: resp.df(16) }}
               style={StyleSheet.flatten([
                 styles.continueButton,
                 !isFormValid && styles.disabledButton,

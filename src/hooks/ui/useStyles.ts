@@ -17,7 +17,7 @@ const useStyles = () => {
           flex: 1,
           width: "100%",
           height: "100%",
-          backgroundColor: colors.bg,
+          backgroundColor: colors.BACKGROUND,
         },
         allCenter: {
           justifyContent: "center",
@@ -37,7 +37,7 @@ const useStyles = () => {
         screenHeading: {
           fontSize: resp.dfs(2.1),
           fontWeight: "600",
-          color: colors.secondaryProminant,
+          color: colors.SECONDARY_COLOR,
         },
         authLogo: {
           height: resp.pw(50),
@@ -46,12 +46,12 @@ const useStyles = () => {
           alignSelf: "center",
         },
         sheetTitle: {
-          color: colors.secondaryProminant,
+          color: colors.SECONDARY_COLOR,
           fontWeight: "bold",
           fontSize: resp.dfs(2),
         },
         sheetDesc: {
-          color: colors.textDark,
+          color: colors.BLACK_COLOR,
           fontWeight: "300",
           fontSize: resp.dfs(1.5),
         },

@@ -1,14 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
 import useUi from '../../../../hooks/ui/useUi';
 import ParentLinkCard from '../../../../components/Profile/ParentLinkCard/ParentLinkCard';
 import MenuItemCard from '../../../../components/Profile/MenuItemCard/MenuItemCard';
 import CustomButton from '../../../../components/CustomButton';
+import { logout } from '../../../../store/auth/authSlice';
+import { logoutUser } from '../../../../services/auth/authService';
 
 export default function ProfileScreen() {
   const { colors, resp } = useUi();
   const styles = createStyles({ colors, resp });
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
 
   const menuItems = [
     {
@@ -106,7 +112,14 @@ export default function ProfileScreen() {
           borderColor="#f4adad"
           borderWidth={0.5}
           iconPosition="left"
-          onPress={() => console.log('logout')}
+          onPress={async () => {
+            await logoutUser();
+            dispatch(logout());
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'AuthNavigator' }],
+            });
+          }}
         />
       </View>
       <Text style={styles.version}>TUTORLINK V1.1.0 @ 2026</Text>

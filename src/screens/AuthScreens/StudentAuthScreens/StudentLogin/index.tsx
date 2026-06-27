@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 
@@ -16,6 +17,8 @@ import { useAuthForm } from '../../../../hooks/forms/useAuthForm';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { OrDivider } from '../../../../components/OrDrivider/OrDivider';
+import { googleLoginAPI } from '../../../../api/auth.api';
+import { signInWithGoogle } from '../../../../services/googleSignin';
 
 const StudentLoginScreen = () => {
   const { colors, resp } = useUi();
@@ -32,20 +35,23 @@ const StudentLoginScreen = () => {
   const roleLabel =
     role === 'tutor' ? 'Tutor' : role === 'parent' ? 'Parent' : 'Student';
 
-  const handleLogin = () => {
-    console.log('Login tapped', {
-      email: form.email,
-      password: form.password,
-      rememberMe,
-    } as any);
-  };
-
   const handleForgotPassword = () => {
     navigation.navigate('ForgotPasswordScreen', { role });
   };
 
-  const handleContinueWithGoogle = () => {
-    console.log('Continue with Google tapped');
+  const handleContinueWithGoogle = async () => {
+    try {
+      const { firebaseUid, name, email } = await signInWithGoogle();
+
+      try {
+        await googleLoginAPI({ name, email, firebaseUid, role });
+      } catch (err) {
+        console.log('Backend google-login error', err?.response?.data || err?.message || err);
+      }
+    } catch (err: any) {
+      console.log('Google sign-in error', err);
+      Alert.alert('Google sign-in failed', err?.message || String(err));
+    }
   };
 
   const handleContinueWithApple = () => {
@@ -141,7 +147,7 @@ const StudentLoginScreen = () => {
 
         <CustomButton
           title="Login"
-          onPress={handleLogin}
+          onPress={submit}
           style={styles.loginButton}
         />
         <OrDivider />

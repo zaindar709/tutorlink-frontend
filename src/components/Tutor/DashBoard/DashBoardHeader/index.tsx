@@ -1,11 +1,17 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import useUi from '../../../../hooks/ui/useUi';
 
 export default function Header() {
+   const { colors, resp } = useUi();
+
+  const styles = useMemo(
+    () => createStyles(colors, resp),
+    [colors, resp],
+  );
   return (
-    <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.profileSection}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
@@ -35,21 +41,20 @@ export default function Header() {
         </View>
 
       </View>
-    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    backgroundColor: '#1E50DE',
-  },
+const createStyles = (colors:any, resp:any) =>StyleSheet.create({
   container: {
+    height: resp.df(230),
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 24,
-    backgroundColor: '#1E50DE',
+    backgroundColor: colors.PRIMARY_COLOR,
+    borderBottomLeftRadius: resp.dx(30),
+    borderBottomRightRadius: resp.dx(30)
   },
   profileSection: {
     flex: 1,

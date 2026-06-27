@@ -15,7 +15,6 @@ export const CustomCenterButton = ({ children, onPress }:any) => {
     </View>
   </Pressable>
 )};
-
 const createStyles = (colors: any) => StyleSheet.create({
   container: {
     top: -22, 

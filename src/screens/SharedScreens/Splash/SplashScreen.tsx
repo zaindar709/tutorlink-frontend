@@ -5,12 +5,14 @@ import useUi from '../../../hooks/ui/useUi';
 import { useSplash } from '../../../hooks/useSplash';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { restoreAuthSession } from '../../../services/auth/authService';
 
 export default function SplashScreen() {
   type RootStackParamList = {
-  SplashScreen: undefined;
-  AuthNavigator: { screen: string } | undefined;
-};
+    SplashScreen: undefined;
+    AuthNavigator: { screen: string } | undefined;
+    MyTabs: { role: 'student' | 'tutor' | 'parent'; screen: string } | undefined;
+  };
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -24,12 +26,33 @@ export default function SplashScreen() {
     loadingDots,
     titleScale,
   } = useSplash();
-  useEffect(() => {
-    const timer = setTimeout(() => navigation.navigate('AuthNavigator', {
-      screen: 'OnboardingScreens',
-    }), 3000);
 
-    return () => clearTimeout(timer);
+  useEffect(() => {
+    let isMounted = true;
+
+    const navigateAfterSplash = async () => {
+      const session = await restoreAuthSession();
+      if (!isMounted) return;
+
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: session ? 'MyTabs' : 'AuthNavigator',
+            params: session
+              ? { role: session.role, screen: 'Home' }
+              : undefined,
+          },
+        ],
+      });
+    };
+
+    const timer = setTimeout(navigateAfterSplash, 2200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [navigation]);
 
   return (

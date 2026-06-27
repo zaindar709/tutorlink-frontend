@@ -1,125 +1,126 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { setUser, setLoading } from '../../store/auth/authSlice';
-import {
-    validateFullName,
-    validateEmail,
-    validatePassword,
-    validateConfirmPassword,
-} from '../../utils/validations/authValidation';
 import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setUser, setLoading } from '../../store/auth/authSlice';
+import {
+  validateConfirmPassword,
+  validateEmail,
+  validateFullName,
+  validatePassword,
+} from '../../utils/validations/authValidation';
+import { loginWithEmail, registerWithEmail, AuthRole } from '../../services/auth/authService';
 
-type Role = 'student' | 'tutor';
 type Mode = 'login' | 'signup';
 
-export const useAuthForm = (mode: Mode, role: Role) => {
-    const dispatch = useDispatch();
-    const navigation = useNavigation<any>();
+export const useAuthForm = (mode: Mode, role: Exclude<AuthRole, 'parent'>) => {
+  const dispatch = useDispatch();
+  const navigation = useNavigation<any>();
 
-    const [form, setForm] = useState({
-        fullName: '',
-        email: '',
-        password: '',
-        expertise: '',
-        phone: '',
-        confirmPassword: '',
-    });
+  const [form, setForm] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    expertise: '',
+    phone: '',
+    confirmPassword: '',
+  });
+  const [errors, setErrors] = useState<any>({});
+  const [loading, setLoadingState] = useState(false);
 
-    const [errors, setErrors] = useState<any>({});
+  const handleChange = (field: string, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
 
-    const handleChange = (field: string, value: string) => {
-        setForm(prev => ({ ...prev, [field]: value }));
+    let error = '';
+    if (field === 'fullName') error = validateFullName(value);
+    if (field === 'email') error = validateEmail(value);
+    if (field === 'password') error = validatePassword(value);
+    if (field === 'confirmPassword')
+      error = validateConfirmPassword(form.password, value);
 
-        // live validation
-        let errors = '';
-        if (field === 'fullName') errors = validateFullName(value);
-        if (field === 'email') errors = validateEmail(value);
-        if (field === 'password') errors = validatePassword(value);
-        if (field === 'confirmPassword')
-            errors = validateConfirmPassword(form.password, value);
+    setErrors((prev: any) => ({ ...prev, [field]: error }));
+  };
 
-        setErrors((prev: any) => ({ ...prev, [field]: errors }));
-    };
+  const validateForm = () => {
+    const newErrors: any = {};
 
-    const validateForm = () => {
-        let newErrors: any = {};
+    if (mode === 'signup') {
+      newErrors.fullName = validateFullName(form.fullName);
+      newErrors.confirmPassword = validateConfirmPassword(
+        form.password,
+        form.confirmPassword
+      );
+    }
 
-        if (mode === 'signup') {
-            newErrors.fullName = validateFullName(form.fullName);
-            newErrors.confirmPassword = validateConfirmPassword(
-                form.password,
-                form.confirmPassword
-            );
-        }
+    newErrors.email = validateEmail(form.email);
+    newErrors.password = validatePassword(form.password);
 
-        newErrors.email = validateEmail(form.email);
-        newErrors.password = validatePassword(form.password);
+    setErrors(newErrors);
+    return Object.values(newErrors).every(value => !value);
+  };
 
-        setErrors(newErrors);
+  const submit = async () => {
+    if (!validateForm()) return;
 
-        return Object.values(newErrors).every(err => !err);
-    };
+    setLoadingState(true);
+    dispatch(setLoading(true));
 
-    const submit = async () => {
-        if (!validateForm()) return;
+    try {
+      const session =
+        mode === 'login'
+          ? await loginWithEmail({
+              email: form.email,
+              password: form.password,
+              role,
+            })
+          : await registerWithEmail({
+              email: form.email,
+              password: form.password,
+              fullName: form.fullName,
+              role,
+              phone: form.phone || undefined,
+              expertise: form.expertise || undefined,
+            });
 
-        try {
-            dispatch(setLoading(true));
+      dispatch(
+        setUser({
+          user: session.user,
+          token: session.token,
+          role: session.role,
+        })
+      );
 
-            const payload = {
-                fullName: form.fullName,
-                email: form.email,
-                password: form.password,
-                confirmPassword: form.confirmPassword,
-                role: role,
-            };
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'MyTabs',
+            params: {
+              role: session.role,
+              screen: 'Home',
+            },
+          },
+        ],
+      });
+    } catch (error: any) {
+      console.log('AUTH ERROR:', error?.response?.data || error?.message);
+      Alert.alert(
+        'Authentication failed',
+        error?.response?.data?.message ||
+          error?.message ||
+          'Unable to complete the request. Please try again.'
+      );
+    } finally {
+      setLoadingState(false);
+      dispatch(setLoading(false));
+    }
+  };
 
-            const response = await axios.post(
-                'http://YOUR_BACKEND_URL/api/auth/signup',
-                payload,
-            );
-
-            if (response.data?.success) {
-                const { user, token } = response.data;
-
-                // 🧠 save in redux
-                dispatch(setUser({ user, token, role }));
-
-                // 💾 optional: save token
-                await AsyncStorage.setItem('token', token);
-
-                // 🔥 navigation reset (better than replace)
-                navigation.reset({
-                    index: 0,
-                    routes: [
-                        {
-                            name: 'StudentSubjectSelection',
-                            params: { role },
-                        },
-                    ],
-                });
-            } else {
-                Alert.alert(response.data?.message || 'Signup failed');
-            }
-        } catch (error: any) {
-            console.log('SIGNUP ERROR:', error?.response?.data || error.message);
-
-            Alert.alert(
-                'Signup Failed',
-                error?.response?.data?.message ||
-                'Something went wrong. Please try again.',
-            );
-        } finally {
-            dispatch(setLoading(false));
-        }
-    };
-    return {
-        form,
-        errors,
-        handleChange,
-        submit,
-    };
+  return {
+    form,
+    errors,
+    loading,
+    handleChange,
+    submit,
+  };
 };
