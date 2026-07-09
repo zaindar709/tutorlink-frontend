@@ -79,8 +79,11 @@ export const useAuthForm = (
 
     if (isSignup && sessionRole === 'tutor') {
       navigation.reset({
-        index: 0,
-        routes: [{ name: 'DocumentUploadScreen' }],
+        index: 1,
+        routes: [
+          { name: 'TutorSignUpScreen', params: { role: 'tutor' } },
+          { name: 'DocumentUploadScreen' },
+        ],
       });
       return;
     }

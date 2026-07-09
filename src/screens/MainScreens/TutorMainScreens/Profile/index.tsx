@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  StatusBar,
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +13,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import CustomButton from '../../../../components/CustomButton';
+import { logout } from '../../../../store/auth/authSlice';
+import { logoutUser } from '../../../../services/auth/authService';
 
 const subjects = [
   {
@@ -153,6 +156,24 @@ const SubjectCard = ({ item }: any) => {
   );
 };
 const TutorProfileScreen = () => {
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      setLoggingOut(true);
+      await logoutUser();
+      dispatch(logout());
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthNavigator' }],
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -342,6 +363,23 @@ const TutorProfileScreen = () => {
           renderItem={({ item }) => <SettingItem item={item} />}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
+
+        <View style={styles.logoutSection}>
+          <CustomButton
+            title="Logout"
+            icon="logout"
+            backgroundColor="#FEF2F2"
+            textColor="#EF4444"
+            borderColor="#FECACA"
+            borderWidth={1}
+            iconPosition="left"
+            loading={loggingOut}
+            onPress={handleLogout}
+            style={styles.logoutButton}
+            textStyle={styles.logoutText}
+          />
+          <Text style={styles.versionText}>TUTORLINK V1.1.0</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -688,5 +726,29 @@ const styles = StyleSheet.create({
     color: '#8b8b8b',
     fontSize: 12,
     marginTop: 4,
+  },
+
+  logoutSection: {
+    marginTop: 28,
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+
+  logoutButton: {
+    width: '100%',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+
+  logoutText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  versionText: {
+    marginTop: 16,
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

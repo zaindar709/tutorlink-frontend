@@ -22,7 +22,13 @@ export const signupUser =
       if (session.role === 'student') {
         navigation.replace('StudentSubjectSelection');
       } else if (session.role === 'tutor') {
-        navigation.replace('DocumentUploadScreen');
+        navigation.reset({
+          index: 1,
+          routes: [
+            { name: 'TutorSignUpScreen', params: { role: 'tutor' } },
+            { name: 'DocumentUploadScreen' },
+          ],
+        });
       } else {
         navigation.replace('MyTabs', { screen: 'Home' });
       }
