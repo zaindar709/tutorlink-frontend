@@ -14,6 +14,11 @@ import {
   registerWithEmail,
   AuthRole,
 } from '../../services/auth/authService';
+import {
+  getTutorOnboardingStatus,
+  submitTutorOnboardingStep1,
+} from '../../services/tutor/tutorOnboardingService';
+import { getTutorResetRoute } from '../../utils/tutor/tutorNavigation';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
 
 type Mode = 'login' | 'signup';
@@ -24,6 +29,8 @@ export const useAuthForm = (
   options?: {
     subjects?: string[];
     selectedClass?: string;
+    tutorSubject?: string;
+    tutorGrades?: string[];
   }
 ) => {
   const dispatch = useDispatch();
@@ -71,20 +78,59 @@ export const useAuthForm = (
     return Object.values(newErrors).every(value => !value);
   };
 
-  const navigateAfterAuth = (sessionRole: AuthRole, isSignup: boolean) => {
+  const navigateAfterAuth = async (
+    sessionRole: AuthRole,
+    isSignup: boolean,
+    activeOptions?: {
+      tutorSubject?: string;
+      tutorGrades?: string[];
+    }
+  ) => {
     if (isSignup && sessionRole === 'student') {
       navigation.replace('StudentSubjectSelection');
       return;
     }
 
     if (isSignup && sessionRole === 'tutor') {
+      try {
+        await submitTutorOnboardingStep1({
+          subject: activeOptions?.tutorSubject || 'General',
+          grades: activeOptions?.tutorGrades || [],
+        });
+      } catch {
+        // Profile created; tutor can retry step-1 from document screen if needed.
+      }
+
       navigation.reset({
-        index: 1,
+        index: 0,
         routes: [
-          { name: 'TutorSignUpScreen', params: { role: 'tutor' } },
-          { name: 'DocumentUploadScreen' },
+          {
+            name: 'AuthNavigator',
+            state: {
+              index: 0,
+              routes: [{ name: 'DocumentUploadScreen' }],
+            },
+          },
         ],
       });
+      return;
+    }
+
+    if (sessionRole === 'tutor') {
+      try {
+        const onboardingStatus = await getTutorOnboardingStatus();
+        navigation.reset(getTutorResetRoute(onboardingStatus));
+      } catch {
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MyTabs',
+              params: { role: 'tutor', screen: 'Home' },
+            },
+          ],
+        });
+      }
       return;
     }
 
@@ -110,8 +156,15 @@ export const useAuthForm = (
     });
   };
 
-  const submit = async () => {
+  const submit = async (overrideOptions?: {
+    subjects?: string[];
+    selectedClass?: string;
+    tutorSubject?: string;
+    tutorGrades?: string[];
+  }) => {
     if (!validateForm()) return;
+
+    const activeOptions = { ...options, ...overrideOptions };
 
     setLoadingState(true);
     dispatch(setLoading(true));
@@ -131,8 +184,8 @@ export const useAuthForm = (
               role,
               phone: form.phone || undefined,
               expertise: form.expertise || undefined,
-              subjects: options?.subjects,
-              selectedClass: options?.selectedClass,
+              subjects: activeOptions?.subjects,
+              selectedClass: activeOptions?.selectedClass,
             });
 
       dispatch(
@@ -143,7 +196,7 @@ export const useAuthForm = (
         })
       );
 
-      navigateAfterAuth(session.role, mode === 'signup');
+      await navigateAfterAuth(session.role, mode === 'signup', activeOptions);
     } catch (error) {
       const message = getApiErrorMessage(error);
       const isExistingAccount =

@@ -7,6 +7,11 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch } from 'react-redux';
 import { restoreAuthSession } from '../../../services/auth/authService';
+import { getTutorOnboardingStatus } from '../../../services/tutor/tutorOnboardingService';
+import {
+  getTutorResetRoute,
+  isTutorApproved,
+} from '../../../utils/tutor/tutorNavigation';
 import { setUser } from '../../../store/auth/authSlice';
 
 export default function SplashScreen() {
@@ -45,18 +50,36 @@ export default function SplashScreen() {
             role: session.role,
           })
         );
+
+        if (session.role === 'tutor') {
+          try {
+            const onboardingStatus = await getTutorOnboardingStatus();
+            if (!isMounted) return;
+
+            if (!isTutorApproved(onboardingStatus)) {
+              navigation.reset(getTutorResetRoute(onboardingStatus));
+              return;
+            }
+          } catch {
+            // Fall through to tutor dashboard if status check fails.
+          }
+        }
+
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MyTabs',
+              params: { role: session.role, screen: 'Home' },
+            },
+          ],
+        });
+        return;
       }
 
       navigation.reset({
         index: 0,
-        routes: [
-          {
-            name: session ? 'MyTabs' : 'AuthNavigator',
-            params: session
-              ? { role: session.role, screen: 'Home' }
-              : undefined,
-          },
-        ],
+        routes: [{ name: 'AuthNavigator' }],
       });
     };
 

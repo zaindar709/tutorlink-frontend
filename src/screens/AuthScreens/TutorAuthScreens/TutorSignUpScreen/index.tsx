@@ -205,7 +205,12 @@ const TutorSignupScreen = () => {
             </View>
             <CustomButton
               title="Create Account"
-              onPress={submit}
+              onPress={() =>
+                submit({
+                  tutorSubject: form.expertise,
+                  tutorGrades: selectedClasses,
+                })
+              }
               loading={loading}
               disabled={!isFormValid}
               textStyle={{ fontSize: resp.df(16) }}

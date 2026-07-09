@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
-import { createStyles} from './styles';
+import { createStyles } from './styles';
 import useDocumentUpload from '../../../../hooks/tutor/useDocumentUpload';
+import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import UploadBox from '../../../../components/Tutor/DocumentUpload/UploadBox';
 import UploadGuidelines from '../../../../components/Tutor/DocumentUpload/UploadGuidelines';
 import CustomButton from '../../../../components/CustomButton';
@@ -13,6 +14,7 @@ import DocumentPickerField from '../../../../components/Tutor/DocumentPicker';
 const DocumentUploadScreen = ({ navigation }: any) => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
+  const { submitDocuments, loading } = useTutorOnboarding();
 
   const {
     frontImage,
@@ -23,6 +25,37 @@ const DocumentUploadScreen = ({ navigation }: any) => {
     isButtonDisabled,
   } = useDocumentUpload();
 
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!frontImage || !backImage || !certificate?.uri) {
+      Alert.alert('Missing documents', 'Please upload all required documents.');
+      return;
+    }
+
+    setSubmitting(true);
+    const result = await submitDocuments({
+      cnicFrontUri: frontImage,
+      cnicBackUri: backImage,
+      degreeUri: certificate.uri,
+      degreeName: certificate.name,
+      degreeType: certificate.type,
+    });
+    setSubmitting(false);
+
+    if (result) {
+      navigation.replace('DocumentReviewScreen', {
+        status: result.onboardingStatus || 'under_review',
+      });
+      return;
+    }
+
+    Alert.alert(
+      'Upload failed',
+      'Could not submit documents. Please check your connection and try again.'
+    );
+  };
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -31,7 +64,6 @@ const DocumentUploadScreen = ({ navigation }: any) => {
       }}
     >
       <View style={[styles.container, { backgroundColor: colors.WHITE_COLOR }]}>
-        {/* HEADER */}
         <AuthHeader
           title="Document Upload"
           subtitle="Secure & confidential verification"
@@ -86,7 +118,6 @@ const DocumentUploadScreen = ({ navigation }: any) => {
           />
         </View>
 
-        {/* CNIC SECTION */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.BLACK }]}>
             CNIC / National ID
@@ -110,7 +141,6 @@ const DocumentUploadScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* CERTIFICATE SECTION */}
         <DocumentPickerField
           title="Educational Certificate"
           value={certificate}
@@ -122,8 +152,9 @@ const DocumentUploadScreen = ({ navigation }: any) => {
           <CustomButton
             title="Submit for Verification"
             textStyle={{ fontSize: resp.df(16) }}
-            disabled={isButtonDisabled}
-            onPress={() => navigation.navigate('DocumentReviewScreen')}
+            disabled={isButtonDisabled || submitting || loading}
+            loading={submitting || loading}
+            onPress={handleSubmit}
           />
         </View>
       </View>
@@ -132,5 +163,3 @@ const DocumentUploadScreen = ({ navigation }: any) => {
 };
 
 export default DocumentUploadScreen;
-
-

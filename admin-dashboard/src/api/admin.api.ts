@@ -24,174 +24,68 @@ export const setAdminAuthToken = (token: string) => {
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
 };
 
-const MOCK_TUTORS: PendingTutor[] = [
-  {
-    id: 't1',
-    userId: 'u1',
-    name: 'Prof. Ali Ahmed',
-    email: 'ali.ahmed@tutorlink.com',
-    phone: '+92 300 1234567',
-    expertise: 'Physics',
-    grades: ['Grade 10', 'Grade 11'],
-    documents: [
-      { id: 'd1', label: 'CNIC Front', type: 'cnic_front', url: '/docs/cnic-front-1.pdf' },
-      { id: 'd2', label: 'CNIC Back', type: 'cnic_back', url: '/docs/cnic-back-1.pdf' },
-      { id: 'd3', label: 'Degree PDF', type: 'degree', url: '/docs/degree-1.pdf' },
-    ],
-    status: 'pending',
-    submittedAt: '2026-06-25T10:30:00Z',
-  },
-  {
-    id: 't2',
-    userId: 'u2',
-    name: 'Sara Khan',
-    email: 'sara.khan@tutorlink.com',
-    phone: '+92 301 9876543',
-    expertise: 'Mathematics',
-    grades: ['Grade 9', 'Grade 10'],
-    documents: [
-      { id: 'd4', label: 'CNIC Front', type: 'cnic_front' },
-      { id: 'd5', label: 'CNIC Back', type: 'cnic_back' },
-      { id: 'd6', label: 'Degree PDF', type: 'degree' },
-    ],
-    status: 'interview_scheduled',
-    submittedAt: '2026-06-24T14:00:00Z',
-    interviewDate: '2026-06-28T15:00:00Z',
-  },
-  {
-    id: 't3',
-    userId: 'u3',
-    name: 'Hassan Raza',
-    email: 'hassan.raza@tutorlink.com',
-    expertise: 'Chemistry',
-    grades: ['Grade 12'],
-    documents: [
-      { id: 'd7', label: 'CNIC Front', type: 'cnic_front' },
-      { id: 'd8', label: 'CNIC Back', type: 'cnic_back' },
-      { id: 'd9', label: 'Degree PDF', type: 'degree' },
-    ],
-    status: 'pending',
-    submittedAt: '2026-06-26T09:15:00Z',
-  },
-  {
-    id: 't4',
-    userId: 'u4',
-    name: 'Fatima Noor',
-    email: 'fatima.noor@tutorlink.com',
-    expertise: 'Biology',
-    grades: ['Grade 11', 'Grade 12'],
-    documents: [
-      { id: 'd10', label: 'CNIC Front', type: 'cnic_front' },
-      { id: 'd11', label: 'CNIC Back', type: 'cnic_back' },
-      { id: 'd12', label: 'Degree PDF', type: 'degree' },
-    ],
-    status: 'pending',
-    submittedAt: '2026-06-26T11:45:00Z',
-  },
-];
+const docUrl = (path?: string) =>
+  path ? `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}` : undefined;
 
-const MOCK_LINKS: ParentStudentLink[] = [
-  {
-    id: 'l1',
-    parentName: 'Mr. Aslam',
-    parentEmail: 'aslam@email.com',
-    studentName: 'Ahmed Aslam',
-    studentEmail: 'ahmed@student.com',
-    studentGrade: 'Grade 10',
-    linkedAt: '2026-06-20T08:00:00Z',
-    status: 'active',
-  },
-  {
-    id: 'l2',
-    parentName: 'Mrs. Fatima',
-    parentEmail: 'fatima@email.com',
-    studentName: 'Zainab Fatima',
-    studentEmail: 'zainab@student.com',
-    studentGrade: 'Grade 11',
-    linkedAt: '2026-06-22T12:00:00Z',
-    status: 'active',
-  },
-  {
-    id: 'l3',
-    parentName: 'Mr. Khan',
-    parentEmail: 'khan@email.com',
-    studentName: 'Omar Khan',
-    studentEmail: 'omar@student.com',
-    studentGrade: 'Grade 9',
-    linkedAt: '2026-06-26T10:00:00Z',
-    status: 'pending',
-    linkCode: 'TL-8X2K9P',
-  },
-];
+const mapOnboardingStatus = (
+  status?: string
+): TutorVerificationStatus => {
+  if (status === 'interview_scheduled') return 'interview_scheduled';
+  if (status === 'approved') return 'approved';
+  if (status === 'rejected') return 'rejected';
+  return 'pending';
+};
 
-const MOCK_TRANSACTIONS: EscrowTransaction[] = [
-  {
-    id: 'tx1',
-    transactionId: 'TXN-2026-001',
-    type: 'hold',
-    amount: 3500,
-    studentName: 'Ahmed Aslam',
-    tutorName: 'Prof. Ali Ahmed',
-    status: 'completed',
-    createdAt: '2026-06-26T09:00:00Z',
-  },
-  {
-    id: 'tx2',
-    transactionId: 'TXN-2026-002',
-    type: 'release',
-    amount: 2800,
-    studentName: 'Zainab Fatima',
-    tutorName: 'Sara Khan',
-    status: 'completed',
-    createdAt: '2026-06-25T14:30:00Z',
-  },
-  {
-    id: 'tx3',
-    transactionId: 'TXN-2026-003',
-    type: 'refund',
-    amount: 1800,
-    studentName: 'Omar Khan',
-    tutorName: 'Hassan Raza',
-    status: 'pending',
-    createdAt: '2026-06-26T11:00:00Z',
-  },
-];
+export const mapBackendTutor = (raw: Record<string, unknown>): PendingTutor => {
+  const user = (raw.user || {}) as Record<string, unknown>;
+  const documents = [
+    raw.cnicFrontUrl
+      ? {
+          id: 'cnic-front',
+          label: 'CNIC Front',
+          type: 'cnic_front' as const,
+          url: docUrl(String(raw.cnicFrontUrl)),
+        }
+      : null,
+    raw.cnicBackUrl
+      ? {
+          id: 'cnic-back',
+          label: 'CNIC Back',
+          type: 'cnic_back' as const,
+          url: docUrl(String(raw.cnicBackUrl)),
+        }
+      : null,
+    raw.degreeCertificateUrl
+      ? {
+          id: 'degree',
+          label: 'Degree PDF',
+          type: 'degree' as const,
+          url: docUrl(String(raw.degreeCertificateUrl)),
+        }
+      : null,
+  ].filter(Boolean) as PendingTutor['documents'];
 
-const MOCK_AI_NOTES: AiNoteLog[] = [
-  {
-    id: 'n1',
-    sessionId: 'sess-101',
-    tutorName: 'Prof. Ali Ahmed',
-    studentName: 'Ahmed Aslam',
-    subject: 'Physics',
-    tokensUsed: 1240,
-    durationMs: 980,
-    status: 'completed',
-    createdAt: '2026-06-26T10:00:00Z',
-  },
-  {
-    id: 'n2',
-    sessionId: 'sess-102',
-    tutorName: 'Sara Khan',
-    studentName: 'Zainab Fatima',
-    subject: 'Mathematics',
-    tokensUsed: 890,
-    durationMs: 720,
-    status: 'completed',
-    createdAt: '2026-06-26T09:30:00Z',
-  },
-  {
-    id: 'n3',
-    sessionId: 'sess-103',
-    tutorName: 'Hassan Raza',
-    studentName: 'Omar Khan',
-    subject: 'Chemistry',
-    tokensUsed: 0,
-    durationMs: 0,
-    status: 'failed',
-    createdAt: '2026-06-26T08:15:00Z',
-  },
-];
+  return {
+    id: String(raw._id || raw.id),
+    userId: String(user._id || user.id || ''),
+    name: String(user.name || 'Unknown Tutor'),
+    email: String(user.email || ''),
+    phone: user.phoneNumber ? String(user.phoneNumber) : undefined,
+    expertise: ((raw.subjects as string[]) || [])[0] || 'General',
+    grades: (raw.grades as string[]) || [],
+    documents,
+    status: mapOnboardingStatus(String(raw.onboardingStatus || '')),
+    submittedAt: String(
+      raw.documentsSubmittedAt || raw.createdAt || new Date().toISOString()
+    ),
+    interviewDate: raw.interviewScheduledAt
+      ? String(raw.interviewScheduledAt)
+      : undefined,
+    rejectionReason: raw.rejectionReason
+      ? String(raw.rejectionReason)
+      : undefined,
+  };
+};
 
 const MOCK_SETTINGS: AdminSettings = {
   platformName: 'TutorLink',
@@ -204,80 +98,160 @@ const MOCK_SETTINGS: AdminSettings = {
 };
 
 export const getMockDashboardData = (
-  tutors: PendingTutor[] = MOCK_TUTORS
+  tutors: PendingTutor[] = []
 ): AdminDashboardData => ({
   stats: {
     pendingTutors: tutors.filter(t => t.status === 'pending').length,
-    escrowBalance: 145000,
-    linkedParents: 312,
-    liveClassrooms: 42,
-    approvedTutors: 128,
-    totalStudents: 1840,
+    escrowBalance: 0,
+    linkedParents: 0,
+    liveClassrooms: 0,
+    approvedTutors: 0,
+    totalStudents: 0,
   },
-  pendingTutors: tutors.filter(
-    t => t.status === 'pending' || t.status === 'interview_scheduled'
-  ),
+  pendingTutors: tutors,
   aiHealth: {
-    summarySpeedMs: 1240,
-    tokenHealth: 94,
-    uptime: 99.8,
+    summarySpeedMs: 0,
+    tokenHealth: 100,
+    uptime: 100,
     lastSync: new Date().toISOString(),
-    notesGeneratedToday: 156,
-    failedSummaries: 3,
-    avgTokensPerSummary: 1050,
+    notesGeneratedToday: 0,
+    failedSummaries: 0,
+    avgTokensPerSummary: 0,
   },
-  disputes: [
-    {
-      id: 'dis1',
-      parentName: 'Mr. Aslam',
-      studentName: 'Ahmed Aslam',
-      tutorName: 'Prof. Ali Ahmed',
-      amount: 2500,
-      reason: 'Session quality flagged by parent',
-      status: 'flagged',
-      createdAt: '2026-06-26T08:00:00Z',
-      bookingId: 'bk-001',
-    },
-    {
-      id: 'dis2',
-      parentName: 'Mrs. Fatima',
-      studentName: 'Zainab Fatima',
-      tutorName: 'Sara Khan',
-      amount: 1800,
-      reason: 'Refund pending — tutor no-show',
-      status: 'refund_pending',
-      createdAt: '2026-06-25T16:30:00Z',
-      bookingId: 'bk-002',
-    },
-  ],
-  parentLinks: MOCK_LINKS,
-  escrowTransactions: MOCK_TRANSACTIONS,
-  aiNotes: MOCK_AI_NOTES,
+  disputes: [],
+  parentLinks: [],
+  escrowTransactions: [],
+  aiNotes: [] as AiNoteLog[],
   settings: MOCK_SETTINGS,
 });
 
 export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
   try {
-    const { data } = await api.get<{ success: boolean; data: AdminDashboardData }>(
-      '/api/admin/dashboard'
+    const [statsRes, tutorsRes, escrowRes, linksRes] = await Promise.all([
+      api.get('/api/admin/dashboard/stats'),
+      api.get('/api/admin/tutors/pending', {
+        params: { page: 1, limit: 50 },
+      }),
+      api.get('/api/admin/billing/escrow', {
+        params: { page: 1, limit: 20 },
+      }),
+      api.get('/api/admin/links', { params: { page: 1, limit: 20 } }),
+    ]);
+
+    const statsData = statsRes.data?.data || {};
+    const tutorsRaw = tutorsRes.data?.data || [];
+    const escrowRaw = escrowRes.data?.data || [];
+    const linksRaw = linksRes.data?.data || [];
+
+    const pendingTutors: PendingTutor[] = tutorsRaw.map(
+      (t: Record<string, unknown>) => mapBackendTutor(t)
     );
-    if (data?.data) return data.data;
+
+    const disputes: EscrowDispute[] = escrowRaw
+      .filter((tx: Record<string, unknown>) => tx.escrowStatus === 'disputed')
+      .map((tx: Record<string, unknown>) => ({
+        id: String(tx.transactionId || tx._id),
+        parentName: String(
+          (tx.student as Record<string, unknown>)?.name || 'Parent'
+        ),
+        studentName: String(
+          (tx.student as Record<string, unknown>)?.name || 'Student'
+        ),
+        tutorName: String(
+          (tx.tutor as Record<string, unknown>)?.name || 'Tutor'
+        ),
+        amount: Number(tx.amount || 0),
+        reason: String(tx.disputeReason || 'Dispute raised'),
+        status:
+          tx.escrowStatus === 'disputed' ? 'flagged' : 'refund_pending',
+        createdAt: String(tx.createdAt || new Date().toISOString()),
+        bookingId: tx.bookingId ? String(tx.bookingId) : undefined,
+      }));
+
+    const escrowTransactions: EscrowTransaction[] = escrowRaw.map(
+      (tx: Record<string, unknown>) => ({
+        id: String(tx._id || tx.transactionId),
+        transactionId: String(tx.transactionId || tx._id),
+        type:
+          tx.type === 'escrow_release'
+            ? 'release'
+            : tx.type === 'escrow_refund'
+              ? 'refund'
+              : tx.type === 'escrow_hold'
+                ? 'hold'
+                : 'deposit',
+        amount: Number(tx.amount || 0),
+        studentName: String(
+          (tx.student as Record<string, unknown>)?.name || 'Student'
+        ),
+        tutorName: String(
+          (tx.tutor as Record<string, unknown>)?.name || 'Tutor'
+        ),
+        status: (tx.status as EscrowTransaction['status']) || 'completed',
+        createdAt: String(tx.createdAt || new Date().toISOString()),
+      })
+    );
+
+    const parentLinks: ParentStudentLink[] = linksRaw.map(
+      (link: Record<string, unknown>) => ({
+        id: String(link.linkId || link._id),
+        parentName: String(
+          (link.parent as Record<string, unknown>)?.name || 'Parent'
+        ),
+        parentEmail: String(
+          (link.parent as Record<string, unknown>)?.email || ''
+        ),
+        studentName: String(
+          (link.student as Record<string, unknown>)?.name || 'Student'
+        ),
+        studentEmail: String(
+          (link.student as Record<string, unknown>)?.email || ''
+        ),
+        studentGrade: String(
+          (link.student as Record<string, unknown>)?.grade || 'N/A'
+        ),
+        linkedAt: String(link.linkedAt || link.createdAt || ''),
+        status: 'active',
+      })
+    );
+
+    return {
+      stats: {
+        pendingTutors: pendingTutors.filter(t => t.status === 'pending').length,
+        escrowBalance: Number(statsData.totalEscrowBalance || 0),
+        linkedParents: parentLinks.length,
+        liveClassrooms: 0,
+        approvedTutors: Number(statsData.verifiedTutors || 0),
+        totalStudents: Number(statsData.totalStudents || 0),
+      },
+      pendingTutors,
+      aiHealth: {
+        summarySpeedMs: 0,
+        tokenHealth: 100,
+        uptime: 100,
+        lastSync: new Date().toISOString(),
+      },
+      disputes,
+      parentLinks,
+      escrowTransactions,
+      settings: MOCK_SETTINGS,
+    };
   } catch {
-    // Fall back to mock data when admin API is unavailable.
+    return getMockDashboardData();
   }
-  return getMockDashboardData();
 };
 
 export const fetchPendingTutors = async (): Promise<PendingTutor[]> => {
   try {
-    const { data } = await api.get<{ data: PendingTutor[] }>(
-      '/api/admin/tutors/pending'
+    const { data } = await api.get('/api/admin/tutors/pending', {
+      params: { page: 1, limit: 50 },
+    });
+    return (data?.data || []).map((t: Record<string, unknown>) =>
+      mapBackendTutor(t)
     );
-    if (data?.data) return data.data;
   } catch {
-    // mock fallback
+    return [];
   }
-  return getMockDashboardData().pendingTutors;
 };
 
 export const approveTutor = async (
@@ -285,9 +259,7 @@ export const approveTutor = async (
   notes?: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/verify`, {
-    isVerified: true,
-    verificationStatus: 'approved',
-    adminNotes: notes,
+    adminNotes: notes || 'Verified by admin',
   });
 };
 
@@ -296,8 +268,6 @@ export const rejectTutor = async (
   reason: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/reject`, {
-    isVerified: false,
-    verificationStatus: 'rejected',
     rejectionReason: reason,
   });
 };
@@ -308,33 +278,23 @@ export const scheduleTutorInterview = async (
   notes?: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/interview`, {
-    verificationStatus: 'interview_scheduled',
-    interviewDate,
-    adminNotes: notes,
+    interviewScheduledAt: interviewDate,
+    adminNotes: notes || 'Interview scheduled by admin',
   });
 };
 
 export const resolveDispute = async (
-  disputeId: string,
-  resolution: 'refund' | 'release' | 'dismiss'
+  transactionId: string,
+  resolution: 'refund' | 'release'
 ): Promise<void> => {
-  await api.patch(`/api/admin/escrow/disputes/${disputeId}/resolve`, {
-    resolution,
+  await api.patch(`/api/admin/billing/disputes/${transactionId}/resolve`, {
+    action: resolution,
+    notes: 'Resolved from admin dashboard',
   });
 };
 
 export const revokeParentLink = async (linkId: string): Promise<void> => {
-  await api.patch(`/api/admin/parent-links/${linkId}/revoke`);
-};
-
-export const updateAdminSettings = async (
-  settings: Partial<AdminSettings>
-): Promise<AdminSettings> => {
-  const { data } = await api.patch<{ data: AdminSettings }>(
-    '/api/admin/settings',
-    settings
-  );
-  return data.data;
+  await api.delete(`/api/admin/links/${linkId}/revoke`);
 };
 
 export const updateTutorStatus = (

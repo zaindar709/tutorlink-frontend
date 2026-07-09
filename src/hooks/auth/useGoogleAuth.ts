@@ -4,6 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
 import { setUser, setLoading } from '../../store/auth/authSlice';
 import { loginWithGoogle, AuthRole } from '../../services/auth/authService';
+import { getTutorOnboardingStatus } from '../../services/tutor/tutorOnboardingService';
+import { getTutorResetRoute } from '../../utils/tutor/tutorNavigation';
 import { signInWithGoogle } from '../../services/googleSignin';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
 
@@ -28,21 +30,41 @@ export const useGoogleAuth = (role: AuthRole) => {
         })
       );
 
+      if (session.role === 'parent') {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'ParentLinkRedeemScreen' }],
+        });
+        return;
+      }
+
+      if (session.role === 'tutor') {
+        try {
+          const onboardingStatus = await getTutorOnboardingStatus();
+          navigation.reset(getTutorResetRoute(onboardingStatus));
+        } catch {
+          navigation.reset({
+            index: 0,
+            routes: [
+              {
+                name: 'MyTabs',
+                params: { role: 'tutor', screen: 'Home' },
+              },
+            ],
+          });
+        }
+        return;
+      }
+
       navigation.reset({
         index: 0,
         routes: [
           {
-            name:
-              session.role === 'parent'
-                ? 'ParentLinkRedeemScreen'
-                : 'MyTabs',
-            params:
-              session.role === 'parent'
-                ? undefined
-                : {
-                    role: session.role,
-                    screen: 'Home',
-                  },
+            name: 'MyTabs',
+            params: {
+              role: session.role,
+              screen: 'Home',
+            },
           },
         ],
       });

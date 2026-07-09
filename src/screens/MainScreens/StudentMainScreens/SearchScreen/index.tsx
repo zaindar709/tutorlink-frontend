@@ -10,11 +10,13 @@ import {
 import * as MapLibreGL from '@maplibre/maplibre-react-native';
 import { Icon } from 'react-native-paper';
 import TutorNearbyCard from '../../../../components/TutorNearbyCard/TutorNearbyCard';
+import BookTutorModal from '../../../../components/BookTutorModal/BookTutorModal';
 import useUi from '../../../../hooks/ui/useUi';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { useTutorSearch } from '../../../../hooks/api/useTutorSearch';
+import { TutorProfile } from '../../../../types/api.types';
 
 const DEFAULT_SEARCH_FILTERS = {
   availability: true,
@@ -27,6 +29,7 @@ const SearchScreen = () => {
   const { colors, resp } = useUi();
   const [search, setSearch] = useState('');
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
+  const [bookingTutor, setBookingTutor] = useState<TutorProfile | null>(null);
   const cameraRef = useRef(null);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const { tutors, loading, search: runSearch } = useTutorSearch(
@@ -199,13 +202,22 @@ const SearchScreen = () => {
                   }
                   rate={String(tutor.rating || 4)}
                   isSelected={tutor._id === selectedTutor?._id}
-                  onPress={() => setSelectedTutorId(tutor._id)}
+                  onPress={() => {
+                    setSelectedTutorId(tutor._id);
+                    setBookingTutor(tutor);
+                  }}
                 />
               ))}
             </ScrollView>
           )}
         </View>
       </View>
+
+      <BookTutorModal
+        visible={!!bookingTutor}
+        tutor={bookingTutor}
+        onClose={() => setBookingTutor(null)}
+      />
     </SafeAreaView>
   );
 };

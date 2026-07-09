@@ -248,3 +248,25 @@ export interface LinkCodeData {
 export interface RedeemLinkCodePayload {
   code: string;
 }
+
+export type TutorOnboardingStatus =
+  | 'basic_info'
+  | 'documents_uploaded'
+  | 'under_review'
+  | 'interview_scheduled'
+  | 'approved'
+  | 'rejected';
+
+export interface TutorOnboardingStatusData {
+  onboardingStep?: number;
+  onboardingStatus?: TutorOnboardingStatus;
+  subjects?: string[];
+  grades?: string[];
+  isVerified?: boolean;
+  rejectionReason?: string;
+  interviewScheduledAt?: string;
+  documentsSubmittedAt?: string;
+  cnicFrontUrl?: string;
+  cnicBackUrl?: string;
+  degreeCertificateUrl?: string;
+}
