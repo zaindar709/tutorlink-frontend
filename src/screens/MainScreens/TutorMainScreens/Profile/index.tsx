@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
+import GradientSurface from '../../../../components/GradientSurface';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -187,12 +187,7 @@ const TutorProfileScreen = () => {
           <Text style={{ color: '#4a4a4a' }}>Your Professional Identity</Text>
         </View>
         {/* PROFILE CARD */}
-        <LinearGradient
-          colors={['#6a82fc', '#8f73fd']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.profileCard}
-        >
+        <GradientSurface variant="primarySoft" style={styles.profileCard}>
           <View style={styles.topRow}>
             <View style={styles.imageWrapper}>
               <Image
@@ -246,7 +241,7 @@ const TutorProfileScreen = () => {
           {/* CONTACT */}
           <Text style={styles.contact}>ali.ahmed@tutorlink.com</Text>
           <Text style={styles.contact}>+92 300 1234567</Text>
-        </LinearGradient>
+        </GradientSurface>
 
         {/* STATS */}
         <View style={styles.statsRow}>

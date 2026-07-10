@@ -1,25 +1,49 @@
 import { AxiosError } from 'axios';
 import { ApiErrorResponse } from '../../types/api.types';
+import { getFirebaseErrorMessage } from '../auth/firebaseErrorHandler';
 
 export const getApiErrorMessage = (
   error: unknown,
   fallback = 'Something went wrong. Please try again.'
 ): string => {
-  if (error instanceof AxiosError) {
-    const data = error.response?.data as ApiErrorResponse | undefined;
+  const firebaseMessage = getFirebaseErrorMessage(error);
+  if (firebaseMessage) {
+    return firebaseMessage;
+  }
+
+  const axiosLike =
+    error instanceof AxiosError
+      ? error
+      : error &&
+          typeof error === 'object' &&
+          'response' in error &&
+          (error as { response?: { status?: number; data?: ApiErrorResponse } })
+            .response
+        ? (error as {
+            response: { status?: number; data?: ApiErrorResponse };
+            message?: string;
+          })
+        : null;
+
+  if (axiosLike?.response) {
+    const data = axiosLike.response.data as ApiErrorResponse | undefined;
     if (data?.message) {
       return data.message;
     }
 
-    if (!error.response) {
-      return 'Network error. Please check your connection and try again.';
+    const validationErrors = (data as { errors?: string[] } | undefined)?.errors;
+    if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+      return validationErrors.join('\n');
     }
 
-    switch (error.response.status) {
+    switch (axiosLike.response.status) {
       case 400:
-        return 'Invalid request. Please check your input.';
+        return data?.message || 'Invalid request. Please check your input.';
       case 401:
-        return 'Your session has expired. Please log in again.';
+        return (
+          data?.message ||
+          'Authentication failed. Please try again or log in if you already have an account.'
+        );
       case 403:
         return 'You do not have permission to perform this action.';
       case 404:
@@ -31,7 +55,16 @@ export const getApiErrorMessage = (
       case 500:
         return 'Server error. Please try again later.';
       default:
-        return fallback;
+        break;
+    }
+  }
+
+  if (error instanceof AxiosError) {
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED') {
+        return 'Upload timed out. The server may be waking up — please try again.';
+      }
+      return 'Network error. Please check your connection and try again.';
     }
   }
 

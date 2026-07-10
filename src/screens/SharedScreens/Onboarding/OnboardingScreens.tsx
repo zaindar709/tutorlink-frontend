@@ -13,6 +13,7 @@ import { useOnboarding } from '../../../hooks/useOnboarding';
 import OnboardingItem from '../../../components/OnboardingItem/OnboardingItem';
 import { getOnboardingData } from '../../../constants/Onboarding.data';
 import CustomButton from '../../../components/CustomButton';
+import GradientSurface from '../../../components/GradientSurface';
 import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
@@ -71,16 +72,26 @@ export default function OnboardingScreens({
         <View style={styles.pagination}>
           {onboardingData.map((item: any, i: number) => {
             const isActive = i === currentIndex;
-            return (
+            return isActive ? (
+              <GradientSurface
+                key={i}
+                variant="primaryButton"
+                style={[
+                  styles.dot,
+                  {
+                    width: resp.dx(16),
+                    height: resp.dy(8),
+                  },
+                ]}
+              />
+            ) : (
               <Animated.View
                 key={i}
                 style={[
                   styles.dot,
                   {
-                    backgroundColor: isActive
-                      ? colors.PRIMARY_COLOR
-                      : colors.GRAY_COLOR,
-                    width: isActive ? resp.dx(16) : resp.dx(8),
+                    backgroundColor: colors.GRAY_COLOR,
+                    width: resp.dx(8),
                     height: resp.dy(8),
                   },
                 ]}
@@ -92,7 +103,6 @@ export default function OnboardingScreens({
           title={
             currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Next'
           }
-          backgroundColor={colors.PRIMARY_COLOR}
           textColor={colors.WHITE_COLOR}
           textStyle={styles.buttonText}
           onPress={() => {

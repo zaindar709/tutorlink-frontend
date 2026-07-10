@@ -2,10 +2,11 @@ import {View, Text, StyleSheet} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import CustomButton from '../../../CustomButton';
+import GradientSurface from '../../../GradientSurface';
 
 const BalanceCard = ({colors, resp, balance = 0}: any) => {
   return (
-    <View style={styles(colors, resp).balanceCard}>
+    <GradientSurface variant="primaryCard" style={styles(colors, resp).balanceCard}>
       <View style={styles(colors, resp).balanceTopRow}>
         <View>
           <Text style={styles(colors, resp).balanceLabel}>
@@ -40,7 +41,7 @@ const BalanceCard = ({colors, resp, balance = 0}: any) => {
         onPress={() => {}}
         style={styles(colors, resp).withdrawBtn}
       />
-    </View>
+    </GradientSurface>
   );
 };
 
@@ -49,10 +50,10 @@ export default BalanceCard;
 const styles = (colors: any, resp: any) =>
   StyleSheet.create({
     balanceCard: {
-      backgroundColor: colors.PRIMARY_COLOR,
       borderRadius: resp.dx(20),
       padding: resp.dy(18),
       marginTop: resp.dy(10),
+      overflow: 'hidden',
     },
 
     balanceTopRow: {

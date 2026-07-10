@@ -6,6 +6,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import useUi from '../../hooks/ui/useUi';
+import GradientSurface from '../GradientSurface';
 
 function RoleCard({ role, isSelected, onSelect }: any) {
   const { colors, resp } = useUi();
@@ -35,9 +36,15 @@ function RoleCard({ role, isSelected, onSelect }: any) {
         style={styles.card}
       >
         <View style={styles.row}>
-          <View style={styles.iconContainer}>
-            <Text style={styles.icon}>{role.icon}</Text>
-          </View>
+          {isSelected ? (
+            <GradientSurface variant="primaryButton" style={styles.iconContainer}>
+              <Text style={styles.icon}>{role.icon}</Text>
+            </GradientSurface>
+          ) : (
+            <View style={styles.iconContainer}>
+              <Text style={styles.icon}>{role.icon}</Text>
+            </View>
+          )}
           <View style={styles.textContainer}>
             <Text style={styles.title}>{role.title}</Text>
             <Text style={styles.subtitle}>{role.subtitle}</Text>
@@ -88,12 +95,11 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       width: resp.dx(60),
       height: resp.dy(60),
       borderRadius: resp.dx(16),
-      backgroundColor: isSelected
-        ? colors.PRIMARY_COLOR
-        : colors.LIGHT_PRIMARY || '#EAF2FF',
+      backgroundColor: isSelected ? 'transparent' : colors.LIGHT_PRIMARY,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: resp.dx(15),
+      overflow: 'hidden',
     },
 
     icon: {

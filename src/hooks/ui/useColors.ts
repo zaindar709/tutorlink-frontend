@@ -1,6 +1,6 @@
 import { useColorScheme, ColorValue, ColorSchemeName } from "react-native";
 import { useCallback } from "react";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+import { GRADIENTS } from "../../constants/gradients";
 
 export const useAppColorScheme = (): ColorSchemeName => {
   // Should be from redux - if there's need to change color scheme on runtime.
@@ -41,6 +41,20 @@ const useColors = () => {
     GRAY_COLOR: getColor("#D1D5DB", "#D1D5DB"),
     TAB_GRAY_COLOR: getColor("#8C8C8C", "#8C8C8C"),
     PRIMARY_COLOR: getColor("rgba(117,72,245,1)"),
+    PRIMARY_LIGHT: getColor("#8F73FD", "#8F73FD"),
+    PRIMARY_DARK: getColor("#5B4FF5", "#5B4FF5"),
+    LIGHT_PRIMARY: getColor("#EDE9FE", "#EDE9FE"),
+    TEXT_PRIMARY: getColor("#0A0E0D", "#0A0E0D"),
+    TEXT_SECONDARY: getColor("#6B7280", "#6B7280"),
+    TEXT_COLOR: getColor("#4F4F4F", "#4F4F4F"),
+    BACKGROUND_COLOR: getColor("#f8fbff", "#f8fbff"),
+    INACTIVE_COLOR: getColor("#9CA3AF", "#9CA3AF"),
+    BORDER_COLOR: getColor("#E5E7EB", "#E5E7EB"),
+    PRIMARY_GRADIENT: GRADIENTS.primary,
+    PRIMARY_SOFT_GRADIENT: GRADIENTS.primarySoft,
+    PRIMARY_HEADER_GRADIENT: GRADIENTS.primaryHeader,
+    PRIMARY_CARD_GRADIENT: GRADIENTS.primaryCard,
+    PRIMARY_BUTTON_GRADIENT: GRADIENTS.primaryButton,
     WHITE_COLOR: getColor("#fff", "#fff"),
     TRANSPARENT: getColor("transparent", "transparent"),
     YELLOW_COLOR: getColor("#FFD400", "#FFD400"),

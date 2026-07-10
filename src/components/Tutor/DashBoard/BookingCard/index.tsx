@@ -2,6 +2,7 @@ import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomButton from '../../../CustomButton';
+import GradientSurface from '../../../GradientSurface';
 
 export const BookingRequestCard = ({
   item,
@@ -13,13 +14,13 @@ export const BookingRequestCard = ({
   return (
     <View style={styles(colors, resp).requestCard}>
       <View style={styles(colors, resp).requestTopRow}>
-        <View style={styles(colors, resp).avatar}>
+        <GradientSurface variant="primaryButton" style={styles(colors, resp).avatar}>
           <MaterialCommunityIcons
             name="account-outline"
             size={20}
             color="#fff"
           />
-        </View>
+        </GradientSurface>
 
         <View style={{flex: 1}}>
           <Text style={styles(colors, resp).studentName}>
@@ -104,10 +105,10 @@ const styles = (colors: any, resp: any) =>
       width: resp.dx(38),
       height: resp.dy(38),
       borderRadius: resp.dx(19),
-      backgroundColor: colors.PRIMARY_COLOR,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: resp.dx(12),
+      overflow: 'hidden',
     },
 
     studentName: {
@@ -148,7 +149,6 @@ const styles = (colors: any, resp: any) =>
     acceptBtn: {
       flex: 1,
       height: resp.dy(42),
-      backgroundColor: colors.PRIMARY_COLOR,
       borderRadius: resp.dx(12),
       justifyContent: 'center',
       alignItems: 'center',

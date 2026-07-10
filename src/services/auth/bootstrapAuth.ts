@@ -1,0 +1,124 @@
+import { AxiosError } from 'axios';
+import {
+  firebaseSignOut,
+  getFirebaseIdToken,
+  waitForFirebaseAuth,
+} from './firebaseAuthService';
+import { getAuthProfileAPI } from '../../api/auth.api';
+import {
+  AuthSession,
+  clearAuthSession,
+  getAuthSession,
+  saveAuthSession,
+} from '../storage';
+import { getUserId } from '../../utils/api/userId';
+
+const LOG = '[Bootstrap]';
+
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`${label} timed out after ${ms}ms`)),
+          ms
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+};
+
+export const clearAllAuth = async () => {
+  try {
+    await firebaseSignOut();
+  } catch {
+    // ignore
+  }
+  await clearAuthSession();
+};
+
+/**
+ * Restore local session quickly for splash.
+ * - Waits briefly for Firebase persistence
+ * - Uses short API timeout so splash never hangs ~2 minutes
+ * - Clears stale Firebase + storage on auth failure
+ */
+export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
+  console.log(LOG, 'restore start');
+
+  const session = await getAuthSession();
+  if (!session) {
+    console.log(LOG, 'no stored session');
+    // Stale Firebase user without app session → sign out so next launch is clean
+    const firebaseUser = await waitForFirebaseAuth(1500);
+    if (firebaseUser) {
+      console.log(LOG, 'firebase user without session — clearing');
+      await clearAllAuth();
+    }
+    return null;
+  }
+
+  const firebaseUser = await waitForFirebaseAuth(2500);
+  if (!firebaseUser) {
+    console.log(LOG, 'stored session but no firebase user — clearing');
+    await clearAuthSession();
+    return null;
+  }
+
+  try {
+    const idToken = await withTimeout(
+      getFirebaseIdToken(true, firebaseUser),
+      8000,
+      'getIdToken'
+    );
+
+    const userId = getUserId(session.user);
+    if (!userId) {
+      console.log(LOG, 'session missing userId — clearing');
+      await clearAllAuth();
+      return null;
+    }
+
+    const profileResponse = await withTimeout(
+      getAuthProfileAPI(userId, { timeout: 10000 }),
+      12000,
+      'getAuthProfile'
+    );
+
+    const persistedUser = profileResponse.data?.user || session.user;
+    const restoredSession: AuthSession = {
+      ...session,
+      token: idToken,
+      role: (persistedUser.role as AuthSession['role']) || session.role,
+      user: {
+        ...session.user,
+        ...persistedUser,
+        id: persistedUser.id || persistedUser._id || userId,
+        _id: persistedUser._id || persistedUser.id || userId,
+      },
+    };
+
+    await saveAuthSession(restoredSession);
+    console.log(LOG, 'restore OK', {
+      role: restoredSession.role,
+      userId: getUserId(restoredSession.user),
+    });
+    return restoredSession;
+  } catch (error) {
+    const status = error instanceof AxiosError ? error.response?.status : undefined;
+    console.warn(LOG, 'restore failed — clearing session', {
+      status,
+      message: error instanceof Error ? error.message : error,
+    });
+    await clearAllAuth();
+    return null;
+  }
+};

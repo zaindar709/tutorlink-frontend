@@ -93,12 +93,20 @@ export const useAuthForm = (
 
     if (isSignup && sessionRole === 'tutor') {
       try {
+        console.log('[TutorUpload] signup → step-1', {
+          subject: activeOptions?.tutorSubject || 'General',
+          grades: activeOptions?.tutorGrades || [],
+        });
         await submitTutorOnboardingStep1({
           subject: activeOptions?.tutorSubject || 'General',
           grades: activeOptions?.tutorGrades || [],
         });
-      } catch {
-        // Profile created; tutor can retry step-1 from document screen if needed.
+        console.log('[TutorUpload] signup step-1 OK');
+      } catch (step1Error) {
+        console.warn(
+          '[TutorUpload] signup step-1 failed (will retry on upload)',
+          step1Error
+        );
       }
 
       navigation.reset({
@@ -108,7 +116,15 @@ export const useAuthForm = (
             name: 'AuthNavigator',
             state: {
               index: 0,
-              routes: [{ name: 'DocumentUploadScreen' }],
+              routes: [
+                {
+                  name: 'DocumentUploadScreen',
+                  params: {
+                    tutorSubject: activeOptions?.tutorSubject,
+                    tutorGrades: activeOptions?.tutorGrades,
+                  },
+                },
+              ],
             },
           },
         ],
@@ -120,16 +136,13 @@ export const useAuthForm = (
       try {
         const onboardingStatus = await getTutorOnboardingStatus();
         navigation.reset(getTutorResetRoute(onboardingStatus));
-      } catch {
-        navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: 'MyTabs',
-              params: { role: 'tutor', screen: 'Home' },
-            },
-          ],
-        });
+      } catch (error) {
+        console.warn('[Auth] tutor onboarding status failed after login', error);
+        // Never open dashboard for incomplete / unverified tutors
+        navigation.reset(getTutorResetRoute({
+          onboardingStatus: 'pending',
+          isVerified: false,
+        }));
       }
       return;
     }
@@ -201,20 +214,27 @@ export const useAuthForm = (
       const message = getApiErrorMessage(error);
       const isExistingAccount =
         message.toLowerCase().includes('already') ||
-        message.toLowerCase().includes('exists');
+        message.toLowerCase().includes('exists') ||
+        message.toLowerCase().includes('registered');
+
+      const loginScreen =
+        role === 'tutor'
+          ? 'TutorLoginScreen'
+          : role === 'parent'
+            ? 'ParentLinkRedeemScreen'
+            : 'StudentLoginScreen';
 
       Alert.alert(
         isExistingAccount ? 'Account already exists' : 'Authentication failed',
         isExistingAccount
-          ? 'This email is already registered. Please log in instead.'
+          ? message || 'This email is already registered. Please log in instead.'
           : message,
         isExistingAccount
           ? [
               { text: 'Cancel', style: 'cancel' },
               {
                 text: 'Go to Login',
-                onPress: () =>
-                  navigation.replace('StudentLoginScreen', { role }),
+                onPress: () => navigation.replace(loginScreen, { role }),
               },
             ]
           : undefined

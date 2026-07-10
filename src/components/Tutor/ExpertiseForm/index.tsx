@@ -8,6 +8,7 @@ import {
   Modal,
 } from 'react-native';
 import useUi from '../../../hooks/ui/useUi';
+import GradientSurface from '../../GradientSurface';
 
 const subjects = [
   'Mathematics',
@@ -58,8 +59,10 @@ const ExpertiseModal = ({
           <View style={styles.header}>
             <Text style={styles.heading}>Select Expertise</Text>
 
-            <TouchableOpacity onPress={onDismiss} style={styles.closeBtn}>
-              <Text style={styles.closeText}>×</Text>
+            <TouchableOpacity onPress={onDismiss} activeOpacity={0.8}>
+              <GradientSurface variant="primaryButton" style={styles.closeBtn}>
+                <Text style={styles.closeText}>×</Text>
+              </GradientSurface>
             </TouchableOpacity>
           </View>
 
@@ -145,9 +148,9 @@ const createStyles = (colors: any, resp: any) =>
       width: 35,
       height: 35,
       borderRadius: 17.5,
-      backgroundColor: colors.PRIMARY_COLOR,
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
     },
 
     closeText: {
@@ -168,8 +171,8 @@ const createStyles = (colors: any, resp: any) =>
     },
 
     selectedCard: {
-      borderColor: '#1E4ED8',
-      backgroundColor: '#EEF4FF',
+      borderColor: colors.PRIMARY_COLOR,
+      backgroundColor: colors.LIGHT_PRIMARY,
     },
 
     subjectText: {
@@ -179,7 +182,7 @@ const createStyles = (colors: any, resp: any) =>
     },
 
     selectedText: {
-      color: '#1E4ED8',
+      color: colors.PRIMARY_COLOR,
       fontWeight: '700',
     },
   });

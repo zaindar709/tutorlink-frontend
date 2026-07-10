@@ -42,16 +42,14 @@ export const useGoogleAuth = (role: AuthRole) => {
         try {
           const onboardingStatus = await getTutorOnboardingStatus();
           navigation.reset(getTutorResetRoute(onboardingStatus));
-        } catch {
-          navigation.reset({
-            index: 0,
-            routes: [
-              {
-                name: 'MyTabs',
-                params: { role: 'tutor', screen: 'Home' },
-              },
-            ],
-          });
+        } catch (error) {
+          console.warn('[Auth] tutor onboarding status failed after Google login', error);
+          navigation.reset(
+            getTutorResetRoute({
+              onboardingStatus: 'pending',
+              isVerified: false,
+            })
+          );
         }
         return;
       }

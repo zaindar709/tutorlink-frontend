@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import RoleCard from '../../../components/RoleCard/RoleCard';
 import CustomButton from '../../../components/CustomButton';
+import GradientSurface from '../../../components/GradientSurface';
 
 import { useRoleController } from '../../../controllers/roleController';
 import useUi from '../../../hooks/ui/useUi';
@@ -38,6 +39,7 @@ export default function RoleSelectionScreen({ navigation }: any) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>TutorLink</Text>
+        <GradientSurface variant="primaryButton" style={styles.logoAccent} />
         <Text style={styles.title}>Choose Your Role</Text>
         <Text style={styles.subtitle}>Tell us how you want to use app</Text>
       </View>
@@ -78,6 +80,14 @@ const createStyles = (colors: any, resp: any) =>
       fontSize: resp.df(26),
       color: colors.PRIMARY_COLOR,
       fontWeight: '700',
+    },
+
+    logoAccent: {
+      width: resp.dx(56),
+      height: resp.dy(4),
+      borderRadius: resp.dx(4),
+      marginTop: resp.dy(8),
+      marginBottom: resp.dy(4),
     },
 
     title: {

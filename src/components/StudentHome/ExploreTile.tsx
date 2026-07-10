@@ -2,12 +2,14 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
+import GradientSurface from '../GradientSurface';
 
 type ExploreTileProps = {
   icon: string;
   title: string;
   subtitle: string;
-  color: string;
+  color?: string;
+  gradient?: string[];
   onPress?: () => void;
 };
 
@@ -16,10 +18,15 @@ const ExploreTile: React.FC<ExploreTileProps> = ({
   title,
   subtitle,
   color,
+  gradient,
   onPress,
 }) => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp, color);
+
+  const iconContent = (
+    <Icon source={icon} size={resp.df(22)} color={colors.WHITE_COLOR as string} />
+  );
 
   return (
     <TouchableOpacity
@@ -27,9 +34,13 @@ const ExploreTile: React.FC<ExploreTileProps> = ({
       activeOpacity={0.8}
       onPress={onPress}
     >
-      <View style={styles.iconWrapper}>
-        <Icon source={icon} size={resp.df(22)} color={colors.WHITE_COLOR as string} />
-      </View>
+      {gradient ? (
+        <GradientSurface colors={gradient} style={styles.iconWrapper}>
+          {iconContent}
+        </GradientSurface>
+      ) : (
+        <View style={styles.iconWrapper}>{iconContent}</View>
+      )}
       <View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
@@ -40,7 +51,7 @@ const ExploreTile: React.FC<ExploreTileProps> = ({
 
 export default ExploreTile;
 
-const createStyles = (colors: any, resp: any, color: string) =>
+const createStyles = (colors: any, resp: any, color?: string) =>
   StyleSheet.create({
     tile: {
       backgroundColor: colors.WHITE_COLOR,
@@ -64,6 +75,7 @@ const createStyles = (colors: any, resp: any, color: string) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: resp.dy(12),
+      overflow: 'hidden',
     },
     title: {
       color: colors.BLACK_COLOR,

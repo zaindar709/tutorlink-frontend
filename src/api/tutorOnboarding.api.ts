@@ -4,9 +4,10 @@ import {
   TutorOnboardingStatusData,
 } from '../types/api.types';
 
-export const getTutorOnboardingStatusAPI = () => {
+export const getTutorOnboardingStatusAPI = (config?: { timeout?: number }) => {
   return api.get<ApiSuccessResponse<TutorOnboardingStatusData>>(
-    '/api/tutor/onboarding/status'
+    '/api/tutor/onboarding/status',
+    config
   );
 };
 
@@ -25,7 +26,8 @@ export const uploadTutorDocumentsAPI = (formData: FormData) => {
     '/api/tutor/onboarding/documents',
     formData,
     {
-      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+      transformRequest: data => data,
     }
   );
 };

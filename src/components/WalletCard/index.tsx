@@ -5,19 +5,14 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 import { Icon, IconButton } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
-import { LinearGradient } from 'react-native-linear-gradient';
+import GradientSurface from '../GradientSurface';
 
 export default function WalletCard({ balance, onDeposit }: any) {
   const { colors, resp } = useUi();
   const styles = createStyles({ colors, resp });
 
   return (
-    <LinearGradient
-     colors={['#4F8CFF', '#2563EB', '#1E40AF']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-    >
+    <GradientSurface variant="primaryCard" style={styles.card}>
       <View style={styles.topRow}>
         <View>
           <Text style={styles.label}>Total Balance</Text>
@@ -35,11 +30,11 @@ export default function WalletCard({ balance, onDeposit }: any) {
         style={styles.depositBtn}
         onPress={onDeposit}
       >
-        <Icon source="wallet-outline" size={24} color="#3209c7" />
+        <Icon source="wallet-outline" size={24} color={colors.PRIMARY_COLOR as string} />
 
         <Text style={styles.depositText}>Deposit Money</Text>
       </TouchableOpacity>
-    </LinearGradient>
+    </GradientSurface>
   );
 }
 
@@ -50,7 +45,7 @@ const createStyles = ({ colors, resp }: any) =>
       height: resp.dy(200),
       borderRadius: resp.dx(22),
       padding: resp.dx(18),
-      backgroundColor: '#2456E8',
+      overflow: 'hidden',
     },
 
     topRow: {
@@ -92,7 +87,7 @@ const createStyles = ({ colors, resp }: any) =>
     },
 
     depositText: {
-      color: '#2563EB',
+      color: colors.PRIMARY_COLOR,
       fontSize: resp.df(15),
       fontWeight: '700',
       marginLeft: resp.dx(8),

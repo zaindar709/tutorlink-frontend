@@ -6,6 +6,8 @@ import {
   getCurrentFirebaseUser,
   deleteFirebaseUser,
 } from './firebaseAuthService';
+import { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { getFirebaseErrorMessage } from '../../utils/auth/firebaseErrorHandler';
 import {
   getAuthProfileAPI,
   googleLoginAPI,
@@ -58,9 +60,10 @@ const buildSession = (
 const persistSession = async (
   user: ApiUser,
   role: AuthRole,
-  firebaseUid?: string
+  firebaseUid?: string,
+  firebaseUser?: FirebaseAuthTypes.User | null
 ): Promise<AuthSession> => {
-  const idToken = await getFirebaseIdToken();
+  const idToken = await getFirebaseIdToken(true, firebaseUser);
   const session: AuthSession = {
     ...buildSession(user, role, firebaseUid),
     token: idToken,
@@ -99,22 +102,39 @@ export const loginWithEmail = async (
   });
 
   const { user } = response.data;
-  return persistSession(user, credentials.role, firebaseUser.uid);
+  return persistSession(user, credentials.role, firebaseUser.uid, firebaseUser);
 };
 
 export const registerWithEmail = async (
   payload: AuthSignupData
 ): Promise<AuthSession> => {
-  let firebaseUser;
+  // Clear any stale Firebase session so signup starts clean.
+  // Safe when already signed out (no-op).
+  try {
+    await firebaseSignOut();
+  } catch {
+    // Ignore — signup can proceed without a prior session.
+  }
+
+  let firebaseUser: FirebaseAuthTypes.User;
 
   try {
     firebaseUser = await firebaseSignUp(payload.email, payload.password);
   } catch (error) {
     if (!isEmailAlreadyInUse(error)) {
-      throw error;
+      const firebaseMessage = getFirebaseErrorMessage(error);
+      throw new Error(firebaseMessage || 'Sign up failed. Please try again.');
     }
 
-    firebaseUser = await firebaseSignIn(payload.email, payload.password);
+    try {
+      firebaseUser = await firebaseSignIn(payload.email, payload.password);
+    } catch (signInError) {
+      const firebaseMessage = getFirebaseErrorMessage(signInError);
+      throw new Error(
+        firebaseMessage ||
+          'This email is already registered. Please log in with your existing password.'
+      );
+    }
 
     try {
       const loginResponse = await loginAPI({
@@ -124,7 +144,8 @@ export const registerWithEmail = async (
       return persistSession(
         loginResponse.data.user,
         payload.role,
-        firebaseUser.uid
+        firebaseUser.uid,
+        firebaseUser
       );
     } catch (loginError) {
       if (!isProfileNotFound(loginError)) {
@@ -134,6 +155,7 @@ export const registerWithEmail = async (
   }
 
   try {
+    await getFirebaseIdToken(true, firebaseUser);
     const response = await registerAPI({
       firebaseUid: firebaseUser.uid,
       name: payload.fullName,
@@ -145,7 +167,8 @@ export const registerWithEmail = async (
     return persistSession(
       response.data.user,
       payload.role,
-      firebaseUser.uid
+      firebaseUser.uid,
+      firebaseUser
     );
   } catch (error) {
     if (isProfileAlreadyExists(error)) {
@@ -156,7 +179,8 @@ export const registerWithEmail = async (
       return persistSession(
         loginResponse.data.user,
         payload.role,
-        firebaseUser.uid
+        firebaseUser.uid,
+        firebaseUser
       );
     }
 
@@ -195,45 +219,7 @@ export const logoutUser = async () => {
 };
 
 export const restoreAuthSession = async (): Promise<AuthSession | null> => {
-  const session = await getAuthSession();
-  if (!session) {
-    return null;
-  }
-
-  const firebaseUser = getCurrentFirebaseUser();
-  if (!firebaseUser) {
-    await clearAuthSession();
-    return null;
-  }
-
-  try {
-    const idToken = await getFirebaseIdToken(true);
-    const userId = getUserId(session.user);
-
-    if (!userId) {
-      await clearAuthSession();
-      return null;
-    }
-
-    const profileResponse = await getAuthProfileAPI(userId);
-    const persistedUser = profileResponse.data?.user || session.user;
-
-    const restoredSession: AuthSession = {
-      ...session,
-      token: idToken,
-      role: (persistedUser.role as AuthRole) || session.role,
-      user: {
-        ...session.user,
-        ...persistedUser,
-        id: persistedUser.id || persistedUser._id || userId,
-        _id: persistedUser._id || persistedUser.id || userId,
-      },
-    };
-
-    await saveAuthSession(restoredSession);
-    return restoredSession;
-  } catch {
-    await clearAuthSession();
-    return null;
-  }
+  // Prefer the fast bootstrap path used by splash / cold start.
+  const { restoreAuthSessionFast } = await import('./bootstrapAuth');
+  return restoreAuthSessionFast();
 };

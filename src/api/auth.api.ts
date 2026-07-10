@@ -22,6 +22,9 @@ export const googleLoginAPI = (data: AuthGoogleLoginPayload) => {
   return api.post<AuthLoginResponse>('/api/auth/google-login', data);
 };
 
-export const getAuthProfileAPI = (id: string) => {
-  return api.get<AuthProfileResponse>(`/api/auth/profile/${id}`);
+export const getAuthProfileAPI = (
+  id: string,
+  config?: { timeout?: number }
+) => {
+  return api.get<AuthProfileResponse>(`/api/auth/profile/${id}`, config);
 };

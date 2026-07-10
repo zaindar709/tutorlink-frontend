@@ -43,22 +43,42 @@ export const useTutorOnboarding = () => {
     }
   };
 
-  const submitDocuments = async (files: {
-    cnicFrontUri: string;
-    cnicBackUri: string;
-    degreeUri: string;
-    degreeName?: string;
-    degreeType?: string;
-  }) => {
+  const submitDocuments = async (
+    files: {
+      cnicFrontUri: string;
+      cnicBackUri: string;
+      cnicFrontType?: string;
+      cnicBackType?: string;
+      degreeUri: string;
+      degreeName?: string;
+      degreeType?: string;
+    },
+    onboardingFallback?: {
+      subject?: string;
+      grades?: string[];
+    }
+  ): Promise<{
+    data: TutorOnboardingStatusData | null;
+    error: string | null;
+  }> => {
     setLoading(true);
     setError(null);
     try {
-      const data = await uploadTutorDocuments(files);
+      console.log('[TutorUpload] hook submitDocuments start');
+      const data = await uploadTutorDocuments(files, onboardingFallback);
       setStatus(data);
-      return data;
+      console.log('[TutorUpload] hook submitDocuments success', data);
+      return { data, error: null };
     } catch (err) {
-      setError(getApiErrorMessage(err));
-      return null;
+      const message = getApiErrorMessage(err);
+      console.error('[TutorUpload] hook submitDocuments failed', {
+        message,
+        err,
+        status: (err as any)?.response?.status,
+        data: (err as any)?.response?.data,
+      });
+      setError(message);
+      return { data: null, error: message };
     } finally {
       setLoading(false);
     }

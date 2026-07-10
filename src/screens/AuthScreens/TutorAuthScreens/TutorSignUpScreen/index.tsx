@@ -21,7 +21,7 @@ import AuthHeader from '../../../../components/Tutor/AuthHeader';
 import { useAuthForm } from '../../../../hooks/forms/useAuthForm';
 import ExpertiseModal from '../../../../components/Tutor/ExpertiseForm';
 
-const classesList = ['Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'];
+const classesList = ['Grade 9', 'Grade 10', 'O-Levels', 'A-Levels'];
 
 const TutorSignupScreen = () => {
   const navigation = useNavigation<any>();
