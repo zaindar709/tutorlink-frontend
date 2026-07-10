@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "750381394371",
+    "project_id": "tutor-link-62ed9",
+    "storage_bucket": "tutor-link-62ed9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750381394371:android:6ff22e6681a85dcf8db576",
+        "android_client_info": {
+          "package_name": "com.tutorlink"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "750381394371-13rsdid2uq46j9j1g0h5j0cas5rsb7ro.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tutorlink",
+            "certificate_hash": "39cd02d025286ecb8b8d1b7ac7e4410b4a63a61c"
+          }
+        },
+        {
+          "client_id": "750381394371-fcmj29vnerknclb522plef72vfm5vi64.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_bCK0XJZG7cveYRZe1zztJQhDzC5RfXA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "750381394371-fcmj29vnerknclb522plef72vfm5vi64.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

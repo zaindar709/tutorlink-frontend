@@ -5,7 +5,7 @@ export const useRoleController = (navigation: any) => {
   const roleRoutes: any = {
     student: 'AuthSelectionScreen',
     tutor: 'AuthSelectionScreen',
-    parent: 'ParentSignup',
+    parent: 'AuthSelectionScreen',
   };
   const handleContinue = () => {
     if (selectedRole) {

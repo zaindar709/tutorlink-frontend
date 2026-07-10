@@ -1,21 +1,24 @@
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { Provider as PaperProvider } from 'react-native-paper';
-import React from 'react';
+import { Provider as ReduxProvider } from 'react-redux';
 import RootNavigator from './src/navigations/RootNavigator/RootNavigator';
+import { store } from './src/store/store';
+import { configureGoogleSignIn } from './src/services/googleSignin';
+import { navigationRef } from './src/navigation/navigationRef';
 
 export default function App() {
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
+
   return (
-    <PaperProvider>
-      <NavigationContainer>
-        <RootNavigator />
-      </NavigationContainer>
-    </PaperProvider>
+    <ReduxProvider store={store}>
+      <PaperProvider>
+        <NavigationContainer ref={navigationRef}>
+          <RootNavigator />
+        </NavigationContainer>
+      </PaperProvider>
+    </ReduxProvider>
   );
 }
-// export default function App() {
-//   return (
-//     <View style={{ flex: 1, backgroundColor: 'red', justifyContent: 'center', alignItems: 'center' }}>
-//       <Text style={{ color: 'white', fontSize: 20 }}>Testing Connection</Text>
-//     </View>
-//   )
-// }

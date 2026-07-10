@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet,TouchableOpacity } from 'react-native';
+import useUi from '../../hooks/ui/useUi';
 
 const CustomInput = ({
   label,
@@ -9,26 +10,51 @@ const CustomInput = ({
   secureTextEntry,
   keyboardType,
   error,
+  leftIcon,
+  rightIcon,
+  onRightIconPress,
   style,
   ...props
-}:any) => {
+}: any) => {
+  const { colors } = useUi();
+
   return (
-    <View style={[styles.container, style]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+   <View style={[styles.container, style]}>
+  {label && <Text style={styles.label}>{label}</Text>}
 
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor="#999"
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        style={[styles.input, error && styles.errorBorder]}
-        {...props}
-      />
+  <View style={[
+    styles.inputWrapper,
+    error && { borderColor: 'red' }
+  ]}>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
+    {/* LEFT ICON */}
+    {leftIcon && (
+      <View style={{ marginRight: 8 }}>
+        {leftIcon}
+      </View>
+    )}
+
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor="#999"
+      secureTextEntry={secureTextEntry}
+      keyboardType={keyboardType}
+      style={styles.input}
+      {...props}
+    />
+
+    {/* RIGHT ICON */}
+    {rightIcon && (
+      <TouchableOpacity onPress={onRightIconPress}>
+        {rightIcon}
+      </TouchableOpacity>
+    )}
+  </View>
+
+  {error ? <Text style={{ color: 'red', fontSize: 12, marginTop:5 }}>{error}</Text> : null}
+</View>
   );
 };
 
@@ -44,21 +70,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
-  input: {
-    height: 48,
-    borderWidth: 1,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 0.8,
     borderColor: '#ddd',
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    fontSize: 14,
     backgroundColor: '#fff',
   },
-  errorBorder: {
-    borderColor: 'red',
-  },
-  errorText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: 'red',
+  input: {
+    flex: 1,
+    height: 48,
+    color: "#000"
   },
 });
