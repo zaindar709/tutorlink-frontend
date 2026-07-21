@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import SessionCard from '../../../../components/SessionCard';
 import { useBookings } from '../../../../hooks/api/useBookings';
@@ -27,6 +28,7 @@ const tabs = ['Active', 'Pending', 'Past'];
 
 const BookingScreen = () => {
   const { colors, resp } = useUi();
+  const navigation = useNavigation<any>();
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const [selectedTab, setSelectedTab] = useState('Active');
   const {
@@ -169,7 +171,12 @@ const BookingScreen = () => {
             time={formatBookingTimeRange(nextSession)}
             image={getBookingParticipantAvatar(nextSession)}
             onJoin={() => handleJoin(nextSession.meetingLink)}
-            onMessage={() => {}}
+            onMessage={() =>
+              navigation.navigate('HomeNavigator', {
+                screen: 'ChatScreen',
+                params: { chatId: 'c1' },
+              })
+            }
             onAddCalendar={() => {}}
           />
         ) : null}

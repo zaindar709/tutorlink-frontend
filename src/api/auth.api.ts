@@ -7,15 +7,20 @@ import {
   AuthRegisterPayload,
 } from '../types/api.types';
 
+const AUTH_REQUEST_TIMEOUT_MS = 45000;
+
 export const registerAPI = (data: AuthRegisterPayload) => {
   return api.post<{ message: string; user: AuthLoginResponse['user'] }>(
     '/api/auth/register',
-    data
+    data,
+    { timeout: AUTH_REQUEST_TIMEOUT_MS }
   );
 };
 
 export const loginAPI = (data: AuthLoginPayload) => {
-  return api.post<AuthLoginResponse>('/api/auth/login', data);
+  return api.post<AuthLoginResponse>('/api/auth/login', data, {
+    timeout: AUTH_REQUEST_TIMEOUT_MS,
+  });
 };
 
 export const googleLoginAPI = (data: AuthGoogleLoginPayload) => {

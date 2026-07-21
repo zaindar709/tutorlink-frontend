@@ -1,64 +1,35 @@
-import React, { useEffect, useRef } from 'react';
-import { Text, Animated, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, Animated, StyleSheet } from 'react-native';
 import Images from '../../../assets/images';
 import useUi from '../../../hooks/ui/useUi';
 import { useSplash } from '../../../hooks/useSplash';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useDispatch } from 'react-redux';
-import {
-  clearAllAuth,
-  restoreAuthSessionFast,
-} from '../../../services/auth/bootstrapAuth';
+import { restoreAuthSession } from '../../../services/auth/authService';
 import { getTutorOnboardingStatus } from '../../../services/tutor/tutorOnboardingService';
+import {
+  getTutorOnboardingCache,
+  mergeOnboardingStatus,
+  saveTutorOnboardingCache,
+  clearTutorOnboardingCache,
+} from '../../../services/tutor/tutorOnboardingCache';
 import {
   getTutorResetRoute,
   isTutorApproved,
 } from '../../../utils/tutor/tutorNavigation';
-import { logout, setUser } from '../../../store/auth/authSlice';
-import GradientSurface from '../../../components/GradientSurface';
-import { AxiosError } from 'axios';
-
-const LOG = '[Splash]';
-const MIN_SPLASH_MS = 1800;
-const MAX_BOOTSTRAP_MS = 14000;
-
-type RootStackParamList = {
-  SplashScreen: undefined;
-  AuthNavigator: { screen: string } | undefined;
-  MyTabs: { role: 'student' | 'tutor' | 'parent'; screen: string } | undefined;
-};
-
-const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
-
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  ms: number,
-  label: string
-): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`${label} timed out after ${ms}ms`)),
-          ms
-        );
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-};
+import { setUser } from '../../../store/auth/authSlice';
 
 export default function SplashScreen() {
+  type RootStackParamList = {
+    SplashScreen: undefined;
+    AuthNavigator: { screen: string } | undefined;
+    MyTabs: { role: 'student' | 'tutor' | 'parent'; screen: string } | undefined;
+  };
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const dispatch = useDispatch();
-  const didNavigate = useRef(false);
   const {
     logoScale,
     logoOpacity,
@@ -73,63 +44,11 @@ export default function SplashScreen() {
   useEffect(() => {
     let isMounted = true;
 
-    const goAuth = () => {
-      if (!isMounted || didNavigate.current) return;
-      didNavigate.current = true;
-      console.log(LOG, 'navigate → AuthNavigator');
-      dispatch(logout());
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'AuthNavigator' }],
-      });
-    };
+    const navigateAfterSplash = async () => {
+      const session = await restoreAuthSession();
+      if (!isMounted) return;
 
-    const goTabs = (role: 'student' | 'tutor' | 'parent') => {
-      if (!isMounted || didNavigate.current) return;
-      didNavigate.current = true;
-      console.log(LOG, 'navigate → MyTabs', role);
-      navigation.reset({
-        index: 0,
-        routes: [
-          {
-            name: 'MyTabs',
-            params: { role, screen: 'Home' },
-          },
-        ],
-      });
-    };
-
-    const goTutorOnboarding = (routeState: ReturnType<typeof getTutorResetRoute>) => {
-      if (!isMounted || didNavigate.current) return;
-      didNavigate.current = true;
-      console.log(LOG, 'navigate → tutor onboarding route');
-      navigation.reset(routeState as any);
-    };
-
-    const bootstrap = async () => {
-      console.log(LOG, 'bootstrap start');
-      const startedAt = Date.now();
-
-      try {
-        const session = await withTimeout(
-          restoreAuthSessionFast(),
-          MAX_BOOTSTRAP_MS,
-          'restoreAuthSessionFast'
-        );
-
-        // Keep splash visible at least MIN_SPLASH_MS
-        const elapsed = Date.now() - startedAt;
-        if (elapsed < MIN_SPLASH_MS) {
-          await delay(MIN_SPLASH_MS - elapsed);
-        }
-
-        if (!isMounted) return;
-
-        if (!session) {
-          goAuth();
-          return;
-        }
-
+      if (session) {
         dispatch(
           setUser({
             user: session.user,
@@ -140,63 +59,61 @@ export default function SplashScreen() {
 
         if (session.role === 'tutor') {
           try {
-            const onboardingStatus = await withTimeout(
-              getTutorOnboardingStatus(),
-              10000,
-              'getTutorOnboardingStatus'
-            );
+            const cached = await getTutorOnboardingCache();
+            const remote = await getTutorOnboardingStatus();
+            const onboardingStatus = mergeOnboardingStatus(remote, cached);
+            await saveTutorOnboardingCache(onboardingStatus);
             if (!isMounted) return;
 
             if (!isTutorApproved(onboardingStatus)) {
-              goTutorOnboarding(getTutorResetRoute(onboardingStatus));
+              navigation.reset(getTutorResetRoute(onboardingStatus));
               return;
             }
 
-            goTabs('tutor');
-            return;
-          } catch (error) {
-            const status =
-              error instanceof AxiosError ? error.response?.status : undefined;
-            console.warn(LOG, 'tutor onboarding status failed', {
-              status,
-              message: error instanceof Error ? error.message : error,
-            });
-
-            // 401 / auth failure → clear stale session, never open dashboard
-            if (status === 401 || status === 403) {
-              await clearAllAuth();
-              goAuth();
-              return;
-            }
-
-            // Network/timeout: incomplete tutors stay in onboarding, not dashboard
-            goTutorOnboarding(
-              getTutorResetRoute({
-                onboardingStatus: 'pending',
-                isVerified: false,
-              })
+            await clearTutorOnboardingCache();
+          } catch {
+            if (!isMounted) return;
+            const cached = await getTutorOnboardingCache();
+            navigation.reset(
+              getTutorResetRoute(
+                mergeOnboardingStatus(null, cached) ?? {
+                  onboardingStatus: 'under_review',
+                  isVerified: false,
+                }
+              )
             );
             return;
           }
         }
 
-        goTabs(session.role);
-      } catch (error) {
-        console.warn(LOG, 'bootstrap failed', error);
-        await clearAllAuth();
-        goAuth();
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MyTabs',
+              params: { role: session.role, screen: 'Home' },
+            },
+          ],
+        });
+        return;
       }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthNavigator' }],
+      });
     };
 
-    bootstrap();
+    const timer = setTimeout(navigateAfterSplash, 2200);
 
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
   }, [dispatch, navigation]);
 
   return (
-    <GradientSurface variant="primaryHeader" style={styles.container}>
+    <View style={styles.container}>
       <Animated.Image
         source={Images.Logo}
         style={[
@@ -228,24 +145,24 @@ export default function SplashScreen() {
       >
         Learn with ease, connect with expertise
       </Animated.Text>
-      <Animated.View style={styles.dotsContainer}>
+      <View style={styles.dotsContainer}>
         {loadingDots.map((dot, index) => (
           <Animated.View
             key={index}
             style={[styles.dot, { transform: [{ translateY: dot }] }]}
           />
         ))}
-      </Animated.View>
-    </GradientSurface>
+      </View>
+    </View>
   );
 }
-
 export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: colors.PRIMARY_COLOR,
     },
     logo: {
       width: resp.dx(300),

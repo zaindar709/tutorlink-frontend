@@ -2,7 +2,6 @@ import React from 'react';
 import { TouchableOpacity, Text, View, StyleSheet, Image } from 'react-native';
 import useUi from '../../hooks/ui/useUi';
 import Images from '../../assets/images';
-import GradientSurface from '../GradientSurface';
 
 export default function AuthCard({ title, subtitle, onPress, type }: any) {
   const { colors, resp } = useUi();
@@ -17,15 +16,26 @@ export default function AuthCard({ title, subtitle, onPress, type }: any) {
     }
   };
 
+  const getIconBg = () => {
+    switch (type) {
+      case 'login':
+        return colors.PRIMARY_COLOR;
+      case 'signup':
+        return colors.PRIMARY_COLOR;
+      default:
+        return colors.PRIMARY_COLOR;
+    }
+  };
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
-      <GradientSurface variant="primaryButton" style={styles.iconBox}>
+      <View style={[styles.iconBox, { backgroundColor: getIconBg() }]}>
         <Image
           source={getIcon()}
           style={styles.iconImage}
           resizeMode="contain"
         />
-      </GradientSurface>
+      </View>
 
       <View style={styles.textBox}>
         <Text style={styles.title}>{title}</Text>
@@ -59,7 +69,6 @@ const createStyles = (colors: any, resp: any, type: string) =>
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: resp.dx(12),
-      overflow: 'hidden',
     },
 
     textBox: {

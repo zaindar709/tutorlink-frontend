@@ -114,11 +114,46 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
     return restoredSession;
   } catch (error) {
     const status = error instanceof AxiosError ? error.response?.status : undefined;
-    console.warn(LOG, 'restore failed — clearing session', {
+    const message = error instanceof Error ? error.message : String(error);
+    const isAuthError = status === 401 || status === 403;
+    const isTransient =
+      !status ||
+      status >= 500 ||
+      message.includes('timed out') ||
+      message.includes('Network Error');
+
+    console.warn(LOG, 'restore profile step failed', {
       status,
-      message: error instanceof Error ? error.message : error,
+      message,
+      isAuthError,
+      isTransient,
     });
-    await clearAllAuth();
-    return null;
+
+    if (isAuthError) {
+      await clearAllAuth();
+      return null;
+    }
+
+    try {
+      const idToken = await withTimeout(
+        getFirebaseIdToken(false, firebaseUser),
+        5000,
+        'getIdToken-fallback'
+      );
+      const fallbackSession: AuthSession = {
+        ...session,
+        token: idToken || session.token,
+      };
+      await saveAuthSession(fallbackSession);
+      console.log(LOG, 'restore using cached session (backend slow/unreachable)');
+      return fallbackSession;
+    } catch {
+      if (isTransient) {
+        console.log(LOG, 'restore using stored session without refresh');
+        return session;
+      }
+      await clearAllAuth();
+      return null;
+    }
   }
 };

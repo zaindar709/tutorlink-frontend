@@ -260,6 +260,7 @@ export type TutorOnboardingStatus =
 export interface TutorOnboardingStatusData {
   onboardingStep?: number;
   onboardingStatus?: TutorOnboardingStatus;
+  verificationStatus?: TutorOnboardingStatus | 'pending';
   subjects?: string[];
   grades?: string[];
   isVerified?: boolean;

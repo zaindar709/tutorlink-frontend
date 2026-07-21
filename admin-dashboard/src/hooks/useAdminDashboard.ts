@@ -14,11 +14,12 @@ import {
 } from '../api/admin.api';
 import type { AdminDashboardData, AdminSettings } from '../types/admin.types';
 
-export function useAdminDashboard() {
+export function useAdminDashboard(previewMode = false) {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const showToast = useCallback((message: string) => {
     setToast(message);
@@ -26,10 +27,28 @@ export function useAdminDashboard() {
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
-    const dashboard = await fetchDashboardData();
-    setData(dashboard);
-    setLoading(false);
-  }, []);
+    setError(null);
+
+    if (previewMode) {
+      setData(getMockDashboardData());
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const dashboard = await fetchDashboardData();
+      setData(dashboard);
+    } catch (err) {
+      setData(getMockDashboardData());
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not load admin dashboard data.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [previewMode]);
 
   useEffect(() => {
     loadDashboard();
@@ -45,28 +64,19 @@ export function useAdminDashboard() {
     setActionLoading(tutorId);
     try {
       await approveTutor(tutorId);
-    } catch {
-      // Local state update when API unavailable
+      await loadDashboard();
+      showToast(
+        `${
+          data?.pendingTutors.find(t => t.id === tutorId)?.name ?? 'Tutor'
+        } approved — now visible to students in search.`
+      );
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : 'Failed to approve tutor on server.'
+      );
+    } finally {
+      setActionLoading(null);
     }
-
-    const tutor = data?.pendingTutors.find(t => t.id === tutorId);
-    setData(prev => {
-      if (!prev) return prev;
-      const updatedTutors = removeApprovedTutor(prev.pendingTutors, tutorId);
-      return {
-        ...prev,
-        pendingTutors: updatedTutors,
-        stats: {
-          ...prev.stats,
-          pendingTutors: updatedTutors.filter(t => t.status === 'pending').length,
-          approvedTutors: (prev.stats.approvedTutors ?? 0) + 1,
-        },
-      };
-    });
-    showToast(
-      `${tutor?.name ?? 'Tutor'} approved — now visible to students in search.`
-    );
-    setActionLoading(null);
   };
 
   const handleReject = async (tutorId: string, reason: string) => {
@@ -184,6 +194,7 @@ export function useAdminDashboard() {
     loading,
     actionLoading,
     toast,
+    error,
     loadDashboard,
     handleApprove,
     handleReject,

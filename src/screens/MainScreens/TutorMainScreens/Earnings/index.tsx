@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
-import GradientSurface from '../../../../components/GradientSurface';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
 const stats = [
@@ -162,7 +162,12 @@ const TransactionCard = ({ item, colors, resp }: any) => {
 const HeaderCard = ({ colors, resp }: any) => {
   const navigation = useNavigation<any>();
   return (
-    <GradientSurface variant="primaryCard" style={styles(colors, resp).headerCard}>
+    <LinearGradient
+      colors={['#6366F1', '#8B5CF6', '#A855F7']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles(colors, resp).headerCard}
+    >
       {/* Existing Content */}
 
       <View style={styles(colors, resp).topRow}>
@@ -209,7 +214,7 @@ const HeaderCard = ({ colors, resp }: any) => {
           <MaterialCommunityIcons name="eye-outline" size={18} color="#fff" />
         </TouchableOpacity>
       </View>
-    </GradientSurface>
+    </LinearGradient>
   );
 };
 

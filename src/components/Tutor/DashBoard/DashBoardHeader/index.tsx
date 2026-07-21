@@ -3,7 +3,6 @@ import { StyleSheet, Text, View, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
-import GradientSurface from '../../../GradientSurface';
 
 export default function Header() {
    const { colors, resp } = useUi();
@@ -13,7 +12,7 @@ export default function Header() {
     [colors, resp],
   );
   return (
-      <GradientSurface variant="primaryHeader" style={styles.container}>
+      <View style={styles.container}>
         <View style={styles.profileSection}>
           <Text style={styles.welcomeText}>Welcome back,</Text>
           <View style={styles.nameContainer}>
@@ -41,7 +40,7 @@ export default function Header() {
 
         </View>
 
-      </GradientSurface>
+      </View>
   );
 }
 
@@ -53,6 +52,7 @@ const createStyles = (colors:any, resp:any) =>StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 24,
+    backgroundColor: colors.PRIMARY_COLOR,
     borderBottomLeftRadius: resp.dx(30),
     borderBottomRightRadius: resp.dx(30)
   },

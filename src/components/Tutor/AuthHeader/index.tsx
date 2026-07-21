@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 
 import useUi from '../../../hooks/ui/useUi';
 import BackButton from '../../BackButton/BackButton';
-import GradientSurface from '../../GradientSurface';
 
 interface AuthHeaderProps {
   title: string;
@@ -47,7 +46,7 @@ const AuthHeader = ({
   );
 
   return (
-    <GradientSurface variant="primaryHeader" style={[styles.headerContainer, containerStyle]}>
+    <View style={[styles.headerContainer, containerStyle]}>
       {/* BACK BUTTON */}
       <BackButton
         color="#FFFFFF"
@@ -85,7 +84,7 @@ const AuthHeader = ({
           </Text>
         </View>
       </View>
-    </GradientSurface>
+    </View>
   );
 };
 
@@ -94,6 +93,7 @@ export default memo(AuthHeader);
 const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     headerContainer: {
+      backgroundColor: colors.PRIMARY_COLOR,
       minHeight: resp.dy(250),
       paddingTop: resp.dy(40),
       paddingHorizontal: resp.dx(5),

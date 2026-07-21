@@ -92,42 +92,29 @@ export const useAuthForm = (
     }
 
     if (isSignup && sessionRole === 'tutor') {
-      try {
-        console.log('[TutorUpload] signup → step-1', {
-          subject: activeOptions?.tutorSubject || 'General',
-          grades: activeOptions?.tutorGrades || [],
-        });
-        await submitTutorOnboardingStep1({
-          subject: activeOptions?.tutorSubject || 'General',
-          grades: activeOptions?.tutorGrades || [],
-        });
-        console.log('[TutorUpload] signup step-1 OK');
-      } catch (step1Error) {
-        console.warn(
-          '[TutorUpload] signup step-1 failed (will retry on upload)',
-          step1Error
-        );
-      }
-
+      // Already inside AuthNavigator — navigate directly (not via nested AuthNavigator).
       navigation.reset({
         index: 0,
         routes: [
           {
-            name: 'AuthNavigator',
-            state: {
-              index: 0,
-              routes: [
-                {
-                  name: 'DocumentUploadScreen',
-                  params: {
-                    tutorSubject: activeOptions?.tutorSubject,
-                    tutorGrades: activeOptions?.tutorGrades,
-                  },
-                },
-              ],
+            name: 'DocumentUploadScreen',
+            params: {
+              tutorSubject: activeOptions?.tutorSubject,
+              tutorGrades: activeOptions?.tutorGrades,
             },
           },
         ],
+      });
+
+      // Step-1 can finish in background; document upload retries if needed.
+      submitTutorOnboardingStep1({
+        subject: activeOptions?.tutorSubject || 'General',
+        grades: activeOptions?.tutorGrades || [],
+      }).catch(step1Error => {
+        console.warn(
+          '[TutorUpload] signup step-1 deferred to document upload',
+          step1Error
+        );
       });
       return;
     }

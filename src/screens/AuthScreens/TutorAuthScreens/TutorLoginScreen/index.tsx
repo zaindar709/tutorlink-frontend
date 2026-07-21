@@ -17,12 +17,17 @@ import { createStyles } from './styles';
 import { OrDivider } from '../../../../components/OrDrivider/OrDivider';
 import { useMemo, useState } from 'react';
 import { useGoogleAuth } from '../../../../hooks/auth/useGoogleAuth';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../../../store/auth/authSlice';
+import { clearAuthSession } from '../../../../services/storage';
+import { firebaseSignOut } from '../../../../services/auth/firebaseAuthService';
 
 const TutorLoginScreen = () => {
   const { colors, resp } = useUi();
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const { form, errors, handleChange, submit, loading } = useAuthForm('login', 'tutor');
   const { signIn: handleContinueWithGoogle } = useGoogleAuth('tutor');
+  const dispatch = useDispatch();
 
   const handleContinueWithApple = () => {
     console.log('Continue with Apple tapped');
@@ -42,6 +47,39 @@ const TutorLoginScreen = () => {
 
   const handleSignup = () => {
     navigation.navigate('TutorSignUpScreen', { role });
+  };
+
+  // TEMP: skip real login — open tutor tabs to preview chat UI
+  const handleTempTutorTabsPreview = async () => {
+    try {
+      await clearAuthSession();
+      await firebaseSignOut();
+    } catch {
+      // ignore — preview does not need a real session
+    }
+
+    dispatch(
+      setUser({
+        user: {
+          name: 'Preview Tutor',
+          fullName: 'Preview Tutor',
+          email: 'preview.tutor@tutorlink.app',
+          role: 'tutor',
+        },
+        token: '',
+        role: 'tutor',
+      })
+    );
+
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: 'MyTabs',
+          params: { role: 'tutor', screen: 'Home' },
+        },
+      ],
+    });
   };
 
   return (
@@ -123,7 +161,8 @@ const TutorLoginScreen = () => {
         <CustomButton
           title="Login"
           style={styles.loginButton}
-          onPress={submit}
+          // onPress={submit}
+          onPress={handleTempTutorTabsPreview}
           loading={loading}
         />
         <OrDivider />

@@ -9,11 +9,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../../../hooks/ui/useUi';
 import CustomButton from '../../../../../../components/CustomButton';
-import GradientSurface from '../../../../../../components/GradientSurface';
 import Images from '../../../../../../assets/images';
 import TopTutorCard from '../../../../../../components/StudentHome/TopTutorCard';
 import ExploreTile from '../../../../../../components/StudentHome/ExploreTile';
@@ -30,7 +30,7 @@ const homeExploreItems = [
     icon: 'book-open-outline',
     title: 'How it Works',
     subtitle: 'Get started with our tutor matching process',
-    gradient: ['#6348F5', '#8F6DFD'],
+    color: '#4B84FF',
   },
   {
     icon: 'star-outline',
@@ -101,7 +101,12 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
         </TouchableOpacity>
       </View>
 
-      <GradientSurface variant="primaryCard" style={styles.promoCard}>
+      <LinearGradient
+        colors={['#3E76FF', '#1F4EFF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.promoCard}
+      >
         <Text style={styles.promoTitle}>Every expert was once a beginner</Text>
         <Text style={styles.promoSubtitle}>Start your journey today!</Text>
         <CustomButton
@@ -111,7 +116,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
           textColor={colors.PRIMARY_COLOR}
           style={styles.ctaButton}
         />
-      </GradientSurface>
+      </LinearGradient>
 
       <View style={styles.searchCard}>
         <Icon
@@ -165,7 +170,6 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
             title={item.title}
             subtitle={item.subtitle}
             color={item.color}
-            gradient={item.gradient}
           />
         ))}
       </View>
@@ -235,7 +239,6 @@ const createStyles = (colors: any, resp: any) =>
       borderRadius: resp.dx(28),
       padding: resp.dx(24),
       marginBottom: resp.dy(24),
-      overflow: 'hidden',
     },
     promoTitle: {
       color: colors.WHITE_COLOR,

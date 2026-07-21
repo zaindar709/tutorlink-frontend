@@ -108,12 +108,13 @@ export const loginWithEmail = async (
 export const registerWithEmail = async (
   payload: AuthSignupData
 ): Promise<AuthSession> => {
-  // Clear any stale Firebase session so signup starts clean.
-  // Safe when already signed out (no-op).
-  try {
-    await firebaseSignOut();
-  } catch {
-    // Ignore — signup can proceed without a prior session.
+  // Only sign out when a stale session exists — avoids unnecessary delay.
+  if (getCurrentFirebaseUser()) {
+    try {
+      await firebaseSignOut();
+    } catch {
+      // Ignore — signup can proceed without a prior session.
+    }
   }
 
   let firebaseUser: FirebaseAuthTypes.User;
@@ -155,7 +156,6 @@ export const registerWithEmail = async (
   }
 
   try {
-    await getFirebaseIdToken(true, firebaseUser);
     const response = await registerAPI({
       firebaseUid: firebaseUser.uid,
       name: payload.fullName,

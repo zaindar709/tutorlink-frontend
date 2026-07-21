@@ -1,13 +1,20 @@
-import { Bell } from 'lucide-react';
+import { Bell, LogOut, RefreshCw } from 'lucide-react';
 import { PAGE_TITLES } from '../../constants/nav';
 import type { NavSectionId } from '../../types/admin.types';
 
 interface TopBarProps {
   activeNav: NavSectionId;
   pendingCount?: number;
+  onRefresh?: () => void;
+  onLogout?: () => void;
 }
 
-export default function TopBar({ activeNav, pendingCount = 0 }: TopBarProps) {
+export default function TopBar({
+  activeNav,
+  pendingCount = 0,
+  onRefresh,
+  onLogout,
+}: TopBarProps) {
   return (
     <header className="sticky top-0 z-20 border-b border-white/50 bg-white/70 px-4 py-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center justify-between gap-4">
@@ -20,6 +27,16 @@ export default function TopBar({ activeNav, pendingCount = 0 }: TopBarProps) {
           </h2>
         </div>
         <div className="flex items-center gap-3">
+          {onRefresh ? (
+            <button
+              type="button"
+              onClick={onRefresh}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-200 hover:text-tl-primary"
+              aria-label="Refresh dashboard"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          ) : null}
           <button
             type="button"
             className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-violet-200 hover:text-tl-primary"
@@ -32,6 +49,16 @@ export default function TopBar({ activeNav, pendingCount = 0 }: TopBarProps) {
               </span>
             )}
           </button>
+          {onLogout ? (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-600 transition-all duration-300 hover:-translate-y-0.5 hover:border-red-200 hover:text-tl-red"
+              aria-label="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          ) : null}
           <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 sm:flex">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-tl-primary-dark to-tl-primary-light text-xs font-bold text-white">
               AD

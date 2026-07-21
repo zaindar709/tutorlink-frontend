@@ -13,6 +13,7 @@ import {
   postMultipart,
   resolveUploadAuthToken,
 } from '../../utils/upload/uploadDebug';
+import { saveTutorOnboardingCache } from './tutorOnboardingCache';
 
 const LOG = '[TutorUpload]';
 
@@ -20,8 +21,10 @@ export const getTutorOnboardingStatus =
   async (): Promise<TutorOnboardingStatusData> => {
     console.log(LOG, 'GET /onboarding/status');
     const response = await getTutorOnboardingStatusAPI({ timeout: 12000 });
-    console.log(LOG, 'status response', response.data?.data ?? response.data);
-    return response.data.data ?? {};
+    const data = response.data.data ?? {};
+    console.log(LOG, 'status response', data);
+    await saveTutorOnboardingCache(data);
+    return data;
   };
 
 export const submitTutorOnboardingStep1 = async (payload: {
@@ -140,7 +143,15 @@ export const uploadTutorDocuments = async (
   }>('/api/tutor/onboarding/documents', formData, token);
 
   console.log(LOG, 'uploadTutorDocuments SUCCESS', json?.data ?? json);
-  return json?.data ?? {};
+  const result = json?.data ?? {};
+  await saveTutorOnboardingCache({
+    ...result,
+    onboardingStatus:
+      result.onboardingStatus ||
+      result.verificationStatus ||
+      'under_review',
+  });
+  return result;
 };
 
 export const scheduleTutorOnboardingInterview = async (

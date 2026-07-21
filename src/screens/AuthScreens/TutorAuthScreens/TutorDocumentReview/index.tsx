@@ -32,11 +32,20 @@ const DocumentReviewScreen = () => {
     refreshStatus();
   }, [refreshStatus]);
 
-  const currentStatus = status?.onboardingStatus || route.params?.status;
+  const currentStatus =
+    status?.onboardingStatus ||
+    status?.verificationStatus ||
+    route.params?.status;
   const approved = status ? isTutorApproved(status) : false;
   const underReview =
-    currentStatus === 'under_review' || currentStatus === 'documents_uploaded';
+    currentStatus === 'under_review' ||
+    currentStatus === 'documents_uploaded' ||
+    currentStatus === 'pending';
   const interviewScheduled = currentStatus === 'interview_scheduled';
+
+  const handleCheckApproval = () => {
+    navigation.navigate('TutorApprovalStatusScreen');
+  };
 
   const handleGoToDashboard = () => {
     navigation.reset({
@@ -65,16 +74,8 @@ const DocumentReviewScreen = () => {
     }
   };
 
-  const handleRefreshStatus = async () => {
-    const latest = await refreshStatus();
-    if (latest && isTutorApproved(latest)) {
-      Alert.alert(
-        'Approved!',
-        'Your profile has been verified. Welcome to TutorLink.',
-        [{ text: 'Go to Dashboard', onPress: handleGoToDashboard }]
-      );
-    }
-  };
+  const showWaitingActions =
+    !approved && !rejected && currentStatus !== 'rejected';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -133,30 +134,27 @@ const DocumentReviewScreen = () => {
             <InterviewInfoCard />
             <ActionCards />
 
-            {!approved && !rejected && currentStatus !== 'rejected' && (
+            {showWaitingActions ? (
               <>
-                {underReview && (
-                  <View style={{ marginTop: resp.dy(20) }}>
-                    <CustomButton
-                      title="Schedule my Interview"
-                      onPress={handleScheduleInterview}
-                      icon="calendar-month-outline"
-                      loading={loading}
-                    />
-                  </View>
-                )}
+                <View style={{ marginTop: resp.dy(20) }}>
+                  <CustomButton
+                    title="Schedule my Interview"
+                    onPress={handleScheduleInterview}
+                    icon="calendar-month-outline"
+                    loading={loading}
+                  />
+                </View>
 
                 <View style={{ marginTop: resp.dy(12) }}>
                   <CustomButton
                     title="Check Approval Status"
-                    onPress={handleRefreshStatus}
+                    onPress={handleCheckApproval}
                     backgroundColor="#EEF2FF"
                     textColor={colors.PRIMARY_COLOR as string}
-                    loading={loading}
                   />
                 </View>
               </>
-            )}
+            ) : null}
           </>
         )}
 

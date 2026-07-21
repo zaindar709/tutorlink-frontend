@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import GradientSurface from '../../../../components/GradientSurface';
+import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
@@ -69,6 +69,14 @@ const settingsData = [
   },
   {
     id: '2',
+    title: 'My Earnings',
+    subtitle: 'Balance, withdraw & history',
+    icon: 'wallet-outline',
+    color: '#7548F5',
+    screen: 'TutorEarningsScreen',
+  },
+  {
+    id: '3',
     title: 'Schedule Availability',
     subtitle: 'Manage your teaching hours',
     icon: 'calendar-outline',
@@ -76,7 +84,7 @@ const settingsData = [
     screen: 'ScheduleAvailabilityScreen',
   },
   {
-    id: '3',
+    id: '4',
     title: 'Payment Methods',
     subtitle: 'JazzCash, Easypaisa settings',
     icon: 'card-outline',
@@ -84,7 +92,7 @@ const settingsData = [
     screen: 'PaymentMethodScreen',
   },
   {
-    id: '4',
+    id: '5',
     title: 'Security & Privacy',
     subtitle: 'Password, 2FA settings',
     icon: 'lock-closed-outline',
@@ -187,7 +195,12 @@ const TutorProfileScreen = () => {
           <Text style={{ color: '#4a4a4a' }}>Your Professional Identity</Text>
         </View>
         {/* PROFILE CARD */}
-        <GradientSurface variant="primarySoft" style={styles.profileCard}>
+        <LinearGradient
+          colors={['#6a82fc', '#8f73fd']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.profileCard}
+        >
           <View style={styles.topRow}>
             <View style={styles.imageWrapper}>
               <Image
@@ -241,7 +254,7 @@ const TutorProfileScreen = () => {
           {/* CONTACT */}
           <Text style={styles.contact}>ali.ahmed@tutorlink.com</Text>
           <Text style={styles.contact}>+92 300 1234567</Text>
-        </GradientSurface>
+        </LinearGradient>
 
         {/* STATS */}
         <View style={styles.statsRow}>

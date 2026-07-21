@@ -25,11 +25,17 @@ export const buildUploadFile = (
   uri: string,
   name: string,
   type: string
-): UploadFilePayload => ({
-  uri: normalizeUploadUri(uri),
-  name,
-  type: type || 'application/octet-stream',
-});
+): UploadFilePayload => {
+  if (!uri || typeof uri !== 'string') {
+    throw new Error('Invalid file URI. Please re-select the document and try again.');
+  }
+
+  return {
+    uri: normalizeUploadUri(uri),
+    name,
+    type: type || 'application/octet-stream',
+  };
+};
 
 export const guessMimeType = (
   uri: string,

@@ -170,19 +170,20 @@ export const postMultipart = async <T>(
 
   if (!response.ok) {
     if (response.status === 401) {
-      console.error(
-        LOG,
-        '401 UNAUTHORIZED — almost always Firebase project mismatch.\n' +
-          `App issues tokens for: ${FRONTEND_FIREBASE_PROJECT_ID}\n` +
-          'Backend FIREBASE_* env must use the SAME project service account.'
-      );
+      console.error(LOG, '401 UNAUTHORIZED on document upload', {
+        tokenProjectId: claims?.projectId,
+        expectedProjectId: FRONTEND_FIREBASE_PROJECT_ID,
+      });
     }
 
-    const mismatchMessage = getFirebaseMismatchMessage(response.status);
+    const backendMessage = json?.message || json?.error;
+    const mismatchMessage =
+      response.status === 401 && !backendMessage
+        ? getFirebaseMismatchMessage(response.status)
+        : null;
     const message =
+      backendMessage ||
       mismatchMessage ||
-      json?.message ||
-      json?.error ||
       `Upload failed with status ${response.status}`;
     const error: any = new Error(message);
     error.response = {

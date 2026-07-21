@@ -30,13 +30,68 @@ const docUrl = (path?: string) =>
 const mapOnboardingStatus = (
   status?: string
 ): TutorVerificationStatus => {
-  if (status === 'interview_scheduled') return 'interview_scheduled';
-  if (status === 'approved') return 'approved';
-  if (status === 'rejected') return 'rejected';
+  const normalized = (status || '').toLowerCase();
+  if (normalized === 'interview_scheduled') return 'interview_scheduled';
+  if (normalized === 'approved') return 'approved';
+  if (normalized === 'rejected') return 'rejected';
+  if (
+    normalized === 'pending' ||
+    normalized === 'under_review' ||
+    normalized === 'documents_uploaded' ||
+    normalized === 'basic_info'
+  ) {
+    return 'pending';
+  }
   return 'pending';
 };
 
+const extractTutorList = (payload: unknown): Record<string, unknown>[] => {
+  if (!payload || typeof payload !== 'object') return [];
+  const root = payload as Record<string, unknown>;
+  const data = root.data;
+
+  if (Array.isArray(data)) return data as Record<string, unknown>[];
+  if (data && typeof data === 'object') {
+    const nested = data as Record<string, unknown>;
+    if (Array.isArray(nested.tutors)) {
+      return nested.tutors as Record<string, unknown>[];
+    }
+    if (Array.isArray(nested.items)) {
+      return nested.items as Record<string, unknown>[];
+    }
+  }
+  if (Array.isArray(root.tutors)) return root.tutors as Record<string, unknown>[];
+  return [];
+};
+
 export const mapBackendTutor = (raw: Record<string, unknown>): PendingTutor => {
+  if (raw.name && raw.email && Array.isArray(raw.documents)) {
+    return {
+      id: String(raw.id || raw._id),
+      userId: String(raw.userId || ''),
+      name: String(raw.name),
+      email: String(raw.email),
+      phone: raw.phone ? String(raw.phone) : undefined,
+      expertise: String(raw.expertise || 'General'),
+      grades: (raw.grades as string[]) || [],
+      documents: raw.documents as PendingTutor['documents'],
+      status: mapOnboardingStatus(
+        String(raw.status || raw.onboardingStatus || raw.verificationStatus || '')
+      ),
+      submittedAt: String(
+        raw.submittedAt || raw.documentsSubmittedAt || new Date().toISOString()
+      ),
+      interviewDate: raw.interviewDate
+        ? String(raw.interviewDate)
+        : raw.interviewScheduledAt
+          ? String(raw.interviewScheduledAt)
+          : undefined,
+      rejectionReason: raw.rejectionReason
+        ? String(raw.rejectionReason)
+        : undefined,
+    };
+  }
+
   const user = (raw.user || {}) as Record<string, unknown>;
   const documents = [
     raw.cnicFrontUrl
@@ -74,7 +129,9 @@ export const mapBackendTutor = (raw: Record<string, unknown>): PendingTutor => {
     expertise: ((raw.subjects as string[]) || [])[0] || 'General',
     grades: (raw.grades as string[]) || [],
     documents,
-    status: mapOnboardingStatus(String(raw.onboardingStatus || '')),
+    status: mapOnboardingStatus(
+      String(raw.onboardingStatus || raw.verificationStatus || raw.status || '')
+    ),
     submittedAt: String(
       raw.documentsSubmittedAt || raw.createdAt || new Date().toISOString()
     ),
@@ -126,22 +183,42 @@ export const getMockDashboardData = (
 });
 
 export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
-  try {
-    const [statsRes, tutorsRes, escrowRes, linksRes] = await Promise.all([
-      api.get('/api/admin/dashboard/stats'),
-      api.get('/api/admin/tutors/pending', {
-        params: { page: 1, limit: 50 },
-      }),
-      api.get('/api/admin/billing/escrow', {
-        params: { page: 1, limit: 20 },
-      }),
-      api.get('/api/admin/links', { params: { page: 1, limit: 20 } }),
-    ]);
+  const [statsRes, tutorsRes, escrowRes, linksRes] = await Promise.allSettled([
+    api.get('/api/admin/dashboard/stats'),
+    api.get('/api/admin/tutors/pending', {
+      params: { page: 1, limit: 50 },
+    }),
+    api.get('/api/admin/billing/escrow', {
+      params: { page: 1, limit: 20 },
+    }),
+    api.get('/api/admin/links', { params: { page: 1, limit: 20 } }),
+  ]);
 
-    const statsData = statsRes.data?.data || {};
-    const tutorsRaw = tutorsRes.data?.data || [];
-    const escrowRaw = escrowRes.data?.data || [];
-    const linksRaw = linksRes.data?.data || [];
+  if (tutorsRes.status === 'rejected') {
+    const reason = tutorsRes.reason as { response?: { status?: number; data?: { message?: string } }; message?: string };
+    const status = reason?.response?.status;
+    const message =
+      reason?.response?.data?.message ||
+      reason?.message ||
+      'Failed to load pending tutors';
+    throw new Error(
+      status === 401 || status === 403
+        ? `${message} — sign in with an admin Firebase account (role: admin).`
+        : message
+    );
+  }
+
+  const statsData =
+    statsRes.status === 'fulfilled' ? statsRes.value.data?.data || {} : {};
+  const tutorsRaw = extractTutorList(tutorsRes.value.data);
+  const escrowRaw =
+    escrowRes.status === 'fulfilled'
+      ? ((escrowRes.value.data?.data as Record<string, unknown>[]) || [])
+      : [];
+  const linksRaw =
+    linksRes.status === 'fulfilled'
+      ? ((linksRes.value.data?.data as Record<string, unknown>[]) || [])
+      : [];
 
     const pendingTutors: PendingTutor[] = tutorsRaw.map(
       (t: Record<string, unknown>) => mapBackendTutor(t)
@@ -236,22 +313,15 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
       escrowTransactions,
       settings: MOCK_SETTINGS,
     };
-  } catch {
-    return getMockDashboardData();
-  }
 };
 
 export const fetchPendingTutors = async (): Promise<PendingTutor[]> => {
-  try {
-    const { data } = await api.get('/api/admin/tutors/pending', {
-      params: { page: 1, limit: 50 },
-    });
-    return (data?.data || []).map((t: Record<string, unknown>) =>
-      mapBackendTutor(t)
-    );
-  } catch {
-    return [];
-  }
+  const { data } = await api.get('/api/admin/tutors/pending', {
+    params: { page: 1, limit: 50 },
+  });
+  return extractTutorList(data).map((t: Record<string, unknown>) =>
+    mapBackendTutor(t)
+  );
 };
 
 export const approveTutor = async (
@@ -259,6 +329,8 @@ export const approveTutor = async (
   notes?: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/verify`, {
+    isVerified: true,
+    verificationStatus: 'approved',
     adminNotes: notes || 'Verified by admin',
   });
 };
@@ -268,6 +340,7 @@ export const rejectTutor = async (
   reason: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/reject`, {
+    verificationStatus: 'rejected',
     rejectionReason: reason,
   });
 };
@@ -278,6 +351,7 @@ export const scheduleTutorInterview = async (
   notes?: string
 ): Promise<void> => {
   await api.patch(`/api/admin/tutors/${tutorId}/interview`, {
+    verificationStatus: 'interview_scheduled',
     interviewScheduledAt: interviewDate,
     adminNotes: notes || 'Interview scheduled by admin',
   });

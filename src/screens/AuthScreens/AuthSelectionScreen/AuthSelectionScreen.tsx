@@ -11,7 +11,6 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import useUi from '../../../hooks/ui/useUi';
 import AuthCard from '../../../components/AuthCard/AuthCard';
 import { OrDivider } from '../../../components/OrDrivider/OrDivider';
-import GradientSurface from '../../../components/GradientSurface';
 import Images from '../../../assets/images';
 import BackButton from '../../../components/BackButton/BackButton';
 
@@ -88,7 +87,6 @@ export default function AuthSelectionScreen() {
       <View style={styles.header}>
         <BackButton onPress={() => navigation.goBack()} />
         <Text style={styles.logo}>TutorLink</Text>
-        <GradientSurface variant="primaryButton" style={styles.logoAccent} />
 
         <Text style={styles.title}>
           Welcome {role === 'parent' ? 'Parent' : role || 'Student'}
@@ -152,13 +150,6 @@ const createStyles = (colors: any, resp: any) =>
       fontSize: resp.df(26),
       color: colors.PRIMARY_COLOR,
       fontWeight: '700',
-    },
-
-    logoAccent: {
-      width: resp.dx(56),
-      height: resp.dy(4),
-      borderRadius: resp.dx(4),
-      marginTop: resp.dy(8),
     },
 
     title: {

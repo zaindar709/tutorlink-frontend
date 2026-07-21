@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
-import { useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import { createStyles } from './styles';
+import { saveTutorOnboardingCache } from '../../../../services/tutor/tutorOnboardingCache';
 import useDocumentUpload from '../../../../hooks/tutor/useDocumentUpload';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import UploadBox from '../../../../components/Tutor/DocumentUpload/UploadBox';
@@ -11,11 +12,11 @@ import UploadGuidelines from '../../../../components/Tutor/DocumentUpload/Upload
 import CustomButton from '../../../../components/CustomButton';
 import AuthHeader from '../../../../components/Tutor/AuthHeader';
 import DocumentPickerField from '../../../../components/Tutor/DocumentPicker';
-import GradientSurface from '../../../../components/GradientSurface';
 
 const DocumentUploadScreen = ({ navigation }: any) => {
-  const route = useRoute<any>();
   const { colors, resp } = useUi();
+  const route = useRoute<any>();
+  const { tutorSubject, tutorGrades } = route.params || {};
   const styles = createStyles(colors, resp);
   const { submitDocuments, loading } = useTutorOnboarding();
 
@@ -31,64 +32,45 @@ const DocumentUploadScreen = ({ navigation }: any) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    console.log('[TutorUpload] Submit pressed', {
-      hasFront: !!frontImage?.uri,
-      hasBack: !!backImage?.uri,
-      hasCertificate: !!certificate?.uri,
-      routeParams: route.params,
-    });
-
     if (!frontImage?.uri || !backImage?.uri || !certificate?.uri) {
       Alert.alert('Missing documents', 'Please upload all required documents.');
       return;
     }
 
     setSubmitting(true);
-    try {
-      const { data: result, error: uploadError } = await submitDocuments(
-        {
-          cnicFrontUri: frontImage.uri,
-          cnicBackUri: backImage.uri,
-          cnicFrontType: frontImage.type,
-          cnicBackType: backImage.type,
-          degreeUri: certificate.uri,
-          degreeName: certificate.name,
-          degreeType: certificate.type,
-        },
-        {
-          subject: route.params?.tutorSubject,
-          grades: route.params?.tutorGrades,
-        }
-      );
-
-      console.log('[TutorUpload] submitDocuments result', {
-        hasResult: !!result,
-        result,
-        uploadError,
-      });
-
-      if (result) {
-        navigation.replace('DocumentReviewScreen', {
-          status: result.onboardingStatus || 'under_review',
-        });
-        return;
+    const { data, error } = await submitDocuments(
+      {
+        cnicFrontUri: frontImage.uri,
+        cnicBackUri: backImage.uri,
+        cnicFrontType: frontImage.type,
+        cnicBackType: backImage.type,
+        degreeUri: certificate.uri,
+        degreeName: certificate.name,
+        degreeType: certificate.type,
+      },
+      {
+        subject: tutorSubject,
+        grades: tutorGrades,
       }
+    );
+    setSubmitting(false);
 
-      Alert.alert(
-        uploadError?.includes('401') ||
-          uploadError?.includes('Firebase project') ||
-          uploadError?.includes('Authentication failed')
-          ? 'Firebase project mismatch'
-          : 'Upload failed',
-        uploadError ||
-          'Could not submit documents. Please try again or use JPG/PNG images under 5MB.'
-      );
-    } catch (error) {
-      console.error('[TutorUpload] unexpected submit error', error);
-      Alert.alert('Upload failed', 'Unexpected error. Check debugger logs.');
-    } finally {
-      setSubmitting(false);
+    if (data) {
+      await saveTutorOnboardingCache({
+        onboardingStatus: data.onboardingStatus || 'under_review',
+        isVerified: data.isVerified,
+      });
+      navigation.replace('DocumentReviewScreen', {
+        status: data.onboardingStatus || 'under_review',
+      });
+      return;
     }
+
+    Alert.alert(
+      'Upload failed',
+      error ||
+        'Could not submit documents. Please check your connection and try again.'
+    );
   };
 
   return (
@@ -142,9 +124,14 @@ const DocumentUploadScreen = ({ navigation }: any) => {
         <View
           style={[styles.progressBarBackground, { backgroundColor: '#E2E2E2' }]}
         >
-          <GradientSurface
-            variant="primaryButton"
-            style={[styles.progressBarFill, { width: '66%' }]}
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                backgroundColor: colors.PRIMARY_COLOR,
+                width: '66%',
+              },
+            ]}
           />
         </View>
 

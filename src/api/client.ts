@@ -143,9 +143,16 @@ api.interceptors.response.use(
       hasAuthHeader: !!error?.config?.headers?.Authorization,
     });
 
-    // Avoid Auth ↔ Dashboard bounce during splash/auth screens.
+    // Only kick to auth when a real authenticated request was rejected.
+    // Preview/UI mode (no Bearer token) must not bounce to onboarding.
+    const authHeader =
+      error?.config?.headers?.Authorization ||
+      error?.config?.headers?.authorization;
+    const hadAuthHeader = typeof authHeader === 'string' && authHeader.length > 0;
+
     if (
       error?.response?.status === 401 &&
+      hadAuthHeader &&
       !isOnboardingRoute &&
       !isAuthRoute &&
       !isOnAuthFlowScreen()

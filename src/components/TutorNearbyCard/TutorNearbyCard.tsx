@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
-import GradientSurface from '../GradientSurface';
 
 
 type TutorNearbyCardProps = {
@@ -48,9 +47,7 @@ const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
       </View>
 
       <View style={styles.actionWrapper}>
-        <GradientSurface variant="primaryButton" style={styles.actionGradient}>
-          <Text style={styles.actionText}>Book Now</Text>
-        </GradientSurface>
+        <Text style={styles.actionText}>Book Now</Text>
       </View>
     </TouchableOpacity>
   );
@@ -120,10 +117,8 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       fontSize: resp.df(12),
     },
     actionWrapper: {
+      backgroundColor: colors.PRIMARY_COLOR,
       borderRadius: resp.dx(16),
-      overflow: 'hidden',
-    },
-    actionGradient: {
       paddingVertical: resp.dy(8),
       paddingHorizontal: resp.dx(12),
       justifyContent: 'center',

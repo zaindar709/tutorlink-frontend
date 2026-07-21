@@ -1,7 +1,36 @@
 import { TutorOnboardingStatusData } from '../../types/api.types';
 
 export const isTutorApproved = (status: TutorOnboardingStatusData): boolean =>
-  status.isVerified === true || status.onboardingStatus === 'approved';
+  status.isVerified === true ||
+  status.onboardingStatus === 'approved' ||
+  status.verificationStatus === 'approved';
+
+const resolveOnboardingStatus = (status: TutorOnboardingStatusData) =>
+  status.onboardingStatus || status.verificationStatus;
+
+export const isTutorAwaitingApproval = (
+  status: TutorOnboardingStatusData
+): boolean => {
+  const value = resolveOnboardingStatus(status);
+  return (
+    value === 'under_review' ||
+    value === 'documents_uploaded' ||
+    value === 'interview_scheduled' ||
+    value === 'pending'
+  );
+};
+
+export const isTutorDocumentsPending = (
+  status: TutorOnboardingStatusData
+): boolean => {
+  const step = status.onboardingStep ?? 1;
+  const value = resolveOnboardingStatus(status);
+  return (
+    step < 2 ||
+    value === 'basic_info' ||
+    (!value && step < 3)
+  );
+};
 
 export const getTutorResetRoute = (status: TutorOnboardingStatusData) => {
   if (isTutorApproved(status)) {
@@ -16,7 +45,9 @@ export const getTutorResetRoute = (status: TutorOnboardingStatusData) => {
     };
   }
 
-  if (status.onboardingStatus === 'rejected') {
+  const onboardingStatus = resolveOnboardingStatus(status);
+
+  if (onboardingStatus === 'rejected') {
     return {
       index: 0,
       routes: [
@@ -39,10 +70,7 @@ export const getTutorResetRoute = (status: TutorOnboardingStatusData) => {
     };
   }
 
-  if (
-    status.onboardingStatus === 'under_review' ||
-    status.onboardingStatus === 'interview_scheduled'
-  ) {
+  if (isTutorAwaitingApproval(status)) {
     return {
       index: 0,
       routes: [
@@ -53,7 +81,9 @@ export const getTutorResetRoute = (status: TutorOnboardingStatusData) => {
             routes: [
               {
                 name: 'DocumentReviewScreen' as const,
-                params: { status: status.onboardingStatus },
+                params: {
+                  status: onboardingStatus || 'under_review',
+                },
               },
             ],
           },

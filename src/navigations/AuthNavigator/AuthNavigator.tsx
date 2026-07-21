@@ -15,6 +15,7 @@ import TutorSignUpScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorS
 import DocumentUploadScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentUpload';
 import TutorDocumentReview from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentReview';
 import DocumentReviewScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentReview';
+import TutorApprovalStatusScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorApprovalStatus';
 import ParentLinkRedeemScreen from '../../screens/AuthScreens/ParentAuthScreens/ParentLinkRedeem';
 
 const Stack = createNativeStackNavigator();
@@ -44,6 +45,10 @@ export default function AuthNavigator() {
       <Stack.Screen name="TutorSignUpScreen" component={TutorSignUpScreen} />
       <Stack.Screen name="DocumentUploadScreen" component={DocumentUploadScreen} />
       <Stack.Screen name="DocumentReviewScreen" component={DocumentReviewScreen} />
+      <Stack.Screen
+        name="TutorApprovalStatusScreen"
+        component={TutorApprovalStatusScreen}
+      />
       <Stack.Screen name="ParentLinkRedeemScreen" component={ParentLinkRedeemScreen} />
     </Stack.Navigator>
   );
