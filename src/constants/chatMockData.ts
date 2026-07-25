@@ -1,75 +1,14 @@
-export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'seen' | 'failed';
+export type {
+  MessageStatus,
+  MessageType,
+  SystemCardKind,
+  ChatParticipant,
+  ReplyPreview,
+  ChatMessage,
+  ChatConversation,
+} from '../types/chat.types';
 
-export type MessageType =
-  | 'text'
-  | 'image'
-  | 'pdf'
-  | 'document'
-  | 'voice'
-  | 'location'
-  | 'homework'
-  | 'system'
-  | 'session';
-
-export type SystemCardKind =
-  | 'homework_shared'
-  | 'assignment_received'
-  | 'session_reminder'
-  | 'ai_summary'
-  | 'class_recording'
-  | 'booking_confirmed';
-
-export type ChatParticipant = {
-  id: string;
-  name: string;
-  avatar: string;
-  role: 'student' | 'tutor';
-  isVerified?: boolean;
-  subject?: string;
-  isOnline?: boolean;
-  lastSeen?: string;
-};
-
-export type ReplyPreview = {
-  id: string;
-  senderName: string;
-  text: string;
-};
-
-export type ChatMessage = {
-  id: string;
-  chatId: string;
-  type: MessageType;
-  text?: string;
-  senderId: string;
-  isMine: boolean;
-  createdAt: string;
-  status?: MessageStatus;
-  edited?: boolean;
-  reaction?: string;
-  replyTo?: ReplyPreview;
-  mediaUri?: string;
-  fileName?: string;
-  fileSize?: string;
-  durationSec?: number;
-  locationLabel?: string;
-  systemKind?: SystemCardKind;
-  systemTitle?: string;
-  systemSubtitle?: string;
-};
-
-export type ChatConversation = {
-  id: string;
-  participant: ChatParticipant;
-  lastMessage: string;
-  lastMessageAt: string;
-  unreadCount: number;
-  pinned?: boolean;
-  archived?: boolean;
-  isTyping?: boolean;
-  lastStatus?: MessageStatus;
-  subject: string;
-};
+import type { ChatConversation, ChatMessage } from '../types/chat.types';
 
 export const MOCK_CURRENT_USER_ID = 'me';
 

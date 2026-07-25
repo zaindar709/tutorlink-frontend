@@ -205,24 +205,65 @@ export interface WalletDepositPayload {
 }
 
 export interface StudentProfile {
-  header?: {
-    name?: string;
-    grade?: string;
-    board?: string;
-    avatarUrl?: string;
-    publicId?: string;
-  };
-  parentLinkCard?: Record<string, unknown>;
-  menuPreview?: unknown[];
-  preferences?: Record<string, unknown>;
-  settingsMenu?: unknown[];
-  interests?: string[];
+  _id?: string;
+  id?: string;
+  name?: string;
+  email?: string;
+  phoneNumber?: string;
   grade?: string;
   board?: string;
-  name?: string;
-  phoneNumber?: string;
+  bio?: string;
   avatarUrl?: string;
   publicId?: string;
+  interests?: string[];
+  role?: string;
+  displayGrade?: string;
+  displayStudentId?: string;
+  header?: {
+    name?: string;
+    email?: string;
+    phoneNumber?: string;
+    avatarUrl?: string;
+    displayGrade?: string;
+    displayStudentId?: string;
+    grade?: string;
+    board?: string;
+    bio?: string;
+  };
+  parentLinkCard?: {
+    title?: string;
+    subtitle?: string;
+    isLinked?: boolean;
+    linkedParents?: LinkedParent[];
+    hasActiveCode?: boolean;
+    activeCode?: string | null;
+    activeCodeExpiresAt?: string | null;
+  };
+  menuPreview?: {
+    interestsCount?: number;
+    certificatesCount?: number;
+    sessionHistoryCount?: number;
+  };
+  preferences?: {
+    notifications?: StudentNotificationSettings;
+    privacy?: StudentPrivacySettings;
+    app?: StudentAppSettings;
+    notificationsEnabled?: boolean;
+  };
+  settingsMenu?: Array<{
+    id: string;
+    title: string;
+    subtitle?: string;
+    route?: string;
+    count?: number;
+  }>;
+  screen?: {
+    header?: StudentProfile['header'];
+    parentLinkCard?: StudentProfile['parentLinkCard'];
+    menuPreview?: StudentProfile['menuPreview'];
+    preferences?: StudentProfile['preferences'];
+    settingsMenu?: StudentProfile['settingsMenu'];
+  };
   [key: string]: unknown;
 }
 
@@ -232,10 +273,12 @@ export interface UpdateProfilePayload {
   avatarUrl?: string;
   grade?: string;
   board?: string;
+  bio?: string;
 }
 
 export interface UpdateInterestsPayload {
   interests: string[];
+  grade?: string;
 }
 
 export interface LinkCodeData {
@@ -247,6 +290,68 @@ export interface LinkCodeData {
 
 export interface RedeemLinkCodePayload {
   code: string;
+}
+
+export interface LinkedParent {
+  id: string;
+  _id?: string;
+  name: string;
+  email?: string;
+  linkedAt?: string;
+}
+
+export interface StudentSessionHistoryItem {
+  id: string;
+  tutorName: string;
+  subject: string;
+  date: string;
+  time: string;
+  duration: string;
+  status: 'completed' | 'cancelled' | 'missed' | string;
+  dateISO?: string;
+  startTime?: string;
+  endTime?: string;
+  rating?: number;
+}
+
+export interface StudentCertificateItem {
+  id: string;
+  title: string;
+  subject: string;
+  tutorName: string;
+  issuedAt: string;
+  grade: string;
+  fileUrl?: string;
+}
+
+export interface StudentNotificationSettings {
+  booking: boolean;
+  messages: boolean;
+  promotions: boolean;
+  parent: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
+}
+
+export interface StudentAppSettings {
+  language: 'en' | 'ur' | string;
+  appearance: 'system' | 'light' | 'dark' | string;
+  soundEnabled: boolean;
+  hapticsEnabled: boolean;
+  autoPlayPreviews: boolean;
+}
+
+export interface StudentPrivacySettings {
+  twoFactorEnabled: boolean;
+  loginAlerts: boolean;
+  profileVisibleToTutors: boolean;
+}
+
+export interface StudentSettingsBundle {
+  notifications: StudentNotificationSettings;
+  app: StudentAppSettings;
+  privacy: StudentPrivacySettings;
 }
 
 export type TutorOnboardingStatus =

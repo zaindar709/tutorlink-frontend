@@ -1,62 +1,75 @@
-import React from 'react';
-import { View, Text, TextInput, StyleSheet,TouchableOpacity } from 'react-native';
+import React, { forwardRef } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput as RNTextInput,
+} from 'react-native';
 import useUi from '../../hooks/ui/useUi';
 
-const CustomInput = ({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  secureTextEntry,
-  keyboardType,
-  error,
-  leftIcon,
-  rightIcon,
-  onRightIconPress,
-  style,
-  ...props
-}: any) => {
-  const { colors } = useUi();
+const CustomInput = forwardRef<RNTextInput, any>(
+  (
+    {
+      label,
+      value,
+      onChangeText,
+      placeholder,
+      secureTextEntry,
+      keyboardType,
+      error,
+      leftIcon,
+      rightIcon,
+      onRightIconPress,
+      style,
+      ...props
+    },
+    ref
+  ) => {
+    const { colors } = useUi();
 
-  return (
-   <View style={[styles.container, style]}>
-  {label && <Text style={styles.label}>{label}</Text>}
+    return (
+      <View style={[styles.container, style]}>
+        {label ? <Text style={styles.label}>{label}</Text> : null}
 
-  <View style={[
-    styles.inputWrapper,
-    error && { borderColor: 'red' }
-  ]}>
+        <View
+          style={[styles.inputWrapper, error ? { borderColor: 'red' } : null]}
+        >
+          {leftIcon ? (
+            <View style={{ marginRight: 8 }}>{leftIcon}</View>
+          ) : null}
 
-    {/* LEFT ICON */}
-    {leftIcon && (
-      <View style={{ marginRight: 8 }}>
-        {leftIcon}
+          <TextInput
+            ref={ref}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor="#999"
+            secureTextEntry={secureTextEntry}
+            keyboardType={keyboardType}
+            style={styles.input}
+            {...props}
+          />
+
+          {rightIcon ? (
+            <TouchableOpacity onPress={onRightIconPress}>
+              {rightIcon}
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
+        {error ? (
+          <Text style={{ color: 'red', fontSize: 12, marginTop: 5 }}>
+            {error}
+          </Text>
+        ) : null}
       </View>
-    )}
+    );
+  }
+);
 
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor="#999"
-      secureTextEntry={secureTextEntry}
-      keyboardType={keyboardType}
-      style={styles.input}
-      {...props}
-    />
-
-    {/* RIGHT ICON */}
-    {rightIcon && (
-      <TouchableOpacity onPress={onRightIconPress}>
-        {rightIcon}
-      </TouchableOpacity>
-    )}
-  </View>
-
-  {error ? <Text style={{ color: 'red', fontSize: 12, marginTop:5 }}>{error}</Text> : null}
-</View>
-  );
-};
+CustomInput.displayName = 'CustomInput';
 
 export default CustomInput;
 
@@ -82,6 +95,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: 48,
-    color: "#000"
+    color: '#000',
   },
 });

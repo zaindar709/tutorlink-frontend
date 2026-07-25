@@ -1,6 +1,5 @@
-import { useColorScheme, ColorValue, ColorSchemeName } from "react-native";
+﻿import { useColorScheme, ColorValue, ColorSchemeName } from "react-native";
 import { useCallback } from "react";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 export const useAppColorScheme = (): ColorSchemeName => {
   // Should be from redux - if there's need to change color scheme on runtime.
@@ -8,7 +7,9 @@ export const useAppColorScheme = (): ColorSchemeName => {
 };
 
 const useColors = () => {
-  const scheme: ColorSchemeName = useAppColorScheme() || useColorScheme();
+  const preferredScheme = useAppColorScheme();
+  const systemScheme = useColorScheme();
+  const scheme: ColorSchemeName = preferredScheme || systemScheme;
   const getColor = useCallback(
     (lightColor: ColorValue, darkColor?: ColorValue) =>
       scheme === "dark" && !!darkColor ? darkColor : lightColor,

@@ -1,8 +1,13 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View, TouchableOpacity, Alert } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  ScrollView,
+  Text,
+  View,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import CustomButton from '../../../../../../components/CustomButton';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
@@ -10,13 +15,32 @@ import {
   createProfileSubScreenStyles,
 } from '../../../../../../components/Profile';
 import useUi from '../../../../../../hooks/ui/useUi';
+import { useStudentPrivacySettings } from '../../../../../../hooks/api/useStudentSettings';
 
 export default function StudentPrivacySecurityScreen({ navigation }: any) {
   const { colors } = useUi();
   const styles = useMemo(() => createProfileSubScreenStyles(colors), [colors]);
-  const [twoFactor, setTwoFactor] = useState(true);
-  const [loginAlerts, setLoginAlerts] = useState(true);
-  const [profileVisible, setProfileVisible] = useState(true);
+  const { settings, loading, error, update } = useStudentPrivacySettings();
+
+  const patch = async (payload: Parameters<typeof update>[0]) => {
+    const ok = await update(payload);
+    if (!ok) {
+      Alert.alert('Update failed', error || 'Could not save privacy settings.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -35,14 +59,26 @@ export default function StudentPrivacySecurityScreen({ navigation }: any) {
               marginBottom: 10,
             }}
           >
-            <MaterialCommunityIcons name="shield-check" size={16} color={colors.PRIMARY_COLOR} />
-            <Text style={{ marginLeft: 6, color: colors.PRIMARY_COLOR, fontWeight: '700', fontSize: 12 }}>
+            <MaterialCommunityIcons
+              name="shield-check"
+              size={16}
+              color={colors.PRIMARY_COLOR}
+            />
+            <Text
+              style={{
+                marginLeft: 6,
+                color: colors.PRIMARY_COLOR,
+                fontWeight: '700',
+                fontSize: 12,
+              }}
+            >
               Account protected
             </Text>
           </View>
           <Text style={styles.heroTitle}>Keep your account secure</Text>
           <Text style={styles.heroSubtitle}>
-            Manage security preferences and control who can see your profile information.
+            Manage security preferences and control who can see your profile
+            information.
           </Text>
         </View>
 
@@ -52,22 +88,27 @@ export default function StudentPrivacySecurityScreen({ navigation }: any) {
             icon="two-factor-authentication"
             title="Two-factor authentication"
             description="Extra verification when signing in"
-            value={twoFactor}
-            onValueChange={setTwoFactor}
+            value={settings.twoFactorEnabled}
+            onValueChange={value => void patch({ twoFactorEnabled: value })}
           />
           <ProfileSettingRow
             icon="bell-alert-outline"
             title="Login alerts"
             description="Notify on new device sign-in"
-            value={loginAlerts}
-            onValueChange={setLoginAlerts}
+            value={settings.loginAlerts}
+            onValueChange={value => void patch({ loginAlerts: value })}
           />
           <ProfileSettingRow
             icon="lock-reset"
             title="Change password"
             description="Update your account password"
             showChevron
-            onPress={() => Alert.alert('Coming soon', 'Password change will connect to Firebase auth.')}
+            onPress={() =>
+              Alert.alert(
+                'Coming soon',
+                'Password change will connect to Firebase auth.'
+              )
+            }
           />
         </ProfileSectionCard>
 
@@ -77,27 +118,12 @@ export default function StudentPrivacySecurityScreen({ navigation }: any) {
             icon="eye-outline"
             title="Profile visibility"
             description="Allow tutors to see your grade & interests"
-            value={profileVisible}
-            onValueChange={setProfileVisible}
-          />
-          <ProfileSettingRow
-            icon="download-outline"
-            title="Download my data"
-            description="Request a copy of your account data"
-            showChevron
-            onPress={() => Alert.alert('Request submitted', 'Mock — data export will be emailed when API is ready.')}
+            value={settings.profileVisibleToTutors}
+            onValueChange={value =>
+              void patch({ profileVisibleToTutors: value })
+            }
           />
         </ProfileSectionCard>
-
-        <CustomButton
-          title="Sign out all devices"
-          icon="logout"
-          backgroundColor="#FEF2F2"
-          textColor="#DC2626"
-          borderColor="#FECACA"
-          borderWidth={1}
-          onPress={() => Alert.alert('Mock action', 'Remote sign-out will be available with backend.')}
-        />
       </ScrollView>
     </SafeAreaView>
   );

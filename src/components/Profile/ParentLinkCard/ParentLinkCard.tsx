@@ -35,7 +35,7 @@ export default function ParentLinkCard({ onGenerateCode, loading }: Props) {
         {loading ? (
           <ActivityIndicator color="#059669" />
         ) : (
-          <Text style={styles.btnText}>Generate Code</Text>
+                <Text style={styles.btnText}>Generate Code</Text>
         )}
       </TouchableOpacity>
     </LinearGradient>

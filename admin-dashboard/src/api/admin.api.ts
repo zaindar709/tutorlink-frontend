@@ -81,6 +81,11 @@ export const mapBackendTutor = (raw: Record<string, unknown>): PendingTutor => {
       submittedAt: String(
         raw.submittedAt || raw.documentsSubmittedAt || new Date().toISOString()
       ),
+      approvedAt: raw.verifiedAt
+        ? String(raw.verifiedAt)
+        : raw.approvedAt
+          ? String(raw.approvedAt)
+          : undefined,
       interviewDate: raw.interviewDate
         ? String(raw.interviewDate)
         : raw.interviewScheduledAt
@@ -135,6 +140,7 @@ export const mapBackendTutor = (raw: Record<string, unknown>): PendingTutor => {
     submittedAt: String(
       raw.documentsSubmittedAt || raw.createdAt || new Date().toISOString()
     ),
+    approvedAt: raw.verifiedAt ? String(raw.verifiedAt) : undefined,
     interviewDate: raw.interviewScheduledAt
       ? String(raw.interviewScheduledAt)
       : undefined,
@@ -182,12 +188,58 @@ export const getMockDashboardData = (
   settings: MOCK_SETTINGS,
 });
 
+export const mergeTutorLists = (
+  pending: PendingTutor[],
+  approved: PendingTutor[]
+): PendingTutor[] => {
+  const byId = new Map<string, PendingTutor>();
+  for (const tutor of [...pending, ...approved]) {
+    byId.set(tutor.id, tutor);
+  }
+  return Array.from(byId.values());
+};
+
+export const fetchApprovedTutors = async (): Promise<PendingTutor[]> => {
+  const endpoints = [
+    '/api/admin/tutors/approved',
+    '/api/admin/tutors/verified',
+  ];
+
+  for (const path of endpoints) {
+    try {
+      const { data } = await api.get(path, {
+        params: { page: 1, limit: 50 },
+      });
+      return extractTutorList(data).map((t: Record<string, unknown>) => ({
+        ...mapBackendTutor(t),
+        status: 'approved' as const,
+      }));
+    } catch {
+      // Try next endpoint
+    }
+  }
+
+  try {
+    const { data } = await api.get('/api/admin/tutors/pending', {
+      params: { page: 1, limit: 50, status: 'approved' },
+    });
+    return extractTutorList(data).map((t: Record<string, unknown>) => ({
+      ...mapBackendTutor(t),
+      status: 'approved' as const,
+    }));
+  } catch {
+    return [];
+  }
+};
+
 export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
-  const [statsRes, tutorsRes, escrowRes, linksRes] = await Promise.allSettled([
+  const [statsRes, tutorsRes, approvedRes, escrowRes, linksRes] =
+    await Promise.allSettled([
     api.get('/api/admin/dashboard/stats'),
     api.get('/api/admin/tutors/pending', {
       params: { page: 1, limit: 50 },
     }),
+    fetchApprovedTutors(),
     api.get('/api/admin/billing/escrow', {
       params: { page: 1, limit: 20 },
     }),
@@ -211,6 +263,8 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
   const statsData =
     statsRes.status === 'fulfilled' ? statsRes.value.data?.data || {} : {};
   const tutorsRaw = extractTutorList(tutorsRes.value.data);
+  const approvedFromApi =
+    approvedRes.status === 'fulfilled' ? approvedRes.value : [];
   const escrowRaw =
     escrowRes.status === 'fulfilled'
       ? ((escrowRes.value.data?.data as Record<string, unknown>[]) || [])
@@ -220,8 +274,9 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
       ? ((linksRes.value.data?.data as Record<string, unknown>[]) || [])
       : [];
 
-    const pendingTutors: PendingTutor[] = tutorsRaw.map(
-      (t: Record<string, unknown>) => mapBackendTutor(t)
+    const pendingTutors: PendingTutor[] = mergeTutorLists(
+      tutorsRaw.map((t: Record<string, unknown>) => mapBackendTutor(t)),
+      approvedFromApi
     );
 
     const disputes: EscrowDispute[] = escrowRaw
@@ -298,7 +353,10 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
         escrowBalance: Number(statsData.totalEscrowBalance || 0),
         linkedParents: parentLinks.length,
         liveClassrooms: 0,
-        approvedTutors: Number(statsData.verifiedTutors || 0),
+        approvedTutors: Math.max(
+          Number(statsData.verifiedTutors || 0),
+          pendingTutors.filter(t => t.status === 'approved').length
+        ),
         totalStudents: Number(statsData.totalStudents || 0),
       },
       pendingTutors,

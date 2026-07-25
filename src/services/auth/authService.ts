@@ -69,6 +69,12 @@ const persistSession = async (
     token: idToken,
   };
   await saveAuthSession(session);
+
+  // Register FCM token after session is saved (needs Bearer token).
+  void import('../notifications/pushNotificationService')
+    .then(({ registerDeviceForPush }) => registerDeviceForPush())
+    .catch(error => console.warn('[Auth] push register failed', error));
+
   return session;
 };
 
@@ -214,6 +220,14 @@ export const loginWithGoogle = async (
 };
 
 export const logoutUser = async () => {
+  try {
+    const { unregisterDeviceForPush } = await import(
+      '../notifications/pushNotificationService'
+    );
+    await unregisterDeviceForPush();
+  } catch (error) {
+    console.warn('[Auth] push unregister failed', error);
+  }
   await firebaseSignOut();
   await clearAuthSession();
 };

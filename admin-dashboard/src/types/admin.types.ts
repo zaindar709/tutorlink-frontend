@@ -22,6 +22,7 @@ export interface PendingTutor {
   documents: TutorDocument[];
   status: TutorVerificationStatus;
   submittedAt: string;
+  approvedAt?: string;
   interviewDate?: string;
   rejectionReason?: string;
 }

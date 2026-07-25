@@ -1,39 +1,30 @@
 import { useState } from 'react';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLoginPage from './components/pages/AdminLoginPage';
-import { ADMIN_PREVIEW_KEY, ADMIN_TOKEN_KEY } from './config/firebase';
+import { ADMIN_TOKEN_KEY } from './config/firebase';
 import { setAdminAuthToken } from './api/admin.api';
+import type { NavSectionId } from './types/admin.types';
 
 const storedToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-const previewMode = sessionStorage.getItem(ADMIN_PREVIEW_KEY) === '1';
 
 if (storedToken) {
   setAdminAuthToken(storedToken);
 }
 
 export default function App() {
-  const [access, setAccess] = useState<'login' | 'dashboard'>(() => {
-    if (storedToken || previewMode) return 'dashboard';
-    return 'login';
-  });
-  const [isPreview, setIsPreview] = useState(previewMode && !storedToken);
+  const [access, setAccess] = useState<'login' | 'dashboard'>(() =>
+    storedToken ? 'dashboard' : 'login'
+  );
+  const [initialNav, setInitialNav] = useState<NavSectionId>('verification');
 
   if (access === 'login') {
     return (
       <AdminLoginPage
         onLoggedIn={() => {
-          sessionStorage.removeItem(ADMIN_PREVIEW_KEY);
           const nextToken = sessionStorage.getItem(ADMIN_TOKEN_KEY);
-          setIsPreview(false);
+          setInitialNav('verification');
           setAccess('dashboard');
           if (nextToken) setAdminAuthToken(nextToken);
-        }}
-        onPreview={() => {
-          sessionStorage.setItem(ADMIN_PREVIEW_KEY, '1');
-          sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-          setAdminAuthToken('');
-          setIsPreview(true);
-          setAccess('dashboard');
         }}
       />
     );
@@ -41,12 +32,10 @@ export default function App() {
 
   return (
     <AdminDashboard
-      previewMode={isPreview}
+      initialNav={initialNav}
       onLogout={() => {
         sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-        sessionStorage.removeItem(ADMIN_PREVIEW_KEY);
         setAdminAuthToken('');
-        setIsPreview(false);
         setAccess('login');
       }}
     />

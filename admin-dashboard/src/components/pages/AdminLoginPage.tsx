@@ -1,36 +1,24 @@
 import { useState } from 'react';
-import { ShieldCheck, UserPlus } from 'lucide-react';
-import {
-  registerAdminAccount,
-  signInAdminWithPassword,
-} from '../../services/adminAuth';
+import { ShieldCheck } from 'lucide-react';
+import { signInAdminWithPassword } from '../../services/adminAuth';
+import { ADMIN_EMAIL } from '../../config/adminCredentials';
 import { ADMIN_TOKEN_KEY } from '../../config/firebase';
 import { setAdminAuthToken } from '../../api/admin.api';
 
 interface AdminLoginPageProps {
   onLoggedIn: () => void;
-  onPreview: () => void;
 }
 
-type Mode = 'signin' | 'create';
-
-export default function AdminLoginPage({
-  onLoggedIn,
-  onPreview,
-}: AdminLoginPageProps) {
-  const [mode, setMode] = useState<Mode>('signin');
-  const [name, setName] = useState('TutorLink Admin');
-  const [email, setEmail] = useState('');
+export default function AdminLoginPage({ onLoggedIn }: AdminLoginPageProps) {
+  const [email, setEmail] = useState(ADMIN_EMAIL);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleSignIn = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
       const session = await signInAdminWithPassword(email.trim(), password);
@@ -41,41 +29,7 @@ export default function AdminLoginPage({
       setError(
         err instanceof Error
           ? err.message
-          : 'Could not sign in. Create an admin account first.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateAdmin = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-
-    try {
-      const result = await registerAdminAccount(
-        email.trim(),
-        password,
-        name.trim() || 'TutorLink Admin'
-      );
-
-      if (result.backendRegistered) {
-        sessionStorage.setItem(ADMIN_TOKEN_KEY, result.idToken);
-        setAdminAuthToken(result.idToken);
-        setSuccess(result.backendMessage);
-        setTimeout(() => onLoggedIn(), 1200);
-        return;
-      }
-
-      setSuccess(
-        `${result.backendMessage}\n\nMongoDB (if needed):\ndb.users.updateOne({ email: "${email.trim()}" }, { $set: { role: "admin" } })`
-      );
-      setMode('signin');
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Could not create admin account.'
+          : 'Could not sign in. Contact your backend administrator.'
       );
     } finally {
       setLoading(false);
@@ -94,172 +48,62 @@ export default function AdminLoginPage({
               TutorLink Admin
             </h1>
             <p className="text-sm text-slate-500">
-              Approve tutors from the mobile app
+              Sign in to review tutor registration requests
             </p>
           </div>
         </div>
 
-        <div className="mb-5 flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('signin');
-              setError(null);
-              setSuccess(null);
-            }}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-              mode === 'signin'
-                ? 'bg-white text-tl-primary shadow-sm'
-                : 'text-slate-500'
-            }`}
-          >
-            Sign in
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('create');
-              setError(null);
-              setSuccess(null);
-            }}
-            className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
-              mode === 'create'
-                ? 'bg-white text-tl-primary shadow-sm'
-                : 'text-slate-500'
-            }`}
-          >
-            Create admin (first time)
-          </button>
-        </div>
+        <p className="mb-5 rounded-xl bg-violet-50 px-4 py-3 text-xs leading-5 text-violet-900">
+          Admin accounts are created by your backend team via seed script only.
+          Use the credentials provided in <strong>.env.local</strong> — no
+          sign-up from this dashboard.
+        </p>
 
-        {mode === 'create' ? (
-          <form onSubmit={handleCreateAdmin} className="space-y-4">
-            <p className="rounded-xl bg-violet-50 px-4 py-3 text-xs leading-5 text-violet-900">
-              No credentials yet? Pick any email and password here — this creates
-              your admin login for Firebase project{' '}
-              <strong>tutor-link-62ed9</strong>.
+        <form onSubmit={handleSignIn} className="space-y-4">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              Admin email
+            </span>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="username"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
+              placeholder="admin@tutorlink.com"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+              Password
+            </span>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
+              placeholder="••••••••"
+            />
+          </label>
+
+          {error ? (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
             </p>
+          ) : null}
 
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Full name
-              </span>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
-                placeholder="TutorLink Admin"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Admin email
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
-                placeholder="you@example.com"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Password (min 6 characters)
-              </span>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
-                placeholder="Choose a password"
-              />
-            </label>
-
-            {error ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </p>
-            ) : null}
-            {success ? (
-              <pre className="whitespace-pre-wrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900">
-                {success}
-              </pre>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-tl-primary-dark to-tl-primary-light px-4 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 disabled:opacity-60"
-            >
-              <UserPlus className="h-4 w-4" />
-              {loading ? 'Creating…' : 'Create admin account'}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSignIn} className="space-y-4">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Admin email
-              </span>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
-                placeholder="you@example.com"
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
-                Password
-              </span>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-tl-primary focus:ring-2 focus:ring-violet-100"
-                placeholder="••••••••"
-              />
-            </label>
-
-            {error ? (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
-              </p>
-            ) : null}
-            {success ? (
-              <pre className="whitespace-pre-wrap rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-green-900">
-                {success}
-              </pre>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-tl-primary-dark to-tl-primary-light px-4 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 disabled:opacity-60"
-            >
-              {loading ? 'Signing in…' : 'Sign in to Dashboard'}
-            </button>
-          </form>
-        )}
-
-        <button
-          type="button"
-          onClick={onPreview}
-          className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-600 transition hover:border-violet-200 hover:text-tl-primary"
-        >
-          Preview UI only (no real tutor data)
-        </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-gradient-to-r from-tl-primary-dark to-tl-primary-light px-4 py-3 text-sm font-bold text-white shadow-md transition hover:-translate-y-0.5 disabled:opacity-60"
+          >
+            {loading ? 'Signing in…' : 'Sign in to Dashboard'}
+          </button>
+        </form>
       </div>
     </div>
   );

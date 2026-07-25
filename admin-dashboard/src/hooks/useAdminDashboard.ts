@@ -3,6 +3,7 @@ import {
   approveTutor,
   fetchDashboardData,
   getMockDashboardData,
+  mergeTutorLists,
   rejectTutor,
   removeApprovedTutor,
   resolveDispute,
@@ -14,7 +15,7 @@ import {
 } from '../api/admin.api';
 import type { AdminDashboardData, AdminSettings } from '../types/admin.types';
 
-export function useAdminDashboard(previewMode = false) {
+export function useAdminDashboard() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -29,17 +30,32 @@ export function useAdminDashboard(previewMode = false) {
     setLoading(true);
     setError(null);
 
-    if (previewMode) {
-      setData(getMockDashboardData());
-      setLoading(false);
-      return;
-    }
-
     try {
       const dashboard = await fetchDashboardData();
-      setData(dashboard);
+      setData(prev => {
+        if (!prev) return dashboard;
+
+        const approvedLocally = prev.pendingTutors.filter(
+          t => t.status === 'approved'
+        );
+        const mergedTutors = mergeTutorLists(
+          dashboard.pendingTutors,
+          approvedLocally
+        );
+
+        return {
+          ...dashboard,
+          pendingTutors: mergedTutors,
+          stats: {
+            ...dashboard.stats,
+            approvedTutors: Math.max(
+              dashboard.stats.approvedTutors ?? 0,
+              mergedTutors.filter(t => t.status === 'approved').length
+            ),
+          },
+        };
+      });
     } catch (err) {
-      setData(getMockDashboardData());
       setError(
         err instanceof Error
           ? err.message
@@ -48,7 +64,7 @@ export function useAdminDashboard(previewMode = false) {
     } finally {
       setLoading(false);
     }
-  }, [previewMode]);
+  }, []);
 
   useEffect(() => {
     loadDashboard();
@@ -62,14 +78,36 @@ export function useAdminDashboard(previewMode = false) {
 
   const handleApprove = async (tutorId: string) => {
     setActionLoading(tutorId);
+    const tutorName =
+      data?.pendingTutors.find(t => t.id === tutorId)?.name ?? 'Tutor';
+
     try {
       await approveTutor(tutorId);
+      setData(prev => {
+        if (!prev) return prev;
+        const updatedTutors = updateTutorStatus(
+          prev.pendingTutors,
+          tutorId,
+          'approved'
+        ).map(t =>
+          t.id === tutorId
+            ? { ...t, approvedAt: new Date().toISOString() }
+            : t
+        );
+        return {
+          ...prev,
+          pendingTutors: updatedTutors,
+          stats: {
+            ...prev.stats,
+            pendingTutors: updatedTutors.filter(t => t.status === 'pending')
+              .length,
+            approvedTutors: updatedTutors.filter(t => t.status === 'approved')
+              .length,
+          },
+        };
+      });
       await loadDashboard();
-      showToast(
-        `${
-          data?.pendingTutors.find(t => t.id === tutorId)?.name ?? 'Tutor'
-        } approved — now visible to students in search.`
-      );
+      showToast(`${tutorName} approved — now visible to students in search.`);
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : 'Failed to approve tutor on server.'
@@ -191,6 +229,7 @@ export function useAdminDashboard(previewMode = false) {
 
   return {
     dashboard,
+    data,
     loading,
     actionLoading,
     toast,

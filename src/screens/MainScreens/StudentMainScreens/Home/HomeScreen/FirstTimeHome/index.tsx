@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
@@ -67,12 +66,16 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
   const topTutor = tutors[0];
   const nextLesson = dashboard?.todaySchedule?.currentLessons?.[0];
 
-  const handleFindTutor = () => {
-    if (onFindTutorPress) {
+  const handleFindTutor = (viewAll = false) => {
+    if (onFindTutorPress && !viewAll) {
       onFindTutorPress();
       return;
     }
-    navigation.navigate('Search');
+    navigation.navigate('Search', viewAll ? { viewAll: true } : undefined);
+  };
+
+  const handleOpenSearchTab = () => {
+    navigation.navigate('Search', { focusSearch: true });
   };
 
   return (
@@ -102,7 +105,11 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
       </View>
 
       <LinearGradient
-        colors={['#3E76FF', '#1F4EFF']}
+        colors={[
+          colors.PRIMARY_COLOR as string,
+          '#5B2FD6',
+          '#4C1D95',
+        ]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.promoCard}
@@ -118,23 +125,29 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
         />
       </LinearGradient>
 
-      <View style={styles.searchCard}>
+      <TouchableOpacity
+        style={styles.searchCard}
+        activeOpacity={0.85}
+        onPress={handleOpenSearchTab}
+      >
         <Icon
           source="magnify"
           size={20}
           color={colors.PLACEHOLDER_TEXTCOLOR as string}
         />
-        <TextInput
-          placeholder="Search Subjects (e.g. Physics)"
-          placeholderTextColor={colors.PLACEHOLDER_TEXTCOLOR as string}
-          style={styles.searchInput}
-          onFocus={handleFindTutor}
-        />
-      </View>
+        <Text
+          style={[
+            styles.searchInput,
+            { color: colors.PLACEHOLDER_TEXTCOLOR as string },
+          ]}
+        >
+          Search Subjects (e.g. Physics)
+        </Text>
+      </TouchableOpacity>
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Top Tutors for You</Text>
-        <TouchableOpacity activeOpacity={0.8} onPress={handleFindTutor}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => handleFindTutor(true)}>
           <Text style={styles.viewAll}>View all</Text>
         </TouchableOpacity>
       </View>

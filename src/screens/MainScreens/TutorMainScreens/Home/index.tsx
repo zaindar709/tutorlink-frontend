@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, ActivityIndicator } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import Header from '../../../../components/Tutor/DashBoard/DashBoardHeader';
 import BalanceCard from '../../../../components/Tutor/DashBoard/BalanceCard';
@@ -8,10 +9,14 @@ import { BookingRequestCard } from '../../../../components/Tutor/DashBoard/Booki
 import { TodaySessionCard } from '../../../../components/Tutor/DashBoard/TodaySession';
 import { useBookings } from '../../../../hooks/api/useBookings';
 import { useWallet } from '../../../../hooks/api/useWallet';
-import { getBookingParticipantName } from '../../../../utils/api/bookingHelpers';
+import {
+  getBookingParticipantAvatar,
+  getBookingParticipantName,
+} from '../../../../utils/api/bookingHelpers';
 
 export default function DashboardScreen() {
   const { colors, resp } = useUi();
+  const navigation = useNavigation<any>();
   const { balance } = useWallet();
   const pendingBookings = useBookings('pending');
   const activeBookings = useBookings('active');
@@ -61,9 +66,11 @@ export default function DashboardScreen() {
   const todaySessions = activeBookings.bookings.map(booking => ({
     id: booking._id,
     name: getBookingParticipantName(booking, 'tutor'),
+    avatar: getBookingParticipantAvatar(booking),
     subject: booking.subject,
     time: booking.startTime,
     duration: `${booking.startTime} - ${booking.endTime}`,
+    meetingLink: booking.meetingLink,
   }));
 
   const screenStyles = styles(colors, resp);
@@ -142,7 +149,25 @@ export default function DashboardScreen() {
               <Text style={screenStyles.emptyText}>No sessions today.</Text>
             }
             renderItem={({ item }) => (
-              <TodaySessionCard item={item} colors={colors} resp={resp} />
+              <TodaySessionCard
+                item={item}
+                colors={colors}
+                resp={resp}
+                onMessage={() =>
+                  navigation.navigate('HomeNavigator', {
+                    screen: 'ChatScreen',
+                    params: {
+                      bookingId: item.id,
+                      peerName: item.name,
+                      peerAvatar: item.avatar,
+                      subject: item.subject,
+                    },
+                  })
+                }
+                onStartClassroom={() => {
+                  // meeting join handled elsewhere when link available
+                }}
+              />
             )}
           />
         )}

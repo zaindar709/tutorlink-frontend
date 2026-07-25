@@ -23,6 +23,9 @@ export default function TutorVerificationPage({
   const interview = dashboard.pendingTutors.filter(
     t => t.status === 'interview_scheduled'
   ).length;
+  const approved = dashboard.pendingTutors.filter(
+    t => t.status === 'approved'
+  ).length;
 
   return (
     <>
@@ -42,7 +45,7 @@ export default function TutorVerificationPage({
         />
         <StatCard
           title="Total Approved"
-          value={String(dashboard.stats.approvedTutors ?? 0)}
+          value={String(approved || (dashboard.stats.approvedTutors ?? 0))}
           icon={UserCheck}
           accent="#4AA570"
         />

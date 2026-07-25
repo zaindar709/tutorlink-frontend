@@ -38,6 +38,14 @@ const withTimeout = async <T>(
 
 export const clearAllAuth = async () => {
   try {
+    const { unregisterDeviceForPush } = await import(
+      '../notifications/pushNotificationService'
+    );
+    await unregisterDeviceForPush();
+  } catch {
+    // ignore
+  }
+  try {
     await firebaseSignOut();
   } catch {
     // ignore
@@ -111,6 +119,11 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
       role: restoredSession.role,
       userId: getUserId(restoredSession.user),
     });
+
+    void import('../notifications/pushNotificationService')
+      .then(({ registerDeviceForPush }) => registerDeviceForPush())
+      .catch(error => console.warn(LOG, 'push register failed', error));
+
     return restoredSession;
   } catch (error) {
     const status = error instanceof AxiosError ? error.response?.status : undefined;
@@ -146,10 +159,16 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
       };
       await saveAuthSession(fallbackSession);
       console.log(LOG, 'restore using cached session (backend slow/unreachable)');
+      void import('../notifications/pushNotificationService')
+        .then(({ registerDeviceForPush }) => registerDeviceForPush())
+        .catch(() => undefined);
       return fallbackSession;
     } catch {
       if (isTransient) {
         console.log(LOG, 'restore using stored session without refresh');
+        void import('../notifications/pushNotificationService')
+          .then(({ registerDeviceForPush }) => registerDeviceForPush())
+          .catch(() => undefined);
         return session;
       }
       await clearAllAuth();

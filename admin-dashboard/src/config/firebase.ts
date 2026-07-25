@@ -5,4 +5,3 @@ export const FIREBASE_API_KEY =
   'AIzaSyB_bCK0XJZG7cveYRZe1zztJQhDzC5RfXA';
 
 export const ADMIN_TOKEN_KEY = 'tutorlink_admin_token';
-export const ADMIN_PREVIEW_KEY = 'tutorlink_admin_preview';

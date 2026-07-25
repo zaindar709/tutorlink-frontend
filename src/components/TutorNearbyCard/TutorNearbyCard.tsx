@@ -1,14 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
 
+const DEFAULT_AVATAR =
+  'https://randomuser.me/api/portraits/lego/1.jpg';
 
 type TutorNearbyCardProps = {
   name: string;
   subject: string;
   distance: string;
-  rate: string;
+  rating: number;
+  avatarUrl?: string;
   isSelected: boolean;
   onPress: () => void;
 };
@@ -17,31 +20,57 @@ const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
   name,
   subject,
   distance,
-  rate,
+  rating,
+  avatarUrl,
   isSelected,
   onPress,
 }) => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp, isSelected);
+  const roundedRating = Math.round(rating);
 
   return (
     <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={onPress}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{name.charAt(0)}</Text>
+      <View style={styles.avatarWrapper}>
+        <Image
+          source={{ uri: avatarUrl || DEFAULT_AVATAR }}
+          style={styles.avatarImage}
+        />
+        <View style={styles.onlineDot} />
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.subject}>{subject}</Text>
+        <Text style={styles.name} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={styles.subject} numberOfLines={1}>
+          {subject}
+        </Text>
+
+        <View style={styles.ratingRow}>
+          {[...Array(5)].map((_, index) => (
+            <Icon
+              key={index}
+              source="star"
+              size={resp.df(13)}
+              color={
+                index < roundedRating
+                  ? (colors.YELLOW_COLOR as string)
+                  : (colors.GRAY_COLOR as string)
+              }
+            />
+          ))}
+          <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+        </View>
 
         <View style={styles.detailsRow}>
           <View style={styles.detailPill}>
-            <Icon source="map-marker-radius" size={14} color={colors.PRIMARY_COLOR as string} />
+            <Icon
+              source="map-marker-radius"
+              size={14}
+              color={colors.PRIMARY_COLOR as string}
+            />
             <Text style={styles.detailText}>{distance}</Text>
-          </View>
-          <View style={styles.detailPill}>
-            <Icon source="star" size={14} color={colors.YELLOW_COLOR as string} />
-            <Text style={styles.detailText}>{rate}</Text>
           </View>
         </View>
       </View>
@@ -59,7 +88,7 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
   StyleSheet.create({
     card: {
       width: resp.pw(85),
-      minHeight: resp.dy(96),
+      minHeight: resp.dy(108),
       borderRadius: resp.dx(24),
       backgroundColor: colors.WHITE_COLOR,
       padding: resp.dy(14),
@@ -74,18 +103,27 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       elevation: 4,
       marginBottom: resp.dy(14),
     },
-    avatar: {
-      width: resp.dx(52),
-      height: resp.dx(52),
-      borderRadius: resp.dx(16),
-      backgroundColor: colors.PRIMARY_COLOR + '20',
-      justifyContent: 'center',
-      alignItems: 'center',
+    avatarWrapper: {
+      width: resp.dx(56),
+      height: resp.dx(56),
+      borderRadius: resp.dx(18),
+      overflow: 'hidden',
+      backgroundColor: colors.PRIMARY_COLOR + '15',
     },
-    avatarText: {
-      color: colors.PRIMARY_COLOR,
-      fontSize: resp.df(18),
-      fontWeight: '700',
+    avatarImage: {
+      width: '100%',
+      height: '100%',
+    },
+    onlineDot: {
+      position: 'absolute',
+      bottom: 2,
+      right: 2,
+      width: resp.dx(11),
+      height: resp.dx(11),
+      borderRadius: resp.dx(6),
+      backgroundColor: '#1ED760',
+      borderWidth: 2,
+      borderColor: colors.WHITE_COLOR,
     },
     content: {
       flex: 1,
@@ -95,12 +133,24 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       color: colors.BLACK_COLOR,
       fontSize: resp.df(16),
       fontWeight: '700',
-      marginBottom: resp.dy(4),
+      marginBottom: resp.dy(2),
     },
     subject: {
       color: colors.SPACES_COLOR,
       fontSize: resp.df(13),
-      marginBottom: resp.dy(10),
+      marginBottom: resp.dy(6),
+    },
+    ratingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: resp.dx(2),
+      marginBottom: resp.dy(6),
+    },
+    ratingText: {
+      color: colors.BLACK_COLOR,
+      fontSize: resp.df(12),
+      fontWeight: '600',
+      marginLeft: resp.dx(4),
     },
     detailsRow: {
       flexDirection: 'row',
@@ -110,11 +160,11 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
     detailPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginRight: resp.dx(12),
     },
     detailText: {
       color: colors.GRAY_COLOR,
       fontSize: resp.df(12),
+      marginLeft: resp.dx(4),
     },
     actionWrapper: {
       backgroundColor: colors.PRIMARY_COLOR,

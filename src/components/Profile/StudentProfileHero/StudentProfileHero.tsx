@@ -29,35 +29,65 @@ export default function StudentProfileHero({
 }: Props) {
   const { colors, resp } = useUi();
   const avatarSize = resp.dx(88);
+  const canEditAvatar = typeof onAvatarPress === 'function';
+
+  const AvatarInner = (
+    <>
+      {loading ? (
+        <ActivityIndicator color={colors.PRIMARY_COLOR} />
+      ) : avatarUri ? (
+        <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+      ) : (
+        <MaterialCommunityIcons
+          name="account-outline"
+          size={resp.df(40)}
+          color={colors.PRIMARY_COLOR}
+        />
+      )}
+      {canEditAvatar ? (
+        <View
+          style={[styles.cameraBadge, { backgroundColor: colors.PRIMARY_COLOR }]}
+        >
+          <MaterialCommunityIcons name="camera-plus" size={14} color="#fff" />
+        </View>
+      ) : null}
+    </>
+  );
 
   return (
     <View style={[styles.hero, { backgroundColor: colors.PRIMARY_COLOR }]}>
       <Text style={styles.screenTitle}>Profile</Text>
 
       <View style={styles.profileBox}>
-        <TouchableOpacity
-          onPress={onAvatarPress}
-          activeOpacity={0.85}
-          style={[
-            styles.avatarWrap,
-            { width: avatarSize, height: avatarSize, borderRadius: avatarSize / 2 },
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.PRIMARY_COLOR} />
-          ) : avatarUri ? (
-            <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-          ) : (
-            <MaterialCommunityIcons
-              name="account-outline"
-              size={resp.df(40)}
-              color={colors.PRIMARY_COLOR}
-            />
-          )}
-          <View style={[styles.cameraBadge, { backgroundColor: colors.PRIMARY_COLOR }]}>
-            <MaterialCommunityIcons name="camera-plus" size={14} color="#fff" />
+        {canEditAvatar ? (
+          <TouchableOpacity
+            onPress={onAvatarPress}
+            activeOpacity={0.85}
+            style={[
+              styles.avatarWrap,
+              {
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: avatarSize / 2,
+              },
+            ]}
+          >
+            {AvatarInner}
+          </TouchableOpacity>
+        ) : (
+          <View
+            style={[
+              styles.avatarWrap,
+              {
+                width: avatarSize,
+                height: avatarSize,
+                borderRadius: avatarSize / 2,
+              },
+            ]}
+          >
+            {AvatarInner}
           </View>
-        </TouchableOpacity>
+        )}
 
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.grade}>{grade}</Text>

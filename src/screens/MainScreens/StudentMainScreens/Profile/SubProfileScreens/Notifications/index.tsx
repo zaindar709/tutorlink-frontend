@@ -1,5 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  ScrollView,
+  Text,
+  View,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ProfileSubHeader,
@@ -8,16 +14,59 @@ import {
   createProfileSubScreenStyles,
 } from '../../../../../../components/Profile';
 import useUi from '../../../../../../hooks/ui/useUi';
-import { MOCK_NOTIFICATION_PREFS } from '../../../../../../constants/studentProfileMockData';
+import { useStudentNotificationSettings } from '../../../../../../hooks/api/useStudentSettings';
+
+const PREF_META = [
+  {
+    id: 'booking' as const,
+    title: 'Booking reminders',
+    description: 'Alerts before upcoming sessions',
+    icon: 'calendar-clock',
+  },
+  {
+    id: 'messages' as const,
+    title: 'New messages',
+    description: 'When a tutor sends you a message',
+    icon: 'message-text-outline',
+  },
+  {
+    id: 'promotions' as const,
+    title: 'Offers & promotions',
+    description: 'Discounts and platform updates',
+    icon: 'tag-outline',
+  },
+  {
+    id: 'parent' as const,
+    title: 'Parent link updates',
+    description: 'When a parent links your account',
+    icon: 'account-group-outline',
+  },
+];
 
 export default function StudentNotificationsScreen({ navigation }: any) {
   const { colors } = useUi();
   const styles = useMemo(() => createProfileSubScreenStyles(colors), [colors]);
-  const [prefs, setPrefs] = useState(MOCK_NOTIFICATION_PREFS);
+  const { settings, loading, error, update } = useStudentNotificationSettings();
 
-  const togglePref = (id: string, enabled: boolean) => {
-    setPrefs(prev => prev.map(item => (item.id === id ? { ...item, enabled } : item)));
+  const toggle = async (key: keyof typeof settings, value: boolean) => {
+    const ok = await update({ [key]: value });
+    if (!ok) {
+      Alert.alert('Update failed', error || 'Could not save preference.');
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: 'center', alignItems: 'center' },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -26,22 +75,21 @@ export default function StudentNotificationsScreen({ navigation }: any) {
         <View style={styles.heroCard}>
           <Text style={styles.heroTitle}>Stay in the loop</Text>
           <Text style={styles.heroSubtitle}>
-            Choose which alerts you want to receive. Changes are saved locally for now.
+            Choose which alerts you want to receive. Changes sync to your
+            account.
           </Text>
         </View>
 
         <ProfileSectionCard title="Push & in-app alerts">
-          {prefs.map((pref, index) => (
-            <View key={pref.id}>
-              <ProfileSettingRow
-                icon={pref.icon}
-                title={pref.title}
-                description={pref.description}
-                value={pref.enabled}
-                onValueChange={value => togglePref(pref.id, value)}
-              />
-              {index < prefs.length - 1 ? null : null}
-            </View>
+          {PREF_META.map(pref => (
+            <ProfileSettingRow
+              key={pref.id}
+              icon={pref.icon}
+              title={pref.title}
+              description={pref.description}
+              value={Boolean(settings[pref.id])}
+              onValueChange={value => void toggle(pref.id, value)}
+            />
           ))}
         </ProfileSectionCard>
 
@@ -50,9 +98,11 @@ export default function StudentNotificationsScreen({ navigation }: any) {
             icon="moon-waning-crescent"
             iconColor="#6366F1"
             title="Do not disturb"
-            description="Silence non-urgent alerts from 10 PM – 7 AM"
-            value={false}
-            onValueChange={() => {}}
+            description={`Silence non-urgent alerts from ${settings.quietHoursStart || '22:00'} – ${settings.quietHoursEnd || '07:00'}`}
+            value={Boolean(settings.quietHoursEnabled)}
+            onValueChange={value =>
+              void toggle('quietHoursEnabled', value)
+            }
           />
         </ProfileSectionCard>
       </ScrollView>

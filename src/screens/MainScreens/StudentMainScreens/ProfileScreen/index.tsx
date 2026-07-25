@@ -1,7 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import useUi from '../../../../hooks/ui/useUi';
 import {
   MenuItemCard,
@@ -11,8 +17,8 @@ import {
 import CustomButton from '../../../../components/CustomButton';
 import { logout } from '../../../../store/auth/authSlice';
 import { logoutUser } from '../../../../services/auth/authService';
-import { useStudentProfileLocal } from '../../../../hooks/ui/useStudentProfileLocal';
-import { useProfileImagePicker } from '../../../../hooks/ui/useProfileImagePicker';
+import { useProfile } from '../../../../hooks/api/useProfile';
+import { getDisplayName } from '../../../../utils/api/bookingHelpers';
 
 type MenuItem = {
   title: string;
@@ -100,17 +106,14 @@ export default function ProfileScreen() {
   const styles = createStyles({ colors, resp });
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
-  const { profile, loading, refresh, setAvatarUri } = useStudentProfileLocal();
+  const authUser = useSelector((state: any) => state.auth.user);
+  const { profile, loading, refresh } = useProfile();
 
   useFocusEffect(
     React.useCallback(() => {
       void refresh();
     }, [refresh])
   );
-
-  const { openPicker } = useProfileImagePicker(uri => {
-    void setAvatarUri(uri);
-  });
 
   const navigateTo = (screen: string) => {
     navigation.navigate('HomeNavigator', { screen });
@@ -124,21 +127,35 @@ export default function ProfileScreen() {
     );
   }
 
-  const displayName = profile?.name || 'Student';
-  const displayGrade = profile?.grade || 'Not set';
-  const displayId = profile?.publicId || '—';
+  const authDisplayName = getDisplayName(authUser);
+  const displayName =
+    profile?.name ||
+    (authUser?.name || authUser?.fullName
+      ? authDisplayName
+      : authDisplayName);
+  const displayGrade =
+    profile?.displayGrade || profile?.grade || authUser?.grade || 'Not set';
+  const displayId =
+    profile?.displayStudentId ||
+    profile?.publicId ||
+    authUser?.id ||
+    authUser?._id ||
+    '—';
+  const displayAvatar =
+    profile?.avatarUrl || authUser?.avatarUrl || null;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <StudentProfileHero
         name={displayName}
         grade={displayGrade}
-        publicId={displayId}
-        avatarUri={profile?.avatarUri}
-        onAvatarPress={openPicker}
+        publicId={String(displayId)}
+        avatarUri={displayAvatar}
       />
 
-      <ParentLinkCard onGenerateCode={() => navigateTo('StudentLinkParentScreen')} />
+      <ParentLinkCard
+        onGenerateCode={() => navigateTo('StudentLinkParentScreen')}
+      />
 
       <View style={styles.menuWrapper}>
         {MENU_ITEMS.map(item => (

@@ -174,7 +174,12 @@ const BookingScreen = () => {
             onMessage={() =>
               navigation.navigate('HomeNavigator', {
                 screen: 'ChatScreen',
-                params: { chatId: 'c1' },
+                params: {
+                  bookingId: nextSession._id,
+                  peerName: getBookingParticipantName(nextSession, 'student'),
+                  peerAvatar: getBookingParticipantAvatar(nextSession),
+                  subject: nextSession.subject,
+                },
               })
             }
             onAddCalendar={() => {}}

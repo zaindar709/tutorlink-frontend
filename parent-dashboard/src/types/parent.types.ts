@@ -68,6 +68,14 @@ export interface ProgressSnapshot {
   trend: 'up' | 'down' | 'stable';
   sessionsCompleted: number;
   lastUpdated: string;
+  /** Letter grade shown on subject cards */
+  grade?: string;
+  /** Syllabus completion % (0–100) */
+  syllabusCovered?: number;
+  /** e.g. +5 or -3 for trend pill */
+  trendDelta?: number;
+  /** Mini spark bars (typically 5 values 0–100) */
+  weeklyBars?: number[];
 }
 
 export interface WeeklyProgressPoint {

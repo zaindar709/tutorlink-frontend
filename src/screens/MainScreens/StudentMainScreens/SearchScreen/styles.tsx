@@ -55,6 +55,15 @@ export const createStyles = (colors: any, resp: any) =>
       borderRadius: resp.dx(10),
       marginBottom: resp.dy(-6),
       zIndex: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: resp.dx(3),
+    },
+
+    ratingStar: {
+      color: '#fff',
+      fontSize: resp.df(9),
+      fontWeight: '700',
     },
 
     ratingText: {
@@ -93,51 +102,20 @@ export const createStyles = (colors: any, resp: any) =>
       borderWidth: 2,
       borderColor: colors.WHITE_COLOR,
     },
-    bottomSheet: {
+    errorBanner: {
       position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: '#F7F7F7',
-      borderTopLeftRadius: resp.dx(30),
-      borderTopRightRadius: resp.dx(30),
-      paddingTop: resp.dy(18),
-      maxHeight: resp.dy(320),
+      top: resp.dy(72),
+      left: resp.dx(16),
+      right: resp.dx(16),
+      zIndex: 20,
+      backgroundColor: '#FFF4E5',
+      borderRadius: resp.dx(12),
+      paddingHorizontal: resp.dx(12),
+      paddingVertical: resp.dy(8),
     },
-
-    listHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: resp.dx(18),
-      marginBottom: resp.dy(14),
-    },
-
-    listTitle: {
-      fontSize: resp.df(18),
-      fontWeight: '800',
-      color: colors.BLACK_COLOR,
-    },
-
-    listCount: {
-      marginTop: resp.dy(4),
-      fontSize: resp.df(13),
-      color: colors.SPACES_COLOR,
-    },
-
-    viewAllText: {
-      color: colors.PRIMARY_COLOR,
-      fontWeight: '700',
-      fontSize: resp.df(13),
-    },
-
-    listContainer: {
-      flex: 1,
-      alignSelf: 'center',
-    },
-
-    listContent: {
-      paddingHorizontal: resp.dx(16),
-      paddingBottom: resp.dy(25),
+    errorText: {
+      color: '#9A6700',
+      fontSize: resp.df(12),
+      fontWeight: '600',
     },
   });

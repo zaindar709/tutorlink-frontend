@@ -1,4 +1,7 @@
 import { API_BASE_URL } from '../api/admin.api';
+import {
+  assertAllowedAdminCredentials,
+} from '../config/adminCredentials';
 import { FIREBASE_API_KEY } from '../config/firebase';
 
 type FirebaseSignInResponse = {
@@ -14,56 +17,54 @@ type FirebaseErrorResponse = {
   };
 };
 
-const firebaseAuthUrl = (action: 'signInWithPassword' | 'signUp') =>
-  `https://identitytoolkit.googleapis.com/v1/accounts:${action}?key=${FIREBASE_API_KEY}`;
+const firebaseAuthUrl = () =>
+  `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
 
 const parseFirebaseError = (json: FirebaseErrorResponse) =>
   (json.error?.message || 'Authentication failed').replace(/_/g, ' ');
+
+export const verifyAdminRole = async (
+  idToken: string,
+  firebaseUid: string,
+  email: string
+): Promise<void> => {
+  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ email, firebaseUid }),
+  });
+
+  const json = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      json?.message ||
+        'Backend rejected login. Use the seeded admin account (role: admin).'
+    );
+  }
+
+  const role =
+    json?.data?.user?.role ?? json?.user?.role ?? json?.data?.role ?? '';
+
+  if (role !== 'admin') {
+    throw new Error('Access denied. This account does not have admin role.');
+  }
+};
 
 export const signInAdminWithPassword = async (
   email: string,
   password: string
 ): Promise<FirebaseSignInResponse> => {
-  const response = await fetch(firebaseAuthUrl('signInWithPassword'), {
+  assertAllowedAdminCredentials(email, password);
+
+  const response = await fetch(firebaseAuthUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email,
-      password,
-      returnSecureToken: true,
-    }),
-  });
-
-  const json = (await response.json()) as
-    | FirebaseSignInResponse
-    | FirebaseErrorResponse;
-
-  if (!response.ok) {
-    throw new Error(parseFirebaseError(json as FirebaseErrorResponse));
-  }
-
-  return json as FirebaseSignInResponse;
-};
-
-export type AdminSetupResult = FirebaseSignInResponse & {
-  backendRegistered: boolean;
-  backendMessage: string;
-};
-
-/**
- * One-time setup: creates Firebase user + registers admin profile on backend.
- * If backend rejects role "admin", update MongoDB manually (message included).
- */
-export const registerAdminAccount = async (
-  email: string,
-  password: string,
-  name: string
-): Promise<AdminSetupResult> => {
-  const response = await fetch(firebaseAuthUrl('signUp'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      email,
+      email: email.trim(),
       password,
       returnSecureToken: true,
     }),
@@ -79,65 +80,7 @@ export const registerAdminAccount = async (
 
   const session = json as FirebaseSignInResponse;
 
-  let backendRegistered = false;
-  let backendMessage =
-    'Firebase account created. Ask your backend dev to set role: admin in the database for this email, then sign in.';
+  await verifyAdminRole(session.idToken, session.localId, email.trim());
 
-  try {
-    const registerRes = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.idToken}`,
-      },
-      body: JSON.stringify({
-        firebaseUid: session.localId,
-        name,
-        email,
-        role: 'admin',
-      }),
-    });
-
-    const registerJson = await registerRes.json().catch(() => ({}));
-
-    if (registerRes.ok) {
-      backendRegistered = true;
-      backendMessage =
-        'Admin account created. You can now sign in and approve tutors.';
-    } else if (registerRes.status === 400) {
-      const loginRes = await fetch(`${API_BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.idToken}`,
-        },
-        body: JSON.stringify({
-          email,
-          firebaseUid: session.localId,
-        }),
-      });
-
-      if (loginRes.ok) {
-        backendMessage =
-          'Firebase account exists. If sign-in shows Forbidden, set role: admin in MongoDB for this email.';
-      } else {
-        backendMessage =
-          registerJson?.message ||
-          'Firebase OK — backend profile may need role: admin set manually in MongoDB.';
-      }
-    } else {
-      backendMessage =
-        registerJson?.message ||
-        `Backend register failed (${registerRes.status}). Set role: admin in MongoDB for ${email}.`;
-    }
-  } catch {
-    backendMessage =
-      'Firebase account created but backend is unreachable. Set role: admin in MongoDB, then sign in.';
-  }
-
-  return {
-    ...session,
-    backendRegistered,
-    backendMessage,
-  };
+  return session;
 };

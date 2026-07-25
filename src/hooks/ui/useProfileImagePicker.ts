@@ -4,18 +4,30 @@ import {
   launchCamera,
   launchImageLibrary,
   ImagePickerResponse,
+  Asset,
 } from 'react-native-image-picker';
 
-type PickResult = { uri: string } | null;
+export type PickedProfileImage = {
+  uri: string;
+  type?: string;
+  name?: string;
+};
 
-const pickFromResponse = (response: ImagePickerResponse): PickResult => {
+const pickFromResponse = (
+  response: ImagePickerResponse
+): PickedProfileImage | null => {
   if (response.didCancel || response.errorCode) return null;
-  const uri = response.assets?.[0]?.uri;
-  return uri ? { uri } : null;
+  const asset: Asset | undefined = response.assets?.[0];
+  if (!asset?.uri) return null;
+  return {
+    uri: asset.uri,
+    type: asset.type || 'image/jpeg',
+    name: asset.fileName || `avatar-${Date.now()}.jpg`,
+  };
 };
 
 export const useProfileImagePicker = (
-  onPicked: (uri: string) => void
+  onPicked: (file: PickedProfileImage) => void
 ) => {
   const handleGallery = useCallback(async () => {
     const response = await launchImageLibrary({
@@ -24,7 +36,7 @@ export const useProfileImagePicker = (
       selectionLimit: 1,
     });
     const result = pickFromResponse(response);
-    if (result?.uri) onPicked(result.uri);
+    if (result) onPicked(result);
   }, [onPicked]);
 
   const handleCamera = useCallback(async () => {
@@ -35,7 +47,7 @@ export const useProfileImagePicker = (
       cameraType: 'front',
     });
     const result = pickFromResponse(response);
-    if (result?.uri) onPicked(result.uri);
+    if (result) onPicked(result);
   }, [onPicked]);
 
   const openPicker = useCallback(() => {

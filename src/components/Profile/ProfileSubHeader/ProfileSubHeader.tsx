@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import BackButton from '../BackButton/BackButton';
-import useUi from '../../hooks/ui/useUi';
+import BackButton from '../../../components/BackButton/BackButton';
+import useUi from '../../../hooks/ui/useUi';
 
 type Props = {
   navigation: { goBack: () => void };

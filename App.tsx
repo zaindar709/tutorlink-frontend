@@ -7,10 +7,12 @@ import RootNavigator from './src/navigations/RootNavigator/RootNavigator';
 import { store } from './src/store/store';
 import { configureGoogleSignIn } from './src/services/googleSignin';
 import { navigationRef } from './src/navigation/navigationRef';
+import { initPushListeners } from './src/services/notifications/pushNotificationService';
 
 export default function App() {
   useEffect(() => {
     configureGoogleSignIn();
+    return initPushListeners();
   }, []);
 
   return (

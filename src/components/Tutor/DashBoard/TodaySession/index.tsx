@@ -11,12 +11,16 @@ interface Props {
   item: any;
   colors: any;
   resp: any;
+  onStartClassroom?: () => void;
+  onMessage?: () => void;
 }
 
 export const TodaySessionCard = ({
   item,
   colors,
   resp,
+  onStartClassroom,
+  onMessage,
 }: Props) => {
   return (
     <View style={styles(resp).card}>
@@ -30,37 +34,41 @@ export const TodaySessionCard = ({
         </View>
 
         <View style={styles(resp).infoContainer}>
-          <Text style={styles(resp).name}>
-            {item.name}
-          </Text>
-
-          <Text style={styles(resp).subject}>
-            {item.subject}
-          </Text>
+          <Text style={styles(resp).name}>{item.name}</Text>
+          <Text style={styles(resp).subject}>{item.subject}</Text>
         </View>
 
         <View style={styles(resp).timeContainer}>
-          <Text style={styles(resp).time}>
-            {item.time}
-          </Text>
-
-          <Text style={styles(resp).duration}>
-            {item.duration}
-          </Text>
+          <Text style={styles(resp).time}>{item.time}</Text>
+          <Text style={styles(resp).duration}>{item.duration}</Text>
         </View>
       </View>
 
-      <TouchableOpacity style={styles(resp).button}>
-        <Ionicons
-          name="videocam-outline"
-          size={resp.df(16)}
-          color="#fff"
-        />
+      <View style={styles(resp).actions}>
+        <TouchableOpacity
+          style={styles(resp).secondaryButton}
+          onPress={onMessage}
+        >
+          <Ionicons
+            name="chatbubble-ellipses-outline"
+            size={resp.df(16)}
+            color="#3366E8"
+          />
+          <Text style={styles(resp).secondaryButtonText}>Message</Text>
+        </TouchableOpacity>
 
-        <Text style={styles(resp).buttonText}>
-          Start Classroom
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles(resp).button}
+          onPress={onStartClassroom}
+        >
+          <Ionicons
+            name="videocam-outline"
+            size={resp.df(16)}
+            color="#fff"
+          />
+          <Text style={styles(resp).buttonText}>Start Classroom</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -123,8 +131,33 @@ const styles = (resp: any) =>
       marginTop: 4,
     },
 
-    button: {
+    actions: {
       marginTop: resp.dy(14),
+      flexDirection: 'row',
+      gap: resp.dx(8),
+    },
+
+    secondaryButton: {
+      flex: 1,
+      height: resp.dy(46),
+      borderRadius: resp.dx(12),
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: '#BFDBFE',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+
+    secondaryButtonText: {
+      color: '#3366E8',
+      fontWeight: '700',
+      fontSize: resp.df(13),
+      marginLeft: resp.dx(6),
+    },
+
+    button: {
+      flex: 1.4,
       height: resp.dy(46),
       borderRadius: resp.dx(12),
       backgroundColor: '#3366E8',
@@ -136,7 +169,7 @@ const styles = (resp: any) =>
     buttonText: {
       color: '#fff',
       fontWeight: '700',
-      fontSize: resp.df(14),
+      fontSize: resp.df(13),
       marginLeft: resp.dx(8),
     },
   });

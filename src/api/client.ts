@@ -134,14 +134,25 @@ api.interceptors.response.use(
     const requestUrl = error?.config?.url ?? '';
     const isOnboardingRoute = requestUrl.includes('/api/tutor/onboarding');
     const isAuthRoute = requestUrl.includes('/api/auth/');
+    const isSoftLinkedParents404 =
+      error?.response?.status === 404 &&
+      typeof requestUrl === 'string' &&
+      requestUrl.includes('/api/profile/linked-parents');
+    const isSoftDeviceToken404 =
+      error?.response?.status === 404 &&
+      typeof requestUrl === 'string' &&
+      requestUrl.includes('/api/notifications/device-token');
 
-    console.error(LOG, 'response ERROR', {
-      url: requestUrl,
-      status: error?.response?.status,
-      message: error?.message,
-      data: error?.response?.data,
-      hasAuthHeader: !!error?.config?.headers?.Authorization,
-    });
+    // Backend route may be missing; frontend treats this as empty list.
+    if (!isSoftLinkedParents404 && !isSoftDeviceToken404) {
+      console.error(LOG, 'response ERROR', {
+        url: requestUrl,
+        status: error?.response?.status,
+        message: error?.message,
+        data: error?.response?.data,
+        hasAuthHeader: !!error?.config?.headers?.Authorization,
+      });
+    }
 
     // Only kick to auth when a real authenticated request was rejected.
     // Preview/UI mode (no Bearer token) must not bounce to onboarding.

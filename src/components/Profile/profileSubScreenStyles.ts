@@ -4,7 +4,7 @@ export const createProfileSubScreenStyles = (colors: Record<string, string>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#F8FBFF',
+      backgroundColor: '#FFFFFF',
     },
     content: {
       padding: 16,
