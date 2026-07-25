@@ -51,10 +51,7 @@ const ChatListScreen = () => {
     tutors,
     loading: tutorsLoading,
     search: searchTutors,
-  } = useTutorSearch(
-    { availability: true, minRating: 4 },
-    { autoLoad: true }
-  );
+  } = useTutorSearch({}, { autoLoad: true });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -160,7 +157,7 @@ const ChatListScreen = () => {
   const onRefresh = useCallback(async () => {
     await refresh();
     if (isStudent) {
-      await searchTutors({ availability: true, minRating: 4 });
+      await searchTutors({}, { replace: true });
     }
   }, [isStudent, refresh, searchTutors]);
 

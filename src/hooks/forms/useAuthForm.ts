@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
@@ -20,8 +20,16 @@ import {
 } from '../../services/tutor/tutorOnboardingService';
 import { getTutorResetRoute } from '../../utils/tutor/tutorNavigation';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
+import { warmupApi } from '../../services/api/apiWarmup';
+import { formatAuthTimingForAlert } from '../../utils/debug/speedLog';
 
 type Mode = 'login' | 'signup';
+
+/** Log only — Alert before navigation.reset races FCM permission and crashes Hermes. */
+const logAuthTiming = (title: string, body: string) => {
+  const timing = formatAuthTimingForAlert();
+  console.log('[Auth]', title, body, timing || '');
+};
 
 export const useAuthForm = (
   mode: Mode,
@@ -35,6 +43,11 @@ export const useAuthForm = (
 ) => {
   const dispatch = useDispatch();
   const navigation = useNavigation<any>();
+
+  useEffect(() => {
+    // Wake Render while the user is typing credentials.
+    void warmupApi();
+  }, []);
 
   const [form, setForm] = useState({
     fullName: '',
@@ -196,6 +209,14 @@ export const useAuthForm = (
         })
       );
 
+      logAuthTiming(
+        mode === 'login' ? 'Login OK' : 'Signup OK',
+        mode === 'login'
+          ? 'Signed in successfully.'
+          : 'Account created successfully.'
+      );
+
+      // Navigate first; push permission is scheduled after interactions settle.
       await navigateAfterAuth(session.role, mode === 'signup', activeOptions);
     } catch (error) {
       const message = getApiErrorMessage(error);
@@ -203,6 +224,9 @@ export const useAuthForm = (
         message.toLowerCase().includes('already') ||
         message.toLowerCase().includes('exists') ||
         message.toLowerCase().includes('registered');
+      const isMissingProfile =
+        message.toLowerCase().includes('not found') ||
+        (error as { response?: { status?: number } })?.response?.status === 404;
 
       const loginScreen =
         role === 'tutor'
@@ -211,11 +235,21 @@ export const useAuthForm = (
             ? 'ParentLinkRedeemScreen'
             : 'StudentLoginScreen';
 
+      const alertBody = isMissingProfile
+        ? `${message}\n\nFirebase account exists but server profile was missing. Try again — app will create it.`
+        : isExistingAccount
+          ? message ||
+            'This email is already registered. Please log in instead.'
+          : message;
+
+      const timing = formatAuthTimingForAlert();
       Alert.alert(
-        isExistingAccount ? 'Account already exists' : 'Authentication failed',
         isExistingAccount
-          ? message || 'This email is already registered. Please log in instead.'
-          : message,
+          ? 'Account already exists'
+          : isMissingProfile
+            ? 'Profile not found'
+            : 'Authentication failed',
+        timing ? `${alertBody}\n\n${timing}` : alertBody,
         isExistingAccount
           ? [
               { text: 'Cancel', style: 'cancel' },

@@ -5,6 +5,7 @@ import {
   waitForFirebaseAuth,
 } from './firebaseAuthService';
 import { getAuthProfileAPI } from '../../api/auth.api';
+import { clearCachedAuthToken, setCachedAuthToken } from '../../api/client';
 import {
   AuthSession,
   clearAuthSession,
@@ -12,29 +13,10 @@ import {
   saveAuthSession,
 } from '../storage';
 import { getUserId } from '../../utils/api/userId';
+import { withTimeout } from '../../utils/async/withTimeout';
+import { warmupApi } from '../api/apiWarmup';
 
 const LOG = '[Bootstrap]';
-
-const withTimeout = async <T>(
-  promise: Promise<T>,
-  ms: number,
-  label: string
-): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`${label} timed out after ${ms}ms`)),
-          ms
-        );
-      }),
-    ]);
-  } finally {
-    if (timer) clearTimeout(timer);
-  }
-};
 
 export const clearAllAuth = async () => {
   try {
@@ -50,6 +32,7 @@ export const clearAllAuth = async () => {
   } catch {
     // ignore
   }
+  clearCachedAuthToken();
   await clearAuthSession();
 };
 
@@ -61,6 +44,7 @@ export const clearAllAuth = async () => {
  */
 export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
   console.log(LOG, 'restore start');
+  void warmupApi();
 
   const session = await getAuthSession();
   if (!session) {
@@ -78,13 +62,15 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
   if (!firebaseUser) {
     console.log(LOG, 'stored session but no firebase user — clearing');
     await clearAuthSession();
+    clearCachedAuthToken();
     return null;
   }
 
   try {
+    // Cached token first — force refresh can stall splash on bad networks.
     const idToken = await withTimeout(
-      getFirebaseIdToken(true, firebaseUser),
-      8000,
+      getFirebaseIdToken(false, firebaseUser),
+      6000,
       'getIdToken'
     );
 
@@ -114,6 +100,7 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
       },
     };
 
+    setCachedAuthToken(idToken);
     await saveAuthSession(restoredSession);
     console.log(LOG, 'restore OK', {
       role: restoredSession.role,
@@ -121,7 +108,9 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
     });
 
     void import('../notifications/pushNotificationService')
-      .then(({ registerDeviceForPush }) => registerDeviceForPush())
+      .then(({ scheduleRegisterDeviceForPush }) =>
+        scheduleRegisterDeviceForPush()
+      )
       .catch(error => console.warn(LOG, 'push register failed', error));
 
     return restoredSession;
@@ -157,17 +146,25 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
         ...session,
         token: idToken || session.token,
       };
+      setCachedAuthToken(fallbackSession.token);
       await saveAuthSession(fallbackSession);
       console.log(LOG, 'restore using cached session (backend slow/unreachable)');
       void import('../notifications/pushNotificationService')
-        .then(({ registerDeviceForPush }) => registerDeviceForPush())
+        .then(({ scheduleRegisterDeviceForPush }) =>
+          scheduleRegisterDeviceForPush()
+        )
         .catch(() => undefined);
       return fallbackSession;
     } catch {
       if (isTransient) {
         console.log(LOG, 'restore using stored session without refresh');
+        if (session.token) {
+          setCachedAuthToken(session.token);
+        }
         void import('../notifications/pushNotificationService')
-          .then(({ registerDeviceForPush }) => registerDeviceForPush())
+          .then(({ scheduleRegisterDeviceForPush }) =>
+            scheduleRegisterDeviceForPush()
+          )
           .catch(() => undefined);
         return session;
       }

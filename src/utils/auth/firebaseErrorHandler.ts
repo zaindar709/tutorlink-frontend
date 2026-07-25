@@ -20,7 +20,7 @@ export const getFirebaseErrorMessage = (error: unknown): string | null => {
       return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
-      return 'This email is already registered with a different password. Please use Login instead.';
+      return 'Incorrect email or password. Please try again.';
     case 'auth/user-not-found':
       return 'No account found for this email. Please sign up first.';
     case 'auth/invalid-email':
@@ -31,6 +31,8 @@ export const getFirebaseErrorMessage = (error: unknown): string | null => {
       return 'Too many attempts. Please wait a moment and try again.';
     case 'auth/network-request-failed':
       return 'Network error. Check your internet connection.';
+    case 'auth/unknown':
+      return 'Sign-in failed due to a network glitch. Please try again.';
     case 'auth/operation-not-allowed':
       return 'Email/password sign-in is not enabled. Contact support.';
     case 'auth/no-current-user':
@@ -39,14 +41,25 @@ export const getFirebaseErrorMessage = (error: unknown): string | null => {
       break;
   }
 
+  const lowerMessage = message?.toLowerCase() ?? '';
+
   if (
-    message?.toLowerCase().includes('supplied auth credential') ||
-    message?.toLowerCase().includes('invalid-credential')
+    lowerMessage.includes('unexpected end of stream') ||
+    lowerMessage.includes('end of stream') ||
+    lowerMessage.includes('connection reset') ||
+    lowerMessage.includes('timed out')
+  ) {
+    return 'Connection interrupted. Please try again in a moment.';
+  }
+
+  if (
+    lowerMessage.includes('supplied auth credential') ||
+    lowerMessage.includes('invalid-credential')
   ) {
     return 'This email may already be registered. Try Login with your existing password, or use Forgot Password.';
   }
 
-  if (message?.toLowerCase().includes('no user currently signed in')) {
+  if (lowerMessage.includes('no user currently signed in')) {
     return null;
   }
 

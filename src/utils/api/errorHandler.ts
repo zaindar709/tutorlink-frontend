@@ -47,7 +47,10 @@ export const getApiErrorMessage = (
       case 403:
         return 'You do not have permission to perform this action.';
       case 404:
-        return 'The requested resource was not found.';
+        return (
+          data?.message ||
+          'Account not found on server. Please try again or sign up.'
+        );
       case 409:
         return data?.message || 'This action conflicts with the current state.';
       case 410:
@@ -62,13 +65,21 @@ export const getApiErrorMessage = (
   if (error instanceof AxiosError) {
     if (!error.response) {
       if (error.code === 'ECONNABORTED') {
-        return 'Upload timed out. The server may be waking up — please try again.';
+        return 'Server is taking too long. Please try again — it may be waking up.';
+      }
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.includes('unexpected end of stream') || msg.includes('network error')) {
+        return 'Connection interrupted. Please try again.';
       }
       return 'Network error. Please check your connection and try again.';
     }
   }
 
   if (error instanceof Error && error.message) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('timed out')) {
+      return 'Request timed out. Please try again.';
+    }
     return error.message;
   }
 

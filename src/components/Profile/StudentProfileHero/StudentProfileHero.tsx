@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useUi from '../../../hooks/ui/useUi';
 
 type Props = {
@@ -28,26 +30,26 @@ export default function StudentProfileHero({
   onAvatarPress,
 }: Props) {
   const { colors, resp } = useUi();
+  const insets = useSafeAreaInsets();
   const avatarSize = resp.dx(88);
   const canEditAvatar = typeof onAvatarPress === 'function';
+  const primary = String(colors.PRIMARY_COLOR || '#7548F5');
 
   const AvatarInner = (
     <>
       {loading ? (
-        <ActivityIndicator color={colors.PRIMARY_COLOR} />
+        <ActivityIndicator color={primary} />
       ) : avatarUri ? (
         <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
       ) : (
         <MaterialCommunityIcons
           name="account-outline"
           size={resp.df(40)}
-          color={colors.PRIMARY_COLOR}
+          color={primary}
         />
       )}
       {canEditAvatar ? (
-        <View
-          style={[styles.cameraBadge, { backgroundColor: colors.PRIMARY_COLOR }]}
-        >
+        <View style={[styles.cameraBadge, { backgroundColor: primary }]}>
           <MaterialCommunityIcons name="camera-plus" size={14} color="#fff" />
         </View>
       ) : null}
@@ -55,7 +57,12 @@ export default function StudentProfileHero({
   );
 
   return (
-    <View style={[styles.hero, { backgroundColor: colors.PRIMARY_COLOR }]}>
+    <LinearGradient
+      colors={[primary, '#5B2FD6', '#4C1D95']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.hero, { paddingTop: Math.max(insets.top, 12) + 12 }]}
+    >
       <Text style={styles.screenTitle}>Profile</Text>
 
       <View style={styles.profileBox}>
@@ -97,14 +104,13 @@ export default function StudentProfileHero({
           <Text style={styles.idValue}>{publicId}</Text>
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   hero: {
     paddingHorizontal: 16,
-    paddingTop: 44,
     paddingBottom: 36,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,

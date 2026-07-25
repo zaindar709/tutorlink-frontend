@@ -9,16 +9,46 @@ import { navigationRef, resetToAuth } from '../navigation/navigationRef';
 import { store } from '../store/store';
 import { logout } from '../store/auth/authSlice';
 import { isFormDataLike, maskToken } from '../utils/upload/uploadDebug';
+import { withTimeout } from '../utils/async/withTimeout';
+import { speedLog } from '../utils/debug/speedLog';
 
 const LOG = '[API]';
 
+/** Avoid hanging every request on a slow Firebase token refresh. */
+const TOKEN_RESOLVE_TIMEOUT_MS = 4000;
+/** Reuse token briefly so list/dashboard calls don't wait on Firebase each time. */
+const TOKEN_CACHE_TTL_MS = 4 * 60 * 1000;
+
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 20000,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
+    Accept: 'application/json',
   },
 });
+
+type CachedToken = { value: string; expiresAt: number };
+let cachedAuthToken: CachedToken | null = null;
+
+type TimedConfig = InternalAxiosRequestConfig & {
+  metadata?: { startTime: number };
+};
+
+export const setCachedAuthToken = (token: string | null) => {
+  if (!token) {
+    cachedAuthToken = null;
+    return;
+  }
+  cachedAuthToken = {
+    value: token,
+    expiresAt: Date.now() + TOKEN_CACHE_TTL_MS,
+  };
+};
+
+export const clearCachedAuthToken = () => {
+  cachedAuthToken = null;
+};
 
 const setRequestHeader = (
   config: InternalAxiosRequestConfig,
@@ -54,18 +84,34 @@ const deleteRequestHeader = (
 };
 
 const resolveAuthToken = async (): Promise<string | null> => {
+  // Prefer live Firebase user — required for /api/auth/register|login.
   const firebaseUser = getCurrentFirebaseUser();
 
   if (firebaseUser) {
-    try {
-      return await getFirebaseIdToken(false, firebaseUser);
-    } catch (error) {
-      console.warn(LOG, 'token from Firebase failed', error);
+    if (cachedAuthToken && Date.now() < cachedAuthToken.expiresAt) {
+      return cachedAuthToken.value;
     }
+
+    try {
+      const token = await withTimeout(
+        getFirebaseIdToken(false, firebaseUser),
+        TOKEN_RESOLVE_TIMEOUT_MS,
+        'Auth token'
+      );
+      setCachedAuthToken(token);
+      return token;
+    } catch (error) {
+      console.warn(LOG, 'token from Firebase failed/timed out', error);
+    }
+  }
+
+  if (cachedAuthToken && Date.now() < cachedAuthToken.expiresAt) {
+    return cachedAuthToken.value;
   }
 
   const storedToken = await getToken();
   if (storedToken) {
+    setCachedAuthToken(storedToken);
     return storedToken;
   }
 
@@ -91,16 +137,29 @@ const isOnAuthFlowScreen = () => {
 };
 
 api.interceptors.request.use(async config => {
+  const timed = config as TimedConfig;
+  timed.metadata = { startTime: Date.now() };
+
   if (isFormDataLike(config.data)) {
     deleteRequestHeader(config, 'Content-Type');
   }
 
+  const tokenStarted = Date.now();
   const authToken = await resolveAuthToken();
+  const tokenMs = Date.now() - tokenStarted;
+
   if (authToken) {
     setRequestHeader(config, 'Authorization', `Bearer ${authToken}`);
   }
 
   const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
+  speedLog('API →', {
+    method: (config.method || 'get').toUpperCase(),
+    url,
+    hasAuth: !!authToken,
+    tokenResolveMs: tokenMs,
+  });
+
   if (url.includes('/api/tutor/onboarding') || url.includes('/api/auth/')) {
     console.log(LOG, 'request', {
       method: config.method,
@@ -120,18 +179,39 @@ api.interceptors.request.use(async config => {
 
 api.interceptors.response.use(
   response => {
-    const url = response?.config?.url ?? '';
-    if (url.includes('/api/tutor/onboarding') || url.includes('/api/auth/')) {
+    const timed = response.config as TimedConfig;
+    const ms = timed.metadata?.startTime
+      ? Date.now() - timed.metadata.startTime
+      : undefined;
+    const url = `${response.config.baseURL ?? ''}${response.config.url ?? ''}`;
+
+    speedLog('API ← OK', {
+      method: (response.config.method || 'get').toUpperCase(),
+      url,
+      status: response.status,
+      ms,
+    });
+
+    if (
+      (response.config.url ?? '').includes('/api/tutor/onboarding') ||
+      (response.config.url ?? '').includes('/api/auth/')
+    ) {
       console.log(LOG, 'response OK', {
-        url,
+        url: response.config.url,
         status: response.status,
+        ms,
         data: response.data,
       });
     }
     return response;
   },
   async error => {
+    const timed = error?.config as TimedConfig | undefined;
+    const ms = timed?.metadata?.startTime
+      ? Date.now() - timed.metadata.startTime
+      : undefined;
     const requestUrl = error?.config?.url ?? '';
+    const fullUrl = `${error?.config?.baseURL ?? ''}${requestUrl}`;
     const isOnboardingRoute = requestUrl.includes('/api/tutor/onboarding');
     const isAuthRoute = requestUrl.includes('/api/auth/');
     const isSoftLinkedParents404 =
@@ -142,14 +222,50 @@ api.interceptors.response.use(
       error?.response?.status === 404 &&
       typeof requestUrl === 'string' &&
       requestUrl.includes('/api/notifications/device-token');
+    // Inbox list route may not be deployed yet.
+    const isSoftNotificationsInbox404 =
+      error?.response?.status === 404 &&
+      typeof requestUrl === 'string' &&
+      requestUrl.includes('/api/notifications') &&
+      !requestUrl.includes('device-token');
+    // Login may 404 when Firebase user exists but backend profile is missing —
+    // authService heals this with register. Don't spam LogBox as a red error.
+    const isSoftAuthLogin404 =
+      error?.response?.status === 404 &&
+      typeof requestUrl === 'string' &&
+      (requestUrl.includes('/api/auth/login') ||
+        requestUrl.includes('/api/auth/register'));
 
-    // Backend route may be missing; frontend treats this as empty list.
-    if (!isSoftLinkedParents404 && !isSoftDeviceToken404) {
+    const isSoftExpected =
+      isSoftLinkedParents404 ||
+      isSoftDeviceToken404 ||
+      isSoftNotificationsInbox404 ||
+      isSoftAuthLogin404;
+
+    if (isSoftExpected) {
+      speedLog('API ← soft', {
+        method: (error?.config?.method || '?').toUpperCase(),
+        url: fullUrl,
+        status: error?.response?.status,
+        ms,
+        note: isSoftAuthLogin404
+          ? 'expected if profile missing — will auto-heal'
+          : 'ignored empty/missing route',
+      });
+    } else {
+      speedLog('API ← ERR', {
+        method: (error?.config?.method || '?').toUpperCase(),
+        url: fullUrl,
+        status: error?.response?.status,
+        ms,
+        message: error?.message,
+      });
       console.error(LOG, 'response ERROR', {
         url: requestUrl,
         status: error?.response?.status,
         message: error?.message,
         data: error?.response?.data,
+        ms,
         hasAuthHeader: !!error?.config?.headers?.Authorization,
       });
     }
@@ -168,6 +284,7 @@ api.interceptors.response.use(
       !isAuthRoute &&
       !isOnAuthFlowScreen()
     ) {
+      clearCachedAuthToken();
       await clearAuthSession();
       store.dispatch(logout());
       resetToAuth();

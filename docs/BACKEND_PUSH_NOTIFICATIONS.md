@@ -2,6 +2,8 @@
 
 Mobile app registers an FCM device token after login / session restore and clears it on logout.
 
+Foreground display uses **Notifee** (`@notifee/react-native`) so notifications appear as **native system notifications** even when the app is open. Background / terminated delivery uses FCM `notification` + `data` (OS tray) or Notifee for data-only messages.
+
 ## Endpoints required
 
 ### 1. Register device token
@@ -18,12 +20,6 @@ Content-Type: application/json
 }
 ```
 
-**Behavior**
-
-- Upsert by `(userId, token)` — same token on re-login should not create duplicates.
-- Store: `userId`, `token`, `platform`, `role`, `updatedAt`.
-- Return `{ success: true, data: { registered: true } }`.
-
 ### 2. Unregister device token
 
 ```http
@@ -36,32 +32,19 @@ Content-Type: application/json
 }
 ```
 
-**Behavior**
-
-- Delete that token for the authenticated user.
-- Return `{ success: true, data: { unregistered: true } }`.
-
-### 3. Optional inbox list
+### 3. Optional server inbox
 
 ```http
 GET /api/notifications?page=1&limit=30
-Authorization: Bearer <Firebase ID token>
 ```
 
-Used later for an in-app notification center (optional for push itself).
+Optional — the app also keeps a local Notification Center of received pushes.
 
 ---
 
-## Sending pushes (server)
+## Sending pushes (required shape)
 
-Use Firebase Admin SDK with a **service account** from project `tutor-link-62ed9`.
-
-Always send a **notification + data** payload so:
-
-- Background / quit → system tray notification on the phone
-- Foreground → app shows an alert and can deep-link
-
-### Example payload
+Always send **notification + data** (all `data` values must be strings):
 
 ```js
 await admin.messaging().send({
@@ -71,10 +54,15 @@ await admin.messaging().send({
     body: 'Ali sent you a message',
   },
   data: {
-    type: 'chat', // chat | booking | session | request | verification | certificate | schedule
-    chatId: '<conversationId>',
+    notificationId: '<unique-id>',       // dedupe in Notification Center
+    type: 'chat',                        // chat | booking | session | schedule | payment | reminder | verification | request | certificate
+    createdAt: new Date().toISOString(),
+    relatedId: '<bookingId-or-similar>', // optional
+    chatId: '<conversationId>',          // chat
+    bookingId: '',
+    paymentId: '',
+    screen: '',                          // optional deep link override
     peerName: 'Ali',
-    bookingId: '', // optional
   },
   android: {
     priority: 'high',
@@ -93,29 +81,25 @@ await admin.messaging().send({
 });
 ```
 
-### Suggested trigger points
-
-| Event | Recipients | `data.type` |
-|-------|------------|-------------|
-| New chat message | Other participant | `chat` |
-| Booking created / accepted / cancelled | Student + tutor | `booking` |
-| Session reminder (e.g. 30 min before) | Both | `session` |
-| Tutor verification approved / rejected | Tutor | `verification` |
-| New hire / tutoring request | Tutor | `request` |
-| Certificate issued | Student | `certificate` |
-
-### Multi-device
-
-A user may have several tokens. Send to **all** active tokens for that user; remove tokens that FCM reports as invalid / unregistered.
+| Event | `data.type` | Suggested navigation |
+|-------|-------------|----------------------|
+| Chat message | `chat` / `message` | Messages / ChatScreen |
+| Booking create/confirm/cancel | `booking` | Bookings |
+| Session reminder | `session` / `reminder` | Bookings |
+| Time slot update | `schedule` | Schedule (tutor) |
+| Payment / wallet | `payment` | WalletScreen |
+| Tutor verification | `verification` | Request |
+| Hire request | `request` | Request |
+| Certificate | `certificate` | StudentCertificatesScreen |
 
 ---
 
-## Mobile wiring (already done)
+## Mobile wiring
 
-- Package: `@react-native-firebase/messaging`
-- Register: after `persistSession` + successful splash restore
-- Unregister: logout / clear auth
-- Android channel id: `tutorlink_default`
-- Permission: `POST_NOTIFICATIONS` (Android 13+)
+- `@react-native-firebase/messaging` + `@notifee/react-native`
+- Channel id: `tutorlink_default`
+- Background handler registered in `index.js`
+- Notification Center: `StudentNotificationInboxScreen` (HomeNavigator)
+- Deep link on tap: foreground / background / terminated
 
-Until these backend routes exist, the app still obtains a local FCM token; registration API calls may 404 (logged softly).
+**Rebuild required after installing Notifee:** `npx react-native run-android`

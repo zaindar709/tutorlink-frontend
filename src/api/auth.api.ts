@@ -7,7 +7,8 @@ import {
   AuthRegisterPayload,
 } from '../types/api.types';
 
-const AUTH_REQUEST_TIMEOUT_MS = 45000;
+/** Allow cold-start wake on Render free tier, but fail before a 2-minute hang. */
+const AUTH_REQUEST_TIMEOUT_MS = 35000;
 
 export const registerAPI = (data: AuthRegisterPayload) => {
   return api.post<{ message: string; user: AuthLoginResponse['user'] }>(
@@ -24,7 +25,9 @@ export const loginAPI = (data: AuthLoginPayload) => {
 };
 
 export const googleLoginAPI = (data: AuthGoogleLoginPayload) => {
-  return api.post<AuthLoginResponse>('/api/auth/google-login', data);
+  return api.post<AuthLoginResponse>('/api/auth/google-login', data, {
+    timeout: AUTH_REQUEST_TIMEOUT_MS,
+  });
 };
 
 export const getAuthProfileAPI = (

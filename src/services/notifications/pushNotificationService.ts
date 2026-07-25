@@ -1,4 +1,9 @@
-import { Platform, PermissionsAndroid, Alert } from 'react-native';
+import {
+  Platform,
+  PermissionsAndroid,
+  InteractionManager,
+  AppState,
+} from 'react-native';
 import messaging, {
   FirebaseMessagingTypes,
 } from '@react-native-firebase/messaging';
@@ -9,28 +14,88 @@ import {
 } from '../../api/notifications.api';
 import { navigationRef } from '../../navigation/navigationRef';
 import { getAuthSession } from '../storage';
+import {
+  AppNotification,
+  PushNotificationData,
+} from '../../types/notification.types';
+import { upsertNotification } from './notificationInboxStore';
 
 const LOG = '[Push]';
 const TOKEN_KEY = '@TutorLink:fcmDeviceToken';
 
-export type PushNotificationData = Record<string, string | undefined>;
+/** Avoid racing permission dialogs with Alert/navigation after login. */
+let registerTimer: ReturnType<typeof setTimeout> | null = null;
+let registerInFlight: Promise<string | null> | null = null;
+
+export type { PushNotificationData };
 
 const getStoredToken = async () => AsyncStorage.getItem(TOKEN_KEY);
-
 const storeToken = async (token: string) =>
   AsyncStorage.setItem(TOKEN_KEY, token);
-
 const clearStoredToken = async () => AsyncStorage.removeItem(TOKEN_KEY);
+
+export const parseRemoteToAppNotification = (
+  remote: {
+    messageId?: string;
+    notification?: { title?: string | null; body?: string | null } | null;
+    data?: PushNotificationData | null;
+    sentTime?: number;
+  },
+  source: AppNotification['source'] = 'push'
+): AppNotification => {
+  const data = (remote.data || {}) as Record<string, string>;
+  const id =
+    data.notificationId ||
+    data.id ||
+    remote.messageId ||
+    `push-${Date.now()}`;
+
+  return {
+    id: String(id),
+    title: String(remote.notification?.title || data.title || 'TutorLink'),
+    body: String(
+      remote.notification?.body ||
+        data.body ||
+        data.message ||
+        'You have a new notification'
+    ),
+    type: String(data.type || data.notificationType || 'general'),
+    createdAt:
+      data.createdAt || new Date(remote.sentTime || Date.now()).toISOString(),
+    read: false,
+    data: Object.fromEntries(
+      Object.entries(data).map(([k, v]) => [k, v == null ? '' : String(v)])
+    ),
+    source,
+  };
+};
+
+/** Persist to Notification Center only (Notifee skipped for now). */
+export const presentNotification = async (
+  notification: AppNotification
+): Promise<AppNotification> => upsertNotification(notification);
 
 export const requestPushPermission = async (): Promise<boolean> => {
   try {
+    // Never prompt while Activity is backgrounded / mid-navigation — that
+    // races Alert + navigation.reset and can SIGSEGV Hermes AsyncCallback.
+    if (AppState.currentState !== 'active') {
+      console.log(LOG, 'skip permission — app not active:', AppState.currentState);
+      return false;
+    }
+
     if (Platform.OS === 'android' && Platform.Version >= 33) {
-      const result = await PermissionsAndroid.request(
+      const already = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
       );
-      if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-        console.log(LOG, 'POST_NOTIFICATIONS denied');
-        return false;
+      if (!already) {
+        const result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        );
+        if (result !== PermissionsAndroid.RESULTS.GRANTED) {
+          console.log(LOG, 'POST_NOTIFICATIONS denied');
+          return false;
+        }
       }
     }
 
@@ -49,7 +114,6 @@ export const requestPushPermission = async (): Promise<boolean> => {
 
 export const getFcmToken = async (): Promise<string | null> => {
   try {
-    // iOS needs registration before token
     if (Platform.OS === 'ios') {
       await messaging().registerDeviceForRemoteMessages();
     }
@@ -62,30 +126,66 @@ export const getFcmToken = async (): Promise<string | null> => {
 };
 
 export const registerDeviceForPush = async (): Promise<string | null> => {
-  const allowed = await requestPushPermission();
-  if (!allowed) return null;
+  if (registerInFlight) return registerInFlight;
 
-  const token = await getFcmToken();
-  if (!token) return null;
+  registerInFlight = (async () => {
+    const allowed = await requestPushPermission();
+    if (!allowed) return null;
 
-  const session = await getAuthSession();
-  const role = session?.role;
+    const token = await getFcmToken();
+    if (!token) return null;
+
+    const session = await getAuthSession();
+    const role = session?.role;
+
+    try {
+      await registerDeviceTokenAPI({
+        token,
+        platform: Platform.OS === 'ios' ? 'ios' : 'android',
+        role:
+          role === 'tutor' || role === 'parent' || role === 'student'
+            ? role
+            : undefined,
+      });
+      await storeToken(token);
+      console.log(LOG, 'device token registered', token.slice(0, 12) + '…');
+      return token;
+    } catch (error) {
+      await storeToken(token);
+      console.warn(
+        LOG,
+        'registerDeviceTokenAPI failed (token kept locally)',
+        error
+      );
+      return token;
+    }
+  })();
 
   try {
-    await registerDeviceTokenAPI({
-      token,
-      platform: Platform.OS === 'ios' ? 'ios' : 'android',
-      role: role === 'tutor' || role === 'parent' || role === 'student' ? role : undefined,
-    });
-    await storeToken(token);
-    console.log(LOG, 'device token registered', token.slice(0, 12) + '…');
-    return token;
-  } catch (error) {
-    // Backend may not have endpoint yet — still keep local token for retries
-    await storeToken(token);
-    console.warn(LOG, 'registerDeviceTokenAPI failed (token kept locally)', error);
-    return token;
+    return await registerInFlight;
+  } finally {
+    registerInFlight = null;
   }
+};
+
+/**
+ * Call after login/signup/session restore — waits for navigation/alerts to
+ * settle so POST_NOTIFICATIONS is not requested during a screen reset.
+ */
+export const scheduleRegisterDeviceForPush = (delayMs = 1200): void => {
+  if (registerTimer) {
+    clearTimeout(registerTimer);
+    registerTimer = null;
+  }
+
+  InteractionManager.runAfterInteractions(() => {
+    registerTimer = setTimeout(() => {
+      registerTimer = null;
+      void registerDeviceForPush().catch(error =>
+        console.warn(LOG, 'scheduled register failed', error)
+      );
+    }, delayMs);
+  });
 };
 
 export const unregisterDeviceForPush = async (): Promise<void> => {
@@ -106,17 +206,40 @@ export const unregisterDeviceForPush = async (): Promise<void> => {
   await clearStoredToken();
 };
 
+const navigateWhenReady = (
+  data?: PushNotificationData | null,
+  attempt = 0
+) => {
+  if (!data) return;
+  if (!navigationRef.isReady()) {
+    if (attempt < 20) {
+      setTimeout(() => navigateWhenReady(data, attempt + 1), 250);
+    }
+    return;
+  }
+  handleNotificationNavigation(data);
+};
+
 export const handleNotificationNavigation = (
   data?: PushNotificationData | null
 ) => {
-  if (!data || !navigationRef.isReady()) return;
+  if (!data) return;
+  if (!navigationRef.isReady()) {
+    navigateWhenReady(data);
+    return;
+  }
 
   const type = String(data.type || data.notificationType || '').toLowerCase();
   const screen = String(data.screen || '');
   const chatId = data.chatId || data.conversationId;
+  const relatedId =
+    data.relatedId || data.bookingId || data.paymentId || data.slotId;
 
   try {
-    if (screen === 'ChatScreen' || ((type === 'chat' || type === 'message') && chatId)) {
+    if (
+      screen === 'ChatScreen' ||
+      ((type === 'chat' || type === 'message') && chatId)
+    ) {
       navigationRef.navigate('HomeNavigator' as never, {
         screen: 'ChatScreen',
         params: {
@@ -130,8 +253,14 @@ export const handleNotificationNavigation = (
       return;
     }
 
+    if (screen === 'StudentNotificationInboxScreen' || type === 'general') {
+      navigationRef.navigate('HomeNavigator' as never, {
+        screen: 'StudentNotificationInboxScreen',
+      } as never);
+      return;
+    }
+
     if (screen) {
-      // Prefer nested MyTabs / HomeNavigator screens when provided
       if (
         [
           'Messages',
@@ -148,6 +277,7 @@ export const handleNotificationNavigation = (
       }
       navigationRef.navigate('HomeNavigator' as never, {
         screen,
+        params: relatedId ? { id: relatedId } : undefined,
       } as never);
       return;
     }
@@ -161,8 +291,19 @@ export const handleNotificationNavigation = (
         break;
       case 'booking':
       case 'session':
+      case 'reminder':
         navigationRef.navigate('MyTabs' as never, {
           screen: 'Bookings',
+        } as never);
+        break;
+      case 'payment':
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'WalletScreen',
+        } as never);
+        break;
+      case 'schedule':
+        navigationRef.navigate('MyTabs' as never, {
+          screen: 'Schedule',
         } as never);
         break;
       case 'verification':
@@ -171,17 +312,15 @@ export const handleNotificationNavigation = (
           screen: 'Request',
         } as never);
         break;
-      case 'schedule':
-        navigationRef.navigate('MyTabs' as never, {
-          screen: 'Schedule',
-        } as never);
-        break;
       case 'certificate':
         navigationRef.navigate('HomeNavigator' as never, {
           screen: 'StudentCertificatesScreen',
         } as never);
         break;
       default:
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'StudentNotificationInboxScreen',
+        } as never);
         break;
     }
   } catch (error) {
@@ -189,47 +328,67 @@ export const handleNotificationNavigation = (
   }
 };
 
-export const showForegroundAlert = (
+const ingestRemoteMessage = async (
   remoteMessage: FirebaseMessagingTypes.RemoteMessage
 ) => {
-  const title =
-    remoteMessage.notification?.title ||
-    remoteMessage.data?.title ||
-    'TutorLink';
-  const body =
-    remoteMessage.notification?.body ||
-    remoteMessage.data?.body ||
-    'You have a new notification';
-
-  Alert.alert(String(title), String(body), [
-    { text: 'Dismiss', style: 'cancel' },
-    {
-      text: 'Open',
-      onPress: () =>
-        handleNotificationNavigation(
-          remoteMessage.data as PushNotificationData
-        ),
-    },
-  ]);
+  const appNotification = parseRemoteToAppNotification(remoteMessage, 'push');
+  await presentNotification(appNotification);
+  return appNotification;
 };
 
-/**
- * Call once after app mounts (when user may be logged in).
- * Safe to call multiple times — listeners are idempotent via module flag.
- */
+/** Local inbox item for QA (no system tray — Notifee skipped). */
+export const sendTestSystemNotification = async () => {
+  const now = new Date().toISOString();
+  const samples = [
+    {
+      title: 'New booking request',
+      body: 'A tutor is available for your preferred time slot.',
+      type: 'booking',
+      data: { type: 'booking', screen: 'Bookings', relatedId: 'demo-booking' },
+    },
+    {
+      title: 'New chat message',
+      body: 'You have a new message waiting in TutorLink.',
+      type: 'chat',
+      data: { type: 'chat', screen: 'Messages' },
+    },
+    {
+      title: 'Payment update',
+      body: 'Your wallet balance was updated successfully.',
+      type: 'payment',
+      data: { type: 'payment', screen: 'WalletScreen' },
+    },
+  ];
+  const sample = samples[Math.floor(Date.now() / 1000) % samples.length];
+
+  return presentNotification({
+    id: `test-${Date.now()}`,
+    title: sample.title,
+    body: sample.body,
+    type: sample.type,
+    createdAt: now,
+    read: false,
+    data: { ...sample.data, createdAt: now },
+    source: 'test',
+  });
+};
+
 let listenersReady = false;
 
 export const initPushListeners = () => {
   if (listenersReady) return () => undefined;
   listenersReady = true;
 
+  // Foreground FCM → Notification Center only (no Notifee tray for now)
   const unsubOnMessage = messaging().onMessage(async remoteMessage => {
     console.log(LOG, 'foreground message', remoteMessage.messageId);
-    showForegroundAlert(remoteMessage);
+    await ingestRemoteMessage(remoteMessage);
   });
 
   const unsubOpened = messaging().onNotificationOpenedApp(remoteMessage => {
-    console.log(LOG, 'opened from background', remoteMessage.messageId);
+    console.log(LOG, 'opened from background (FCM)', remoteMessage.messageId);
+    const parsed = parseRemoteToAppNotification(remoteMessage, 'push');
+    void upsertNotification({ ...parsed, read: true });
     handleNotificationNavigation(remoteMessage.data as PushNotificationData);
   });
 
@@ -254,17 +413,18 @@ export const initPushListeners = () => {
     }
   });
 
-  // App opened from quit state by tapping notification
   void messaging()
     .getInitialNotification()
     .then(remoteMessage => {
       if (!remoteMessage) return;
-      console.log(LOG, 'opened from quit', remoteMessage.messageId);
+      console.log(LOG, 'opened from quit (FCM)', remoteMessage.messageId);
+      const parsed = parseRemoteToAppNotification(remoteMessage, 'push');
+      void upsertNotification({ ...parsed, read: true });
       setTimeout(() => {
         handleNotificationNavigation(
           remoteMessage.data as PushNotificationData
         );
-      }, 600);
+      }, 700);
     });
 
   return () => {
@@ -275,9 +435,17 @@ export const initPushListeners = () => {
   };
 };
 
-/** Must be registered at JS entry (index.js) — outside React tree. */
+/**
+ * Must be registered in index.js before AppRegistry.
+ * Background FCM: OS shows notification+data; we persist data-only / all to inbox when JS runs.
+ */
 export const registerBackgroundMessageHandler = () => {
   messaging().setBackgroundMessageHandler(async remoteMessage => {
     console.log(LOG, 'background message', remoteMessage.messageId);
+    try {
+      await ingestRemoteMessage(remoteMessage);
+    } catch (error) {
+      console.warn(LOG, 'background ingest failed', error);
+    }
   });
 };

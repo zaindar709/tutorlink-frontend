@@ -20,7 +20,7 @@ interface CustomButtonProps {
   disabled?: boolean;
   borderColor?: ColorValue;
   borderWidth?: number;
-  style?: ViewStyle;
+  style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
   icon?: string;
   iconPosition?: 'left' | 'right';

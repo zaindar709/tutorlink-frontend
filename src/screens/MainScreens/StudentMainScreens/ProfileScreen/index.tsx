@@ -19,6 +19,7 @@ import { logout } from '../../../../store/auth/authSlice';
 import { logoutUser } from '../../../../services/auth/authService';
 import { useProfile } from '../../../../hooks/api/useProfile';
 import { getDisplayName } from '../../../../utils/api/bookingHelpers';
+import { navigateHomeStack } from '../../../../navigation/navigationRef';
 
 type MenuItem = {
   title: string;
@@ -65,10 +66,17 @@ const MENU_ITEMS: MenuItem[] = [
     screen: 'StudentSessionHistoryScreen',
   },
   {
-    title: 'Notifications',
+    title: 'Notification Center',
+    description: 'See alerts & test push',
+    icon: 'bell-ring-outline',
+    iconColor: '#F59E0B',
+    screen: 'StudentNotificationInboxScreen',
+  },
+  {
+    title: 'Notification Settings',
     description: 'Manage your alerts',
     icon: 'bell-outline',
-    iconColor: '#F59E0B',
+    iconColor: '#FB923C',
     screen: 'StudentNotificationsScreen',
   },
   {
@@ -116,7 +124,7 @@ export default function ProfileScreen() {
   );
 
   const navigateTo = (screen: string) => {
-    navigation.navigate('HomeNavigator', { screen });
+    navigateHomeStack(screen);
   };
 
   if (loading && !profile) {

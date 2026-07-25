@@ -212,10 +212,12 @@ const createStyles = (
     },
     listContainer: {
       flex: 1,
-      alignSelf: 'center',
+      width: '100%',
+      alignSelf: 'stretch',
     },
     listContent: {
       paddingHorizontal: resp.dx(16),
+      width: '100%',
     },
     loader: {
       marginTop: resp.dy(20),

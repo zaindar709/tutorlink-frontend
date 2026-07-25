@@ -4,7 +4,18 @@ module.exports = {
     android: {},
   },
   assets: [
-    // This wildcard glob pattern forces it to look into EVERY icon package folder for fonts
     './node_modules/@react-native-vector-icons/*/fonts/',
   ],
+  dependencies: {
+    // Not used in JS — exclude native code from Release APK to cut size.
+    'react-native-maps': {
+      platforms: { android: null, ios: null },
+    },
+    'react-native-webrtc': {
+      platforms: { android: null, ios: null },
+    },
+    'react-native-incall-manager': {
+      platforms: { android: null, ios: null },
+    },
+  },
 };

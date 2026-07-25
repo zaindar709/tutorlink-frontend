@@ -9,20 +9,20 @@ import {
 import { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { getFirebaseErrorMessage } from '../../utils/auth/firebaseErrorHandler';
 import {
-  getAuthProfileAPI,
   googleLoginAPI,
   loginAPI,
   registerAPI,
 } from '../../api/auth.api';
+import { clearCachedAuthToken, setCachedAuthToken } from '../../api/client';
 import {
   AuthSession,
   clearAuthSession,
-  getAuthSession,
   saveAuthSession,
 } from '../storage';
 import { ApiUser } from '../../types/api.types';
-import { getUserId } from '../../utils/api/userId';
 import { AxiosError } from 'axios';
+import { warmupApi } from '../api/apiWarmup';
+import { createSpeedTimer, speedDone, speedLog } from '../../utils/debug/speedLog';
 
 export type AuthRole = 'student' | 'tutor' | 'parent';
 
@@ -63,16 +63,26 @@ const persistSession = async (
   firebaseUid?: string,
   firebaseUser?: FirebaseAuthTypes.User | null
 ): Promise<AuthSession> => {
-  const idToken = await getFirebaseIdToken(true, firebaseUser);
+  // Prefer cached token — force-refresh adds another network hop after login.
+  let idToken: string;
+  try {
+    idToken = await getFirebaseIdToken(false, firebaseUser);
+  } catch {
+    idToken = await getFirebaseIdToken(true, firebaseUser);
+  }
+
   const session: AuthSession = {
     ...buildSession(user, role, firebaseUid),
     token: idToken,
   };
+  setCachedAuthToken(idToken);
   await saveAuthSession(session);
 
-  // Register FCM token after session is saved (needs Bearer token).
+  // Defer FCM register — permission dialog must not race Alert/navigation.reset.
   void import('../notifications/pushNotificationService')
-    .then(({ registerDeviceForPush }) => registerDeviceForPush())
+    .then(({ scheduleRegisterDeviceForPush }) =>
+      scheduleRegisterDeviceForPush()
+    )
     .catch(error => console.warn('[Auth] push register failed', error));
 
   return session;
@@ -94,110 +104,266 @@ const isProfileNotFound = (error: unknown): boolean => {
   return error instanceof AxiosError && error.response?.status === 404;
 };
 
+const attachFirebaseBearer = async (
+  firebaseUser: FirebaseAuthTypes.User
+): Promise<string> => {
+  // Backend auth routes require Bearer = Firebase ID token.
+  clearCachedAuthToken();
+  const started = Date.now();
+  const idToken = await getFirebaseIdToken(false, firebaseUser);
+  setCachedAuthToken(idToken);
+  speedDone('getIdToken (Bearer)', started, {
+    tokenPreview: `${idToken.slice(0, 20)}…`,
+  });
+  // Full token for Postman — filter Metro by BEARER_TOKEN
+  console.log('[SPEED] BEARER_TOKEN (Postman)', idToken);
+  return idToken;
+};
+
 export const loginWithEmail = async (
   credentials: AuthCredentials
 ): Promise<AuthSession> => {
-  const firebaseUser = await firebaseSignIn(
-    credentials.email,
-    credentials.password
-  );
+  const timer = createSpeedTimer('LOGIN');
+  try {
+    // Wake Render in parallel with Firebase so backend is ready when loginAPI runs.
+    const warmupStarted = Date.now();
+    const warmupPromise = warmupApi().then(ok => {
+      timer.step('backend warmup', warmupStarted, { ok });
+      return ok;
+    });
 
-  const response = await loginAPI({
-    email: credentials.email,
-    firebaseUid: firebaseUser.uid,
-  });
+    const firebaseStarted = Date.now();
+    const firebaseUser = await firebaseSignIn(
+      credentials.email,
+      credentials.password
+    );
+    timer.step('firebaseSignIn', firebaseStarted, { uid: firebaseUser.uid });
 
-  const { user } = response.data;
-  return persistSession(user, credentials.role, firebaseUser.uid, firebaseUser);
+    const tokenStarted = Date.now();
+    await attachFirebaseBearer(firebaseUser);
+    timer.step('getIdToken', tokenStarted);
+
+    await warmupPromise;
+
+    const apiStarted = Date.now();
+    try {
+      const response = await loginAPI({
+        email: credentials.email,
+        firebaseUid: firebaseUser.uid,
+      });
+      timer.step('POST /api/auth/login', apiStarted, {
+        status: response.status,
+      });
+
+      const persistStarted = Date.now();
+      const { user } = response.data;
+      const session = await persistSession(
+        user,
+        credentials.role,
+        firebaseUser.uid,
+        firebaseUser
+      );
+      timer.step('persistSession', persistStarted);
+      timer.end({
+        ok: true,
+        email: credentials.email,
+        role: credentials.role,
+      });
+      return session;
+    } catch (loginError) {
+      timer.step('POST /api/auth/login', apiStarted, {
+        failed: true,
+        status:
+          loginError instanceof AxiosError
+            ? loginError.response?.status
+            : undefined,
+      });
+
+      // Firebase user exists but backend profile missing (common after failed signup).
+      if (!isProfileNotFound(loginError)) {
+        throw loginError;
+      }
+
+      speedLog('login 404 — creating missing backend profile');
+      const registerStarted = Date.now();
+      const displayName =
+        firebaseUser.displayName ||
+        credentials.email.split('@')[0] ||
+        'Student';
+      const registerResponse = await registerAPI({
+        firebaseUid: firebaseUser.uid,
+        name: displayName,
+        email: credentials.email,
+        role: credentials.role,
+      });
+      timer.step('POST /api/auth/register (heal 404)', registerStarted, {
+        status: registerResponse.status,
+      });
+
+      const persistStarted = Date.now();
+      const session = await persistSession(
+        registerResponse.data.user,
+        credentials.role,
+        firebaseUser.uid,
+        firebaseUser
+      );
+      timer.step('persistSession', persistStarted);
+      timer.end({
+        ok: true,
+        email: credentials.email,
+        role: credentials.role,
+        extra: 'Profile was missing — created on login',
+      });
+      return session;
+    }
+  } catch (error) {
+    const status =
+      error instanceof AxiosError ? error.response?.status : undefined;
+    const message = error instanceof Error ? error.message : String(error);
+    timer.end({
+      ok: false,
+      failed: true,
+      message,
+      extra: status ? `HTTP ${status}` : undefined,
+    });
+    throw error;
+  }
 };
 
 export const registerWithEmail = async (
   payload: AuthSignupData
 ): Promise<AuthSession> => {
-  // Only sign out when a stale session exists — avoids unnecessary delay.
-  if (getCurrentFirebaseUser()) {
-    try {
-      await firebaseSignOut();
-    } catch {
-      // Ignore — signup can proceed without a prior session.
-    }
-  }
-
-  let firebaseUser: FirebaseAuthTypes.User;
-
+  const timer = createSpeedTimer('SIGNUP');
   try {
-    firebaseUser = await firebaseSignUp(payload.email, payload.password);
-  } catch (error) {
-    if (!isEmailAlreadyInUse(error)) {
-      const firebaseMessage = getFirebaseErrorMessage(error);
-      throw new Error(firebaseMessage || 'Sign up failed. Please try again.');
-    }
-
-    try {
-      firebaseUser = await firebaseSignIn(payload.email, payload.password);
-    } catch (signInError) {
-      const firebaseMessage = getFirebaseErrorMessage(signInError);
-      throw new Error(
-        firebaseMessage ||
-          'This email is already registered. Please log in with your existing password.'
-      );
-    }
-
-    try {
-      const loginResponse = await loginAPI({
-        email: payload.email,
-        firebaseUid: firebaseUser.uid,
-      });
-      return persistSession(
-        loginResponse.data.user,
-        payload.role,
-        firebaseUser.uid,
-        firebaseUser
-      );
-    } catch (loginError) {
-      if (!isProfileNotFound(loginError)) {
-        throw loginError;
-      }
-    }
-  }
-
-  try {
-    const response = await registerAPI({
-      firebaseUid: firebaseUser.uid,
-      name: payload.fullName,
-      email: payload.email,
-      role: payload.role,
-      phoneNumber: payload.phone,
+    const warmupStarted = Date.now();
+    const warmupPromise = warmupApi().then(ok => {
+      speedDone('backend warmup', warmupStarted, { ok });
+      return ok;
     });
 
-    return persistSession(
-      response.data.user,
-      payload.role,
-      firebaseUser.uid,
-      firebaseUser
-    );
-  } catch (error) {
-    if (isProfileAlreadyExists(error)) {
-      const loginResponse = await loginAPI({
-        email: payload.email,
+    // Only sign out when a stale session exists — avoids unnecessary delay.
+    if (getCurrentFirebaseUser()) {
+      try {
+        clearCachedAuthToken();
+        await firebaseSignOut();
+      } catch {
+        // Ignore — signup can proceed without a prior session.
+      }
+    } else {
+      clearCachedAuthToken();
+    }
+
+    let firebaseUser: FirebaseAuthTypes.User;
+
+    try {
+      const firebaseStarted = Date.now();
+      firebaseUser = await firebaseSignUp(payload.email, payload.password);
+      speedDone('firebaseSignUp', firebaseStarted, { uid: firebaseUser.uid });
+    } catch (error) {
+      if (!isEmailAlreadyInUse(error)) {
+        const firebaseMessage = getFirebaseErrorMessage(error);
+        throw new Error(firebaseMessage || 'Sign up failed. Please try again.');
+      }
+
+      try {
+        const firebaseStarted = Date.now();
+        firebaseUser = await firebaseSignIn(payload.email, payload.password);
+        speedDone('firebaseSignIn (existing email)', firebaseStarted, {
+          uid: firebaseUser.uid,
+        });
+      } catch (signInError) {
+        const firebaseMessage = getFirebaseErrorMessage(signInError);
+        throw new Error(
+          firebaseMessage ||
+            'This email is already registered. Please log in with your existing password.'
+        );
+      }
+
+      try {
+        await attachFirebaseBearer(firebaseUser);
+        await warmupPromise;
+        const apiStarted = Date.now();
+        const loginResponse = await loginAPI({
+          email: payload.email,
+          firebaseUid: firebaseUser.uid,
+        });
+        speedDone('POST /api/auth/login (signup fallback)', apiStarted, {
+          status: loginResponse.status,
+        });
+        const session = await persistSession(
+          loginResponse.data.user,
+          payload.role,
+          firebaseUser.uid,
+          firebaseUser
+        );
+        timer.end({ path: 'existing-email-login' });
+        return session;
+      } catch (loginError) {
+        if (!isProfileNotFound(loginError)) {
+          throw loginError;
+        }
+      }
+    }
+
+    try {
+      await attachFirebaseBearer(firebaseUser);
+      await warmupPromise;
+      const apiStarted = Date.now();
+      const response = await registerAPI({
         firebaseUid: firebaseUser.uid,
+        name: payload.fullName,
+        email: payload.email,
+        role: payload.role,
+        phoneNumber: payload.phone,
       });
-      return persistSession(
-        loginResponse.data.user,
+      speedDone('POST /api/auth/register', apiStarted, {
+        status: response.status,
+      });
+
+      const session = await persistSession(
+        response.data.user,
         payload.role,
         firebaseUser.uid,
         firebaseUser
       );
-    }
+      timer.end({ path: 'register', role: payload.role });
+      return session;
+    } catch (error) {
+      if (isProfileAlreadyExists(error)) {
+        await attachFirebaseBearer(firebaseUser);
+        const apiStarted = Date.now();
+        const loginResponse = await loginAPI({
+          email: payload.email,
+          firebaseUid: firebaseUser.uid,
+        });
+        speedDone('POST /api/auth/login (profile exists)', apiStarted, {
+          status: loginResponse.status,
+        });
+        const session = await persistSession(
+          loginResponse.data.user,
+          payload.role,
+          firebaseUser.uid,
+          firebaseUser
+        );
+        timer.end({ path: 'profile-exists-login' });
+        return session;
+      }
 
-    try {
-      await deleteFirebaseUser();
-    } catch (deleteError) {
-      console.error(
-        'Failed to delete Firebase user after signup error:',
-        deleteError
-      );
+      try {
+        await deleteFirebaseUser();
+      } catch (deleteError) {
+        console.error(
+          'Failed to delete Firebase user after signup error:',
+          deleteError
+        );
+      }
+      throw error;
     }
+  } catch (error) {
+    timer.end({
+      failed: true,
+      message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 };
@@ -208,18 +374,39 @@ export const loginWithGoogle = async (
   firebaseUid: string,
   role: AuthRole
 ): Promise<AuthSession> => {
-  const response = await googleLoginAPI({
-    name,
-    email,
-    firebaseUid,
-    role,
-  });
+  const timer = createSpeedTimer('GOOGLE_LOGIN');
+  try {
+    await warmupApi();
+    const firebaseUser = getCurrentFirebaseUser();
+    if (firebaseUser) {
+      await attachFirebaseBearer(firebaseUser);
+    }
+    const apiStarted = Date.now();
+    const response = await googleLoginAPI({
+      name,
+      email,
+      firebaseUid,
+      role,
+    });
+    speedDone('POST /api/auth/google-login', apiStarted, {
+      status: response.status,
+    });
 
-  const { user } = response.data;
-  return persistSession(user, role, firebaseUid);
+    const { user } = response.data;
+    const session = await persistSession(user, role, firebaseUid);
+    timer.end({ email, role });
+    return session;
+  } catch (error) {
+    timer.end({
+      failed: true,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 };
 
 export const logoutUser = async () => {
+  const timer = createSpeedTimer('LOGOUT');
   try {
     const { unregisterDeviceForPush } = await import(
       '../notifications/pushNotificationService'
@@ -228,8 +415,11 @@ export const logoutUser = async () => {
   } catch (error) {
     console.warn('[Auth] push unregister failed', error);
   }
+  clearCachedAuthToken();
   await firebaseSignOut();
   await clearAuthSession();
+  timer.end();
+  speedLog('Ready for next login — watch [SPEED] LOGIN logs');
 };
 
 export const restoreAuthSession = async (): Promise<AuthSession | null> => {

@@ -54,7 +54,19 @@ const TopTutorCard: React.FC<TopTutorCardProps> = ({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       </View>
-      <CustomButton title="Hire Tutor" onPress={onHire} />
+      <CustomButton
+        title="Hire Tutor"
+        onPress={onHire}
+        style={{
+          width: '100%',
+          alignSelf: 'stretch',
+          height: 48,
+          borderRadius: 14,
+          elevation: 0,
+          paddingHorizontal: 12,
+        }}
+        textStyle={{ fontSize: 15 }}
+      />
     </View>
   );
 };

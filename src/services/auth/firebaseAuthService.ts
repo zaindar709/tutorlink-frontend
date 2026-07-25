@@ -8,17 +8,22 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from '@react-native-firebase/auth';
+import { withTimeout } from '../../utils/async/withTimeout';
 
 const auth = getAuth();
+
+/** Firebase can hang on flaky mobile networks ("unexpected end of stream"). */
+const FIREBASE_AUTH_TIMEOUT_MS = 20_000;
+const FIREBASE_TOKEN_TIMEOUT_MS = 10_000;
 
 export const firebaseSignUp = async (
   email: string,
   password: string
 ): Promise<FirebaseAuthTypes.User> => {
-  const credential = await createUserWithEmailAndPassword(
-    auth,
-    email,
-    password
+  const credential = await withTimeout(
+    createUserWithEmailAndPassword(auth, email, password),
+    FIREBASE_AUTH_TIMEOUT_MS,
+    'Sign up'
   );
   return credential.user;
 };
@@ -27,7 +32,11 @@ export const firebaseSignIn = async (
   email: string,
   password: string
 ): Promise<FirebaseAuthTypes.User> => {
-  const credential = await signInWithEmailAndPassword(auth, email, password);
+  const credential = await withTimeout(
+    signInWithEmailAndPassword(auth, email, password),
+    FIREBASE_AUTH_TIMEOUT_MS,
+    'Sign in'
+  );
   return credential.user;
 };
 
@@ -90,7 +99,11 @@ export const getFirebaseIdToken = async (
   if (!currentUser) {
     throw new Error('Firebase user is not authenticated');
   }
-  return await getIdToken(currentUser, forceRefresh);
+  return await withTimeout(
+    getIdToken(currentUser, forceRefresh),
+    FIREBASE_TOKEN_TIMEOUT_MS,
+    'Auth token'
+  );
 };
 
 export const deleteFirebaseUser = async () => {

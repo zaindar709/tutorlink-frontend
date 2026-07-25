@@ -8,7 +8,6 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import TutorNearbyCard from '../../../../components/TutorNearbyCard/TutorNearbyCard';
-import BookTutorModal from '../../../../components/BookTutorModal/BookTutorModal';
 import SearchBottomSheet from '../../../../components/SearchBottomSheet/SearchBottomSheet';
 import TutorMapMarker, {
   getTutorCoordinate,
@@ -19,18 +18,13 @@ import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { useTutorSearch } from '../../../../hooks/api/useTutorSearch';
 import { TutorProfile } from '../../../../types/api.types';
+import { enrichTutorFromSearch } from '../../../../constants/bookingFlowMockData';
+import { navigateHomeStack } from '../../../../navigation/navigationRef';
 
 const LAHORE = { lat: 31.5204, lng: 74.3587 };
 
-/** Same filters as Home screen — proven to return tutors. */
-const DEFAULT_SEARCH_FILTERS = {
-  availability: true,
-  minRating: 4,
-};
-
-const VIEW_ALL_FILTERS = {
-  availability: true,
-};
+/** Empty body — service tries unfiltered then verified. */
+const DEFAULT_SEARCH_FILTERS = {};
 
 const getMapViewport = (tutorList: TutorProfile[]) => {
   if (tutorList.length === 0) {
@@ -69,7 +63,6 @@ const SearchScreen = () => {
   const searchInputRef = useRef<TextInput>(null);
   const [search, setSearch] = useState('');
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
-  const [bookingTutor, setBookingTutor] = useState<TutorProfile | null>(null);
   const [expandedSheet, setExpandedSheet] = useState(false);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const { tutors, loading, error, search: runSearch } = useTutorSearch(
@@ -80,12 +73,12 @@ const SearchScreen = () => {
   const handleViewAll = useCallback(() => {
     setExpandedSheet(true);
     setSelectedTutorId(null);
-    runSearch(VIEW_ALL_FILTERS);
+    runSearch({}, { replace: true });
   }, [runSearch]);
 
   useFocusEffect(
     useCallback(() => {
-      runSearch(DEFAULT_SEARCH_FILTERS);
+      void runSearch({}, { replace: true });
 
       if (route.params?.focusSearch) {
         const timer = setTimeout(() => {
@@ -102,6 +95,8 @@ const SearchScreen = () => {
       handleViewAll();
     }
   }, [route.params?.viewAll, handleViewAll]);
+
+  // Service already tries multiple strategies — no second client fallback.
 
   const filteredTutors = useMemo(() => {
     const query = search.toLowerCase().trim();
@@ -252,18 +247,25 @@ const SearchScreen = () => {
               isSelected={tutor._id === selectedTutor?._id}
               onPress={() => {
                 setSelectedTutorId(tutor._id);
-                setBookingTutor(tutor);
+                try {
+                  const enriched = enrichTutorFromSearch(tutor);
+                  navigateHomeStack('TutorBookingDetailsScreen', {
+                    tutorId: enriched.id,
+                    tutor: enriched,
+                    ctaLabel: 'Book Now',
+                  });
+                } catch (error) {
+                  console.warn('[Search] book navigate failed', error);
+                  navigateHomeStack('TutorBookingDetailsScreen', {
+                    tutorId: 'tutor-sara-ahmed',
+                    ctaLabel: 'Book Now',
+                  });
+                }
               }}
             />
           ))}
         </SearchBottomSheet>
       </View>
-
-      <BookTutorModal
-        visible={!!bookingTutor}
-        tutor={bookingTutor}
-        onClose={() => setBookingTutor(null)}
-      />
     </SafeAreaView>
   );
 };
