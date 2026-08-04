@@ -44,6 +44,8 @@ android {
         versionName "1.0.1"
         // Keep Firebase / Google Play Services from pulling unused languages hard.
         resConfigs "en", "ur"
+        // HTTPS API only in release; allow cleartext in debug for local backends.
+        manifestPlaceholders = [usesCleartextTraffic: "false"]
     }
 
     signingConfigs {
@@ -73,6 +75,7 @@ android {
         debug {
             signingConfig signingConfigs.debug
             debuggable true
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
             signingConfig signingConfigs.release
@@ -83,6 +86,7 @@ android {
             ndk {
                 debugSymbolLevel 'NONE'
             }
+            manifestPlaceholders = [usesCleartextTraffic: "false"]
         }
     }
 

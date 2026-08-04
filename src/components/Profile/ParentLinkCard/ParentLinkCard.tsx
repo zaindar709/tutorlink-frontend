@@ -1,7 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Icon } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
+import { GLASS } from '../../../theme/glass';
 
 type Props = {
   onGenerateCode?: () => void;
@@ -11,31 +18,30 @@ type Props = {
 export default function ParentLinkCard({ onGenerateCode, loading }: Props) {
   return (
     <LinearGradient
-      colors={['#34D399', '#10B981', '#088a61']}
+      colors={['#34D399', '#10B981', '#059669']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
       style={styles.container}
     >
-      <View style={styles.left}>
-        <View style={styles.iconBox}>
-          <Icon source="link-variant" size={20} color="#fff" />
-        </View>
+      <View style={styles.iconBox}>
+        <Icon source="account-child-outline" size={22} color="#fff" />
+      </View>
 
-        <View style={styles.textBox}>
-          <Text style={styles.title}>Link Parent Account</Text>
-          <Text style={styles.desc}>
-            Share your progress with your parents
-          </Text>
-        </View>
+      <View style={styles.textBox}>
+        <Text style={styles.title}>Link a parent</Text>
+        <Text style={styles.desc}>Share progress with a short code</Text>
       </View>
 
       <TouchableOpacity
         style={styles.btn}
         onPress={onGenerateCode}
         disabled={loading}
+        activeOpacity={0.85}
       >
         {loading ? (
           <ActivityIndicator color="#059669" />
         ) : (
-                <Text style={styles.btnText}>Generate Code</Text>
+          <Text style={styles.btnText}>Generate</Text>
         )}
       </TouchableOpacity>
     </LinearGradient>
@@ -45,59 +51,54 @@ export default function ParentLinkCard({ onGenerateCode, loading }: Props) {
 const styles = StyleSheet.create({
   container: {
     marginHorizontal: 16,
-    padding: 16,
-    height: 150,
-    borderRadius: 18,
+    marginTop: -28,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: GLASS.radius.xl,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: -30,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    shadowColor: '#10B981',
+    shadowOpacity: 0.22,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  textBox: {
-    flex: 1,
-    marginLeft: 10,
-    paddingRight: 10,
-  },
   iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  textBox: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 10,
+  },
   title: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    flexShrink: 1,
   },
   desc: {
-    color: '#E7FFF5',
+    color: 'rgba(255,255,255,0.88)',
     fontSize: 12,
-    flexShrink: 1,
+    marginTop: 2,
   },
   btn: {
     backgroundColor: '#fff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignSelf: 'center',
-    minWidth: 110,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 92,
     alignItems: 'center',
   },
   btnText: {
     color: '#059669',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

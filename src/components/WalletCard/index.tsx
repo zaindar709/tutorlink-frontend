@@ -1,11 +1,9 @@
-// components/WalletCard.js
-
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-
-import { Icon, IconButton } from 'react-native-paper';
+import { Icon } from 'react-native-paper';
+import LinearGradient from 'react-native-linear-gradient';
 import useUi from '../../hooks/ui/useUi';
-import { LinearGradient } from 'react-native-linear-gradient';
+import { GLASS } from '../../theme/glass';
 
 export default function WalletCard({ balance, onDeposit }: any) {
   const { colors, resp } = useUi();
@@ -13,30 +11,31 @@ export default function WalletCard({ balance, onDeposit }: any) {
 
   return (
     <LinearGradient
-     colors={['#4F8CFF', '#2563EB', '#1E40AF']}
+      colors={[...GLASS.buttonGradient]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles.card}
     >
       <View style={styles.topRow}>
-        <View>
-          <Text style={styles.label}>Total Balance</Text>
-
-          <Text style={styles.balance}>Rs. {balance.toLocaleString()}</Text>
+        <View style={styles.balanceBlock}>
+          <Text style={styles.label}>Available Balance</Text>
+          <Text style={styles.balance}>
+            Rs. {Number(balance || 0).toLocaleString()}
+          </Text>
+          <Text style={styles.hint}>Ready to book sessions</Text>
         </View>
 
         <View style={styles.iconContainer}>
-          <Icon source="wallet-outline" size={24} color="#fff" />
+          <Icon source="wallet-outline" size={26} color="#fff" />
         </View>
       </View>
 
       <TouchableOpacity
-        activeOpacity={0.8}
+        activeOpacity={0.88}
         style={styles.depositBtn}
         onPress={onDeposit}
       >
-        <Icon source="wallet-outline" size={24} color="#3209c7" />
-
+        <Icon source="plus-circle-outline" size={20} color={GLASS.primary} />
         <Text style={styles.depositText}>Deposit Money</Text>
       </TouchableOpacity>
     </LinearGradient>
@@ -47,54 +46,60 @@ const createStyles = ({ colors, resp }: any) =>
   StyleSheet.create({
     card: {
       width: '100%',
-      height: resp.dy(200),
-      borderRadius: resp.dx(22),
-      padding: resp.dx(18),
-      backgroundColor: '#2456E8',
+      borderRadius: GLASS.radius.xxl,
+      padding: resp.dx(20),
+      overflow: 'hidden',
+      ...GLASS.shadow.medium,
     },
-
     topRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'flex-start',
     },
-
+    balanceBlock: {
+      flex: 1,
+      paddingRight: 12,
+    },
     label: {
-      color: '#DCE6FF',
+      color: 'rgba(255,255,255,0.85)',
       fontSize: resp.df(13),
+      fontWeight: '600',
       marginBottom: resp.dy(6),
     },
-
     balance: {
       color: colors.WHITE_COLOR,
-      fontSize: resp.df(34),
-      fontWeight: '700',
+      fontSize: resp.df(30),
+      fontWeight: '800',
+      letterSpacing: 0.2,
     },
-
+    hint: {
+      color: 'rgba(255,255,255,0.7)',
+      fontSize: resp.df(12),
+      marginTop: resp.dy(4),
+    },
     iconContainer: {
       height: resp.dy(48),
       width: resp.dy(48),
-      borderRadius: resp.dx(14),
+      borderRadius: resp.dx(16),
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: 'rgba(255,255,255,0.18)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.25)',
     },
-
     depositBtn: {
-      marginTop: resp.dy(24),
-      backgroundColor: colors.WHITE_COLOR,
-      height: resp.dy(52),
+      marginTop: resp.dy(20),
+      backgroundColor: '#FFFFFF',
+      height: resp.dy(48),
       borderRadius: resp.dx(14),
-
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
+      gap: 8,
     },
-
     depositText: {
-      color: '#2563EB',
+      color: GLASS.primary,
       fontSize: resp.df(15),
       fontWeight: '700',
-      marginLeft: resp.dx(8),
     },
   });

@@ -1,7 +1,5 @@
 import React from 'react';
 import { View, Text, Animated, Image, Dimensions } from 'react-native';
-import { createStyles } from '../../screens/SharedScreens/Onboarding/Onboarding.styles';
-import useUi from '../../hooks/ui/useUi';
 
 const { width } = Dimensions.get('window');
 
@@ -11,6 +9,7 @@ interface OnboardingItemProps {
   scrollX: Animated.Value;
   styles: any;
 }
+
 const OnboardingItem = ({
   item,
   index,
@@ -18,31 +17,26 @@ const OnboardingItem = ({
   styles,
 }: OnboardingItemProps) => {
   const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-  const { colors, resp } = useUi();
-  styles = createStyles(colors, resp);
 
   const scale = scrollX.interpolate({
     inputRange,
-    outputRange: [0.8, 1, 0.8],
-    extrapolate: 'clamp',
-  });
-  const translateY = scrollX.interpolate({
-    inputRange,
-    outputRange: [100, 0, 100],
+    outputRange: [0.92, 1, 0.92],
     extrapolate: 'clamp',
   });
   const opacity = scrollX.interpolate({
     inputRange,
-    outputRange: [0, 1, 0],
+    outputRange: [0.35, 1, 0.35],
     extrapolate: 'clamp',
   });
+
   return (
-    <View style={[styles.itemContainer, { width }]}>
-      <Animated.View style={[styles.imageWrapper, { transform: [{ scale }] }]}>
-        <View style={[styles.glow, { backgroundColor: item.color }]} />
-         <Image source={item.image} style={styles.image} />
+    <View style={styles.slide}>
+      <Animated.View
+        style={[styles.imageWrapper, { opacity, transform: [{ scale }] }]}
+      >
+        <Image source={item.image} style={styles.image} resizeMode="cover" />
       </Animated.View>
-      <Animated.View style={{ transform: [{ translateY }], opacity }}>
+      <Animated.View style={{ opacity }}>
         <Text style={styles.title}>{item.title}</Text>
         <Text style={styles.description}>{item.description}</Text>
       </Animated.View>

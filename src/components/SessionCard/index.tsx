@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { GLASS } from '../../theme/glass';
 
 type Props = {
   colors: any;
@@ -93,9 +94,12 @@ const createStyles = (colors: any, resp: any) =>
     card: {
       marginHorizontal: resp.dx(20),
       marginTop: resp.dy(20),
-      backgroundColor: '#F6F0FF',
-      borderRadius: resp.dx(26),
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xxl,
       padding: resp.dx(20),
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
 
     topRow: {
@@ -105,7 +109,7 @@ const createStyles = (colors: any, resp: any) =>
     },
 
     title: {
-      color: '#2F6BFF',
+      color: GLASS.primary,
       fontWeight: '800',
       fontSize: resp.df(12),
     },
@@ -212,9 +216,9 @@ const createStyles = (colors: any, resp: any) =>
       width: '48%',
       height: resp.dy(52),
       borderRadius: resp.dx(16),
-      backgroundColor: '#fff',
+      backgroundColor: GLASS.cardBg,
       borderWidth: 1,
-      borderColor: '#E8E8E8',
+      borderColor: GLASS.cardBorder,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',

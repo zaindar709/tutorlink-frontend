@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
@@ -10,8 +10,12 @@ import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import UploadBox from '../../../../components/Tutor/DocumentUpload/UploadBox';
 import UploadGuidelines from '../../../../components/Tutor/DocumentUpload/UploadGuidelines';
 import CustomButton from '../../../../components/CustomButton';
-import AuthHeader from '../../../../components/Tutor/AuthHeader';
 import DocumentPickerField from '../../../../components/Tutor/DocumentPicker';
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  GlassCard,
+} from '../../../../components/AuthGlass';
 
 const DocumentUploadScreen = ({ navigation }: any) => {
   const { colors, resp } = useUi();
@@ -74,72 +78,25 @@ const DocumentUploadScreen = ({ navigation }: any) => {
   };
 
   return (
-    <ScrollView
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{
-        paddingBottom: resp.dy(4),
-      }}
-    >
-      <View style={[styles.container, { backgroundColor: colors.WHITE_COLOR }]}>
-        <AuthHeader
-          title="Document Upload"
-          subtitle="Secure & confidential verification"
-          topIcon={
-            <View style={styles.headerSection}>
-              <Icon
-                name="file-document-outline"
-                size={34}
-                color={colors.WHITE_COLOR}
-              />
-            </View>
-          }
-          titleStyle={{
-            fontSize: 24,
-            textAlign: 'center',
-          }}
-          subtitleStyle={{
-            textAlign: 'center',
-            fontSize: 14,
-            marginTop: -5,
-          }}
-          contentContainerStyle={{
-            alignItems: 'center',
-            marginTop: 12,
-          }}
-          containerStyle={{
-            minHeight: 300,
-          }}
-          showBrand={false}
-        />
+    <AuthGlassBackground>
+      <AuthGlassHeader
+        title="Document Upload"
+        subtitle="Secure & confidential verification — Step 2 of 3"
+        onBack={() => navigation.goBack()}
+      />
 
-        <View style={styles.stepContainer}>
-          <Text style={[styles.stepText, { color: colors.BLACK }]}>
-            Step 2 of 3
-          </Text>
-
-          <Text style={[styles.stepLabel, { color: colors.GRAY31 }]}>
-            Document Upload
-          </Text>
+      <GlassCard contentStyle={{ paddingBottom: 8 }}>
+        <View style={styles.headerSection}>
+          <Icon name="file-document-outline" size={34} color="#FFFFFF" />
         </View>
-        <View
-          style={[styles.progressBarBackground, { backgroundColor: '#E2E2E2' }]}
-        >
-          <View
-            style={[
-              styles.progressBarFill,
-              {
-                backgroundColor: colors.PRIMARY_COLOR,
-                width: '66%',
-              },
-            ]}
-          />
+
+        <View style={styles.progressBarBackground}>
+          <View style={[styles.progressBarFill, { width: '66%' }]} />
         </View>
 
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.BLACK }]}>
-            CNIC / National ID
-          </Text>
-          <Text style={[styles.sectionSubtitle, { color: colors.GRAY31 }]}>
+          <Text style={styles.sectionTitle}>CNIC / National ID</Text>
+          <Text style={styles.sectionSubtitle}>
             Upload both sides of your ID card
           </Text>
           <View style={styles.uploadBox}>
@@ -165,7 +122,7 @@ const DocumentUploadScreen = ({ navigation }: any) => {
           onPress={pickDocument}
         />
         <UploadGuidelines />
-        <View style={{ marginTop: resp.dy(2), marginBottom: resp.dy(26) }}>
+        <View style={{ marginTop: resp.dy(2), marginBottom: resp.dy(8) }}>
           <CustomButton
             title="Submit for Verification"
             textStyle={{ fontSize: resp.df(16) }}
@@ -174,8 +131,8 @@ const DocumentUploadScreen = ({ navigation }: any) => {
             onPress={handleSubmit}
           />
         </View>
-      </View>
-    </ScrollView>
+      </GlassCard>
+    </AuthGlassBackground>
   );
 };
 

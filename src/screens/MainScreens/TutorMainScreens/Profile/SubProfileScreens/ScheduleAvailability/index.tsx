@@ -4,7 +4,8 @@ import { Icon } from 'react-native-paper';
 import useUi from '../../../../../../hooks/ui/useUi';
 import CustomButton from '../../../../../../components/CustomButton';
 import DayAvailabilityCard from '../../../../../../components/Tutor/ScheduleAvailability/DayAvailabilityCard';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import CustomHeader from '../../../../../../components/Tutor/CustomHeader';
 import { useNavigation } from '@react-navigation/native';
 
@@ -95,15 +96,13 @@ const ScheduleAvailabilityScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false}>
       <View>
         <ScrollView showsVerticalScrollIndicator={false}>
           <CustomHeader navigation={navigation} title="Schedule Availability" />
           <View
             style={[
-              // styles.heroCard,
               {
-                backgroundColor: colors.WHITE_COLOR,
                 paddingHorizontal: 20,
                 paddingTop: 15,
                 paddingBottom: 40,
@@ -175,31 +174,26 @@ const ScheduleAvailabilityScreen = () => {
           </View>
         </ScrollView>
       </View>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default ScheduleAvailabilityScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingVertical: 24,
     paddingBottom: 40,
   },
   heroCard: {
-    borderRadius: 28,
+    borderRadius: GLASS.radius.xxl,
     padding: 22,
     marginBottom: 22,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 24,
-    elevation: 8,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   heroBadge: {
     flexDirection: 'row',
@@ -220,10 +214,12 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     marginBottom: 10,
+    color: GLASS.textPrimary,
   },
   heroSubtitle: {
     fontSize: 15,
     lineHeight: 22,
+    color: GLASS.textSecondary,
   },
   sectionHeader: {
     marginBottom: 14,
@@ -233,10 +229,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 4,
+    color: GLASS.textPrimary,
   },
   sectionSubtitle: {
     fontSize: 13,
     lineHeight: 19,
+    color: GLASS.textSecondary,
   },
   footer: {
     marginTop: 20,

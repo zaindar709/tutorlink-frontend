@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
+import { GlassScreen, GlassCard, GlassHeader } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
 import { BookingFlowItem } from '../../../../types/bookingFlow.types';
 
@@ -63,21 +64,24 @@ const BookingReviewScreen = () => {
 
   if (loading || !booking) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <ActivityIndicator style={{ marginTop: 40 }} color="#7548F5" />
-      </SafeAreaView>
+      <GlassScreen
+        scroll={false}
+        contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+      >
+        <ActivityIndicator color={GLASS.primary} />
+      </GlassScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-        <Text style={styles.title}>Rate your session</Text>
-        <View style={{ width: 48 }} />
-      </View>
+    <GlassScreen scroll={false} contentStyle={styles.screen}>
+      <GlassHeader
+        title="Rate your session"
+        onBack={() => navigation.goBack()}
+        style={styles.header}
+      />
 
-      <View style={styles.card}>
+      <GlassCard style={styles.card}>
         <Text style={styles.name}>{booking.tutor.name}</Text>
         <Text style={styles.meta}>
           {booking.subject} · {booking.date}
@@ -88,7 +92,7 @@ const BookingReviewScreen = () => {
             <IconButton
               key={value}
               icon={value <= rating ? 'star' : 'star-outline'}
-              iconColor={value <= rating ? '#F59E0B' : '#CBD5E1'}
+              iconColor={value <= rating ? GLASS.accent : GLASS.textMuted}
               size={28}
               onPress={() => setRating(value)}
             />
@@ -99,7 +103,7 @@ const BookingReviewScreen = () => {
           style={styles.input}
           multiline
           placeholder="Write your feedback…"
-          placeholderTextColor="#94A3B8"
+          placeholderTextColor={GLASS.placeholder}
           value={comment}
           onChangeText={setComment}
         />
@@ -109,8 +113,8 @@ const BookingReviewScreen = () => {
           onPress={() => void submit()}
           disabled={submitting}
         />
-      </View>
-    </SafeAreaView>
+      </GlassCard>
+    </GlassScreen>
   );
 };
 
@@ -118,35 +122,28 @@ export default BookingReviewScreen;
 
 const createStyles = (_colors: Record<string, unknown>) =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff' },
-    title: {
-      flex: 1,
-      textAlign: 'center',
-      fontWeight: '800',
-      fontSize: 17,
-      color: '#0F172A',
+    screen: { flex: 1 },
+    header: {
+      marginHorizontal: -GLASS.space.lg,
+      marginBottom: GLASS.space.md,
+      borderBottomLeftRadius: 0,
+      borderBottomRightRadius: 0,
     },
     card: {
-      margin: 16,
-      backgroundColor: '#fff',
-      borderRadius: 20,
-      padding: 18,
-      borderWidth: 1,
-      borderColor: '#E2E8F0',
-      gap: 8,
+      marginTop: GLASS.space.sm,
     },
-    name: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-    meta: { color: '#64748B', marginBottom: 8 },
+    name: { fontSize: 18, fontWeight: '800', color: GLASS.textPrimary },
+    meta: { color: GLASS.textSecondary, marginBottom: 8 },
     stars: { flexDirection: 'row', justifyContent: 'center' },
     input: {
       minHeight: 120,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
-      borderRadius: 14,
-      padding: 12,
+      borderColor: GLASS.inputBorder,
+      borderRadius: GLASS.radius.md,
+      padding: GLASS.space.md,
       textAlignVertical: 'top',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
+      backgroundColor: GLASS.inputBg,
       marginBottom: 8,
     },
   });

@@ -37,6 +37,13 @@ export const validatePassword = (value: string) => {
   return errors.length > 0 ? errors.join(',') : '';
 };
 
+/** Login only needs a non-empty password — strength rules apply on signup. */
+export const validateLoginPassword = (value: string) => {
+  if (!value) return 'Password is required';
+  if (value.length < 6) return 'Password must be at least 6 characters';
+  return '';
+};
+
 export const validateConfirmPassword = (
   password: string,
   confirmPassword: string

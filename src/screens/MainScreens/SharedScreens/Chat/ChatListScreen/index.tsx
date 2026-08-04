@@ -4,20 +4,22 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   Pressable,
   RefreshControl,
-  StatusBar,
   ActivityIndicator,
   Image,
   Alert,
+  ScrollView,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useUi from '../../../../../hooks/ui/useUi';
+import { GlassScreen, GlassSearchBar } from '../../../../../components/Glass';
+import { GLASS } from '../../../../../theme/glass';
 import { ChatCard } from '../../../../../components/Chat';
 import { useChatConversations } from '../../../../../hooks/api/useChatConversations';
 import { useTutorSearch } from '../../../../../hooks/api/useTutorSearch';
@@ -52,6 +54,14 @@ const ChatListScreen = () => {
     loading: tutorsLoading,
     search: searchTutors,
   } = useTutorSearch({}, { autoLoad: true });
+
+  const unreadTotal = useMemo(
+    () =>
+      conversations
+        .filter(c => !c.archived)
+        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+    [conversations]
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -162,248 +172,174 @@ const ChatListScreen = () => {
   }, [isStudent, refresh, searchTutors]);
 
   const listHeader = (
-    <>
-      {filtered.some(c => c.pinned) ? (
-        <Text
-          style={{
-            color: colors.TEXT_SECONDARY as string,
-            fontSize: 12,
-            fontWeight: '700',
-            marginLeft: 20,
-            marginBottom: 8,
-            letterSpacing: 0.4,
-          }}
-        >
-          PINNED
-        </Text>
+    <View style={styles.listTop}>
+      {isStudent && (availableTutors.length > 0 || tutorsLoading) ? (
+        <View style={styles.tutorStrip}>
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Start a chat</Text>
+            <Text style={styles.sectionMeta}>Ask before you hire</Text>
+          </View>
+
+          {tutorsLoading && availableTutors.length === 0 ? (
+            <ActivityIndicator
+              color={colors.PRIMARY_COLOR as string}
+              style={{ marginVertical: 12 }}
+            />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tutorScroll}
+            >
+              {availableTutors.map(tutor => {
+                const userId = String(tutor.user?._id || tutor._id);
+                const busy = startingTutorId === userId;
+                const subject = (tutor.subjects || [])[0] || 'General';
+                return (
+                  <Pressable
+                    key={userId}
+                    onPress={() => void openTutorChat(tutor)}
+                    disabled={!!startingTutorId}
+                    style={styles.tutorChip}
+                  >
+                    <View style={styles.tutorAvatarWrap}>
+                      <Image
+                        source={{
+                          uri: tutor.user?.avatarUrl || FALLBACK_AVATAR,
+                        }}
+                        style={styles.tutorAvatar}
+                      />
+                      {busy ? (
+                        <View style={styles.tutorBusy}>
+                          <ActivityIndicator size="small" color="#fff" />
+                        </View>
+                      ) : (
+                        <View style={styles.tutorMsgFab}>
+                          <MaterialCommunityIcons
+                            name="message-plus"
+                            size={12}
+                            color="#fff"
+                          />
+                        </View>
+                      )}
+                    </View>
+                    <Text numberOfLines={1} style={styles.tutorName}>
+                      {tutor.user?.name || 'Tutor'}
+                    </Text>
+                    <Text numberOfLines={1} style={styles.tutorSubject}>
+                      {subject}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+        </View>
       ) : null}
+
       {filtered.length > 0 ? (
-        <Text
-          style={{
-            color: colors.TEXT_SECONDARY as string,
-            fontSize: 12,
-            fontWeight: '700',
-            marginLeft: 20,
-            marginBottom: 8,
-            marginTop: filtered.some(c => c.pinned) ? 4 : 0,
-            letterSpacing: 0.4,
-          }}
-        >
-          CONVERSATIONS
-        </Text>
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>Chats</Text>
+          <View style={styles.countPill}>
+            <Text style={styles.countPillText}>{filtered.length}</Text>
+          </View>
+        </View>
       ) : null}
-    </>
+      {filtered.length > 0 ? <View style={styles.chatsDivider} /> : null}
+    </View>
   );
 
-  const listFooter =
-    isStudent ? (
-      <View style={styles.tutorSection}>
-        <Text
-          style={{
-            color: colors.TEXT_SECONDARY as string,
-            fontSize: 12,
-            fontWeight: '700',
-            marginLeft: 4,
-            marginBottom: 4,
-            letterSpacing: 0.4,
-          }}
-        >
-          AVAILABLE TUTORS
-        </Text>
-        <Text
-          style={{
-            color: colors.TEXT_SECONDARY as string,
-            fontSize: resp.df(12),
-            marginLeft: 4,
-            marginBottom: 12,
-          }}
-        >
-          Ask about slots before you hire
-        </Text>
-
-        {tutorsLoading && availableTutors.length === 0 ? (
-          <ActivityIndicator color={colors.PRIMARY_COLOR as string} />
-        ) : availableTutors.length === 0 ? (
-          <Text
-            style={{
-              color: colors.TEXT_SECONDARY as string,
-              fontSize: resp.df(13),
-              marginLeft: 4,
-            }}
-          >
-            No available tutors right now.
-          </Text>
-        ) : (
-          availableTutors.map(tutor => {
-            const userId = String(tutor.user?._id || tutor._id);
-            const busy = startingTutorId === userId;
-            return (
-              <Pressable
-                key={userId}
-                onPress={() => void openTutorChat(tutor)}
-                disabled={!!startingTutorId}
-                style={[
-                  styles.tutorCard,
-                  {
-                    backgroundColor: colors.CARD_COLOR as string,
-                    borderColor: colors.BORDER_COLOR as string,
-                  },
-                ]}
-              >
-                <Image
-                  source={{
-                    uri: tutor.user?.avatarUrl || FALLBACK_AVATAR,
-                  }}
-                  style={styles.tutorAvatar}
-                />
-                <View style={styles.tutorBody}>
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      color: colors.TEXT_PRIMARY as string,
-                      fontSize: resp.df(15),
-                      fontWeight: '700',
-                    }}
-                  >
-                    {tutor.user?.name || 'Tutor'}
-                  </Text>
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      color: colors.TEXT_SECONDARY as string,
-                      fontSize: resp.df(12),
-                      marginTop: 2,
-                    }}
-                  >
-                    {(tutor.subjects || []).slice(0, 2).join(' · ') ||
-                      'General'}
-                    {tutor.hourlyRate != null
-                      ? ` · Rs. ${tutor.hourlyRate}/hr`
-                      : ''}
-                  </Text>
-                </View>
-                {busy ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={colors.PRIMARY_COLOR as string}
-                  />
-                ) : (
-                  <View
-                    style={[
-                      styles.messageChip,
-                      { backgroundColor: colors.LIGHT_PRIMARY as string },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name="message-text-outline"
-                      size={16}
-                      color={colors.PRIMARY_COLOR as string}
-                    />
-                    <Text
-                      style={{
-                        color: colors.PRIMARY_COLOR as string,
-                        fontWeight: '700',
-                        fontSize: 12,
-                        marginLeft: 4,
-                      }}
-                    >
-                      Ask
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            );
-          })
-        )}
-      </View>
-    ) : null;
-
-  return (
-    <View
-      style={[
-        styles.screen,
-        {
-          backgroundColor: colors.BACKGROUND as string,
-          paddingTop: insets.top,
-        },
-      ]}
-    >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.BACKGROUND as string}
-      />
-
-      <View style={styles.header}>
-        <View>
-          <Text
-            style={{
-              color: colors.TEXT_PRIMARY as string,
-              fontSize: resp.df(26),
-              fontWeight: '800',
-            }}
-          >
-            Messages
-          </Text>
-          <Text
-            style={{
-              color: colors.TEXT_SECONDARY as string,
-              fontSize: resp.df(13),
-              marginTop: 2,
-            }}
-          >
-            {isStudent
-              ? 'Chat before you hire — ask about open slots'
-              : 'Stay connected with your students'}
-          </Text>
-        </View>
-        <Pressable
-          style={[
-            styles.headerBtn,
-            { backgroundColor: colors.LIGHT_PRIMARY as string },
-          ]}
-          onPress={() => void onRefresh()}
-        >
-          <MaterialCommunityIcons
-            name="refresh"
-            size={20}
-            color={colors.PRIMARY_COLOR as string}
-          />
-        </Pressable>
-      </View>
-
-      <View
-        style={[
-          styles.search,
-          {
-            backgroundColor: colors.CARD_COLOR as string,
-            borderColor: colors.BORDER_COLOR as string,
-          },
-        ]}
+  const emptyStudent = (
+    <Animated.View entering={FadeIn} style={styles.empty}>
+      <LinearGradient
+        colors={[...GLASS.buttonGradient]}
+        style={styles.emptyIcon}
       >
         <MaterialCommunityIcons
-          name="magnify"
-          size={20}
-          color={colors.PLACEHOLDER_TEXTCOLOR as string}
+          name="message-text-outline"
+          size={30}
+          color="#fff"
         />
-        <TextInput
+      </LinearGradient>
+      <Text style={[styles.emptyTitle, { fontSize: resp.df(18) }]}>
+        No chats yet
+      </Text>
+      <Text style={[styles.emptyBody, { fontSize: resp.df(13) }]}>
+        Pick a tutor above to ask about availability, or search by name and
+        subject.
+      </Text>
+    </Animated.View>
+  );
+
+  const emptyTutor = (
+    <Animated.View entering={FadeIn} style={styles.empty}>
+      <LinearGradient
+        colors={[...GLASS.buttonGradient]}
+        style={styles.emptyIcon}
+      >
+        <MaterialCommunityIcons
+          name="account-group-outline"
+          size={30}
+          color="#fff"
+        />
+      </LinearGradient>
+      <Text style={[styles.emptyTitle, { fontSize: resp.df(18) }]}>
+        Waiting for students
+      </Text>
+      <Text style={[styles.emptyBody, { fontSize: resp.df(13) }]}>
+        When students message you before or after a booking, their chats will
+        appear here.
+      </Text>
+    </Animated.View>
+  );
+
+  return (
+    <GlassScreen scroll={false} edges={['bottom']} contentStyle={styles.screen}>
+      <LinearGradient
+        colors={['#8B6CF6', '#7548F5', '#5B2FD6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.hero, { paddingTop: Math.max(insets.top, 10) + 6 }]}
+      >
+        <View style={styles.heroRow}>
+          <View style={styles.heroText}>
+            <Text style={[styles.heroTitle, { fontSize: resp.df(24) }]}>
+              Messages
+            </Text>
+            <Text style={[styles.heroSubtitle, { fontSize: resp.df(13) }]}>
+              {isStudent
+                ? 'Chat with tutors before you hire'
+                : 'Stay close to your students'}
+            </Text>
+          </View>
+
+          <View style={styles.heroActions}>
+            {unreadTotal > 0 ? (
+              <View style={styles.unreadPill}>
+                <Text style={styles.unreadPillText}>
+                  {unreadTotal > 99 ? '99+' : unreadTotal} new
+                </Text>
+              </View>
+            ) : null}
+            <Pressable style={styles.refreshBtn} onPress={() => void onRefresh()}>
+              <MaterialCommunityIcons name="refresh" size={18} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+
+        <GlassSearchBar
           value={query}
           onChangeText={setQuery}
           placeholder={
             isStudent
-              ? 'Search conversations or tutors…'
-              : 'Search students, subjects…'
+              ? 'Search chats or tutors…'
+              : 'Search students or subjects…'
           }
-          placeholderTextColor={colors.PLACEHOLDER_TEXTCOLOR as string}
-          style={[
-            styles.searchInput,
-            { color: colors.TEXT_PRIMARY as string, fontSize: resp.df(14) },
-          ]}
+          style={styles.search}
         />
-      </View>
+      </LinearGradient>
 
-      {error ? (
-        <Text style={[styles.errorText, { color: '#DC2626' }]}>{error}</Text>
-      ) : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
       {loading && conversations.length === 0 && !isStudent ? (
         <ActivityIndicator
@@ -414,7 +350,7 @@ const ChatListScreen = () => {
         <FlatList
           data={filtered}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }}
+          contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -424,49 +360,7 @@ const ChatListScreen = () => {
             />
           }
           ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          ListEmptyComponent={
-            isStudent ? (
-              <View style={{ height: 8 }} />
-            ) : (
-              <Animated.View entering={FadeIn} style={styles.empty}>
-                <View
-                  style={[
-                    styles.emptyIcon,
-                    { backgroundColor: colors.PRIMARY_COLOR as string },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="message-text-outline"
-                    size={32}
-                    color="#fff"
-                  />
-                </View>
-                <Text
-                  style={{
-                    color: colors.TEXT_PRIMARY as string,
-                    fontSize: resp.df(18),
-                    fontWeight: '800',
-                    marginTop: 16,
-                  }}
-                >
-                  No conversations yet
-                </Text>
-                <Text
-                  style={{
-                    color: colors.TEXT_SECONDARY as string,
-                    fontSize: resp.df(13),
-                    textAlign: 'center',
-                    marginTop: 8,
-                    lineHeight: 20,
-                    paddingHorizontal: 32,
-                  }}
-                >
-                  When students book you, conversations will show up here.
-                </Text>
-              </Animated.View>
-            )
-          }
+          ListEmptyComponent={isStudent ? emptyStudent : emptyTutor}
           renderItem={({ item, index }) => (
             <ChatCard
               item={item}
@@ -478,7 +372,7 @@ const ChatListScreen = () => {
           )}
         />
       )}
-    </View>
+    </GlassScreen>
   );
 };
 
@@ -486,82 +380,195 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
+  hero: {
+    paddingHorizontal: GLASS.space.lg,
+    paddingBottom: 18,
+    borderBottomLeftRadius: GLASS.radius.xxl,
+    borderBottomRightRadius: GLASS.radius.xxl,
+  },
+  heroRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 14,
   },
-  headerBtn: {
+  heroText: {
+    flex: 1,
+    marginRight: 12,
+  },
+  heroTitle: {
+    color: '#fff',
+    fontWeight: '800',
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  heroActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  unreadPill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
+  },
+  unreadPillText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  refreshBtn: {
     width: 40,
     height: 40,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   search: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    height: 48,
+    backgroundColor: '#FFFFFF',
+    borderColor: 'rgba(255,255,255,0.5)',
+  },
+  listContent: {
+    paddingHorizontal: GLASS.space.md,
+    paddingTop: 10,
+    paddingBottom: 120,
+  },
+  listTop: {
+    marginBottom: 2,
+  },
+  sectionHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 6,
   },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
+  chatsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(148, 163, 184, 0.45)',
+    width: '100%',
+    marginBottom: 0,
+  },
+  sectionTitle: {
+    color: GLASS.textPrimary,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  sectionMeta: {
+    color: GLASS.textSecondary,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  countPill: {
+    minWidth: 24,
+    height: 22,
+    borderRadius: 11,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: GLASS.primarySoft,
+  },
+  countPillText: {
+    color: GLASS.primary,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tutorStrip: {
+    marginBottom: 18,
+  },
+  tutorScroll: {
+    paddingRight: 8,
+    gap: 12,
+  },
+  tutorChip: {
+    width: 92,
+    alignItems: 'center',
+  },
+  tutorAvatarWrap: {
+    width: 64,
+    height: 64,
+    marginBottom: 8,
+  },
+  tutorAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: GLASS.primarySoft,
+    backgroundColor: '#fff',
+  },
+  tutorBusy: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 22,
+    backgroundColor: 'rgba(117,72,245,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tutorMsgFab: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: GLASS.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#f6f7fc',
+  },
+  tutorName: {
+    color: GLASS.textPrimary,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    width: '100%',
+  },
+  tutorSubject: {
+    color: GLASS.textSecondary,
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: 'center',
+    width: '100%',
   },
   errorText: {
-    marginHorizontal: 20,
-    marginBottom: 8,
+    color: '#DC2626',
+    marginHorizontal: GLASS.space.lg,
+    marginTop: 8,
     fontSize: 12,
     fontWeight: '600',
   },
   empty: {
     alignItems: 'center',
-    paddingTop: 80,
+    paddingTop: 48,
+    paddingHorizontal: 28,
   },
   emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
+    width: 68,
+    height: 68,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  tutorSection: {
+  emptyTitle: {
+    color: GLASS.textPrimary,
+    fontWeight: '800',
     marginTop: 16,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
   },
-  tutorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 10,
-  },
-  tutorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-  },
-  tutorBody: {
-    flex: 1,
-    marginHorizontal: 12,
-  },
-  messageChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 12,
+  emptyBody: {
+    color: GLASS.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
   },
 });
 

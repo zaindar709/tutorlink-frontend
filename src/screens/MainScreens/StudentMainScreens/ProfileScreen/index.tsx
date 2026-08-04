@@ -1,20 +1,24 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import {
   MenuItemCard,
   ParentLinkCard,
+  ProfileMenuSection,
   StudentProfileHero,
 } from '../../../../components/Profile';
-import CustomButton from '../../../../components/CustomButton';
 import { logout } from '../../../../store/auth/authSlice';
 import { logoutUser } from '../../../../services/auth/authService';
 import { useProfile } from '../../../../hooks/api/useProfile';
@@ -29,96 +33,138 @@ type MenuItem = {
   screen: string;
 };
 
-const MENU_ITEMS: MenuItem[] = [
+type MenuSection = {
+  title: string;
+  items: MenuItem[];
+};
+
+const MENU_SECTIONS: MenuSection[] = [
   {
-    title: 'Edit Profile',
-    description: 'Update your personal info',
-    icon: 'account-edit-outline',
-    iconColor: '#7548F5',
-    screen: 'StudentEditProfileScreen',
+    title: 'Account',
+    items: [
+      {
+        title: 'Edit Profile',
+        description: 'Name, grade & photo',
+        icon: 'account-edit-outline',
+        iconColor: '#7548F5',
+        screen: 'StudentEditProfileScreen',
+      },
+      {
+        title: 'Wallet',
+        description: 'Balance, deposits & escrow',
+        icon: 'wallet-outline',
+        iconColor: '#2456E8',
+        screen: 'WalletScreen',
+      },
+    ],
   },
   {
-    title: 'My Interests',
-    description: 'Subjects and topics',
-    icon: 'heart-outline',
-    iconColor: '#f457b8',
-    screen: 'StudentInterestsScreen',
+    title: 'Learning',
+    items: [
+      {
+        title: 'My Interests',
+        description: 'Subjects and topics',
+        icon: 'heart-outline',
+        iconColor: '#EC4899',
+        screen: 'StudentInterestsScreen',
+      },
+      {
+        title: 'Certificates',
+        description: 'Your achievements',
+        icon: 'certificate-outline',
+        iconColor: '#0EA5E9',
+        screen: 'StudentCertificatesScreen',
+      },
+      {
+        title: 'Session History',
+        description: 'Past lessons',
+        icon: 'history',
+        iconColor: '#3B82F6',
+        screen: 'StudentSessionHistoryScreen',
+      },
+    ],
   },
   {
-    title: 'Certificates',
-    description: 'Your achievements',
-    icon: 'certificate-outline',
-    iconColor: '#3bbef6',
-    screen: 'StudentCertificatesScreen',
+    title: 'Alerts',
+    items: [
+      {
+        title: 'Notification Center',
+        description: 'Inbox & push test',
+        icon: 'bell-ring-outline',
+        iconColor: '#F59E0B',
+        screen: 'StudentNotificationInboxScreen',
+      },
+      {
+        title: 'Notification Settings',
+        description: 'Choose what you get',
+        icon: 'bell-outline',
+        iconColor: '#FB923C',
+        screen: 'StudentNotificationsScreen',
+      },
+    ],
   },
   {
-    title: 'Link Parent Account',
-    description: 'Share progress with parents',
-    icon: 'link-variant',
-    iconColor: '#10B981',
-    screen: 'StudentLinkParentScreen',
+    title: 'Preferences',
+    items: [
+      {
+        title: 'Privacy & Security',
+        description: 'Account protection',
+        icon: 'shield-lock-outline',
+        iconColor: '#10B981',
+        screen: 'StudentPrivacySecurityScreen',
+      },
+      {
+        title: 'App Settings',
+        description: 'Preferences',
+        icon: 'cog-outline',
+        iconColor: '#8B5CF6',
+        screen: 'StudentAppSettingsScreen',
+      },
+    ],
   },
   {
-    title: 'Session History',
-    description: 'Your past sessions',
-    icon: 'history',
-    iconColor: '#3B82F6',
-    screen: 'StudentSessionHistoryScreen',
+    title: 'Support',
+    items: [
+      {
+        title: 'Help & Support',
+        description: 'Get assistance',
+        icon: 'help-circle-outline',
+        iconColor: '#EF4444',
+        screen: 'StudentHelpSupportScreen',
+      },
+      {
+        title: 'Terms & Policies',
+        description: 'Legal information',
+        icon: 'file-document-outline',
+        iconColor: '#06B6D4',
+        screen: 'StudentTermsPoliciesScreen',
+      },
+    ],
   },
   {
-    title: 'Notification Center',
-    description: 'See alerts & test push',
-    icon: 'bell-ring-outline',
-    iconColor: '#F59E0B',
-    screen: 'StudentNotificationInboxScreen',
-  },
-  {
-    title: 'Notification Settings',
-    description: 'Manage your alerts',
-    icon: 'bell-outline',
-    iconColor: '#FB923C',
-    screen: 'StudentNotificationsScreen',
-  },
-  {
-    title: 'Privacy & Security',
-    description: 'Account protection',
-    icon: 'shield-lock-outline',
-    iconColor: '#10B981',
-    screen: 'StudentPrivacySecurityScreen',
-  },
-  {
-    title: 'App Settings',
-    description: 'Preferences',
-    icon: 'cog-outline',
-    iconColor: '#8B5CF6',
-    screen: 'StudentAppSettingsScreen',
-  },
-  {
-    title: 'Help & Support',
-    description: 'Get assistance',
-    icon: 'help-circle-outline',
-    iconColor: '#EF4444',
-    screen: 'StudentHelpSupportScreen',
-  },
-  {
-    title: 'Terms & Policies',
-    description: 'Legal information',
-    icon: 'file-document-outline',
-    iconColor: '#06B6D4',
-    screen: 'StudentTermsPoliciesScreen',
+    title: 'Developer',
+    items: [
+      {
+        title: 'Developer Options',
+        description: 'QA login, switch accounts & jumps',
+        icon: 'code-tags',
+        iconColor: '#64748B',
+        screen: 'DeveloperOptionsScreen',
+      },
+    ],
   },
 ];
 
 export default function ProfileScreen() {
   const { colors, resp } = useUi();
-  const styles = createStyles({ colors, resp });
+  const styles = createStyles(resp);
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
   const authUser = useSelector((state: any) => state.auth.user);
   const { profile, loading, refresh } = useProfile();
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       void refresh();
     }, [refresh])
   );
@@ -129,9 +175,13 @@ export default function ProfileScreen() {
 
   if (loading && !profile) {
     return (
-      <View style={[styles.container, styles.centered]}>
+      <GlassScreen
+        scroll={false}
+        edges={['bottom']}
+        contentStyle={[styles.container, styles.centered]}
+      >
         <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </View>
+      </GlassScreen>
     );
   }
 
@@ -149,44 +199,51 @@ export default function ProfileScreen() {
     authUser?.id ||
     authUser?._id ||
     '—';
-  const displayAvatar =
-    profile?.avatarUrl || authUser?.avatarUrl || null;
+  const displayAvatar = profile?.avatarUrl || authUser?.avatarUrl || null;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <StudentProfileHero
-        name={displayName}
-        grade={displayGrade}
-        publicId={String(displayId)}
-        avatarUri={displayAvatar}
-      />
+    <GlassScreen
+      scroll={false}
+      edges={['bottom']}
+      contentStyle={styles.container}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <StudentProfileHero
+          name={displayName}
+          grade={displayGrade}
+          publicId={String(displayId)}
+          avatarUri={displayAvatar}
+        />
 
-      <ParentLinkCard
-        onGenerateCode={() => navigateTo('StudentLinkParentScreen')}
-      />
+        <ParentLinkCard
+          onGenerateCode={() => navigateTo('StudentLinkParentScreen')}
+        />
 
-      <View style={styles.menuWrapper}>
-        {MENU_ITEMS.map(item => (
-          <MenuItemCard
-            key={item.screen}
-            title={item.title}
-            description={item.description}
-            icon={item.icon}
-            iconColor={item.iconColor}
-            onPress={() => navigateTo(item.screen)}
-          />
-        ))}
-      </View>
+        <View style={styles.menuWrapper}>
+          {MENU_SECTIONS.map(section => (
+            <ProfileMenuSection key={section.title} title={section.title}>
+              {section.items.map((item, index) => (
+                <MenuItemCard
+                  key={item.screen}
+                  embedded
+                  isLast={index === section.items.length - 1}
+                  title={item.title}
+                  description={item.description}
+                  icon={item.icon}
+                  iconColor={item.iconColor}
+                  onPress={() => navigateTo(item.screen)}
+                />
+              ))}
+            </ProfileMenuSection>
+          ))}
+        </View>
 
-      <View style={styles.logoutWrap}>
-        <CustomButton
-          title="Logout"
-          icon="logout"
-          backgroundColor="#faeeee"
-          textColor="#f99595"
-          borderColor="#f4adad"
-          borderWidth={0.5}
-          iconPosition="left"
+        <TouchableOpacity
+          style={styles.logoutBtn}
+          activeOpacity={0.75}
           onPress={async () => {
             await logoutUser();
             dispatch(logout());
@@ -195,36 +252,55 @@ export default function ProfileScreen() {
               routes: [{ name: 'AuthNavigator' }],
             });
           }}
-        />
-      </View>
-      <Text style={styles.version}>TUTORLINK V1.1.0 @ 2026</Text>
-    </ScrollView>
+        >
+          <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+        <Text style={styles.version}>TutorLink v1.1.0 · 2026</Text>
+      </ScrollView>
+    </GlassScreen>
   );
 }
 
-const createStyles = ({ colors, resp }: any) =>
+const createStyles = (resp: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
     },
     centered: {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    scrollContent: {
+      paddingBottom: resp.dy(24),
+    },
     menuWrapper: {
       paddingHorizontal: resp.dx(16),
-      marginTop: resp.dy(10),
+      marginTop: resp.dy(18),
     },
-    logoutWrap: {
-      marginBottom: resp.dy(10),
-      marginTop: resp.dy(10),
-      paddingHorizontal: resp.dx(16),
+    logoutBtn: {
+      marginTop: resp.dy(4),
+      marginBottom: resp.dy(8),
+      marginHorizontal: resp.dx(16),
+      minHeight: 52,
+      borderRadius: GLASS.radius.lg,
+      borderWidth: 1,
+      borderColor: 'rgba(220, 38, 38, 0.28)',
+      backgroundColor: 'rgba(254, 226, 226, 0.55)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+    },
+    logoutText: {
+      color: '#DC2626',
+      fontSize: resp.df(16),
+      fontWeight: '700',
     },
     version: {
       textAlign: 'center',
-      color: '#94A3B8',
+      color: GLASS.textMuted,
       fontSize: resp.df(12),
-      marginBottom: resp.dy(30),
+      marginBottom: resp.dy(28),
     },
   });

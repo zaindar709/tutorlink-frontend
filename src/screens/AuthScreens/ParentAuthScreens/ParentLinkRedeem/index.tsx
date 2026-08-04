@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import CustomInput from '../../../../components/CustomInput/CustomInput';
 import CustomButton from '../../../../components/CustomButton';
-import BackButton from '../../../../components/BackButton/BackButton';
-import useUi from '../../../../hooks/ui/useUi';
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  GlassCard,
+  GlassInput,
+} from '../../../../components/AuthGlass';
 import { redeemParentLinkCode } from '../../../../services/profile/profileService';
 import { getApiErrorMessage } from '../../../../utils/api/errorHandler';
 
 const ParentLinkRedeemScreen = () => {
   const navigation = useNavigation<any>();
-  const { colors, resp } = useUi();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,48 +44,38 @@ const ParentLinkRedeemScreen = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.screen}>
-      <BackButton onPress={() => navigation.goBack()} />
-      <Text style={[styles.title, { color: colors.BLACK_COLOR }]}>
-        Link Student Account
-      </Text>
-      <Text style={styles.subtitle}>
-        Enter the 6-character code shared by your child to connect accounts.
-      </Text>
-
-      <CustomInput
-        label="Link Code"
-        value={code}
-        onChangeText={setCode}
-        placeholder="ABC123"
-        autoCapitalize="characters"
-        maxLength={6}
+    <AuthGlassBackground>
+      <AuthGlassHeader
+        title="Link Student Account"
+        subtitle="Enter the 6-character code shared by your child to connect accounts."
+        onBack={() => navigation.goBack()}
       />
 
-      <CustomButton
-        title={loading ? 'Linking...' : 'Redeem Code'}
-        onPress={handleRedeem}
-        disabled={loading}
-      />
-    </ScrollView>
+      <GlassCard>
+        <GlassInput
+          label="Link Code"
+          value={code}
+          onChangeText={setCode}
+          placeholder="ABC123"
+          autoCapitalize="characters"
+          maxLength={6}
+        />
+
+        <View style={styles.buttonWrap}>
+          <CustomButton
+            title={loading ? 'Linking...' : 'Redeem Code'}
+            onPress={handleRedeem}
+            disabled={loading}
+          />
+        </View>
+      </GlassCard>
+    </AuthGlassBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  screen: {
-    padding: 20,
-    paddingTop: 48,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#64748B',
-    marginBottom: 24,
-    lineHeight: 22,
+  buttonWrap: {
+    marginTop: 8,
   },
 });
 

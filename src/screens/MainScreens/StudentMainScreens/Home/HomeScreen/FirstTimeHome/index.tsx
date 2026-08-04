@@ -11,7 +11,6 @@ import { Icon } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import { useSelector } from 'react-redux';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import useUi from '../../../../../../hooks/ui/useUi';
 import Images from '../../../../../../assets/images';
 import TopTutorCard from '../../../../../../components/StudentHome/TopTutorCard';
@@ -20,6 +19,8 @@ import {
   AiRecommendationCard,
   AiTutorMascot,
 } from '../../../../../../components/AiAssistant';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import { useDashboard } from '../../../../../../hooks/api/useDashboard';
 import { useTutorSearch } from '../../../../../../hooks/api/useTutorSearch';
 import { useAiTutorRecommendation } from '../../../../../../hooks/api/useAiTutorRecommendation';
@@ -92,7 +93,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
     }, [reloadTutors])
   );
 
-  const topTutors = tutors.slice(0, 3);
+  const topTutors = tutors.slice(0, 4);
   const nextLesson = dashboard?.todaySchedule?.currentLessons?.[0];
 
   const guideMessage =
@@ -147,7 +148,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <GlassScreen scroll={false} edges={['top', 'left', 'right']} contentStyle={styles.screen}>
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
@@ -183,11 +184,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
 
         <View style={styles.heroWrap}>
           <LinearGradient
-            colors={[
-              colors.PRIMARY_COLOR as string,
-              '#5B2FD6',
-              '#4C1D95',
-            ]}
+            colors={[...GLASS.buttonGradient]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.promoCard}
@@ -250,21 +247,33 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
         {tutorsLoading ? (
           <ActivityIndicator style={{ marginBottom: resp.dy(16) }} />
         ) : topTutors.length > 0 ? (
-          topTutors.map(tutor => (
-            <TopTutorCard
-              key={tutor._id}
-              image={
-                tutor.user?.avatarUrl
-                  ? { uri: tutor.user.avatarUrl }
-                  : Images.OneOnOne
-              }
-              name={tutor.user?.name || 'Top Tutor'}
-              subject={(tutor.subjects || []).join(', ') || 'General'}
-              rating={tutor.rating || 4}
-              badge={tutor.isVerified ? 'Verified Tutor' : 'Recommended'}
-              onHire={() => openTutorBooking(tutor, 'Hire Tutor')}
-            />
-          ))
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tutorsRow}
+            style={styles.tutorsScroll}
+          >
+            {topTutors.map(tutor => (
+              <TopTutorCard
+                key={tutor._id}
+                image={
+                  tutor.user?.avatarUrl
+                    ? { uri: tutor.user.avatarUrl }
+                    : Images.OneOnOne
+                }
+                name={tutor.user?.name || 'Top Tutor'}
+                subject={(tutor.subjects || []).join(', ') || 'General'}
+                rating={tutor.rating || 4}
+                badge={tutor.isVerified ? 'Verified Tutor' : 'Recommended'}
+                verified={!!tutor.isVerified}
+                university={
+                  tutor.qualification ||
+                  (tutor.isVerified ? 'Verified Tutor' : 'Recommended')
+                }
+                onHire={() => openTutorBooking(tutor, 'Hire Tutor')}
+              />
+            ))}
+          </ScrollView>
         ) : (
           <View style={{ marginBottom: 16 }}>
             <Text style={styles.emptyText}>
@@ -320,7 +329,7 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
@@ -330,7 +339,6 @@ const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
     },
     scroll: {
       flex: 1,
@@ -352,13 +360,13 @@ const createStyles = (colors: any, resp: any) =>
       flex: 1,
     },
     greeting: {
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
       fontSize: resp.df(24),
       fontWeight: '800',
       marginBottom: resp.dy(4),
     },
     subheading: {
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       fontSize: resp.df(14),
       lineHeight: resp.dy(20),
       maxWidth: resp.dx(260),
@@ -367,14 +375,12 @@ const createStyles = (colors: any, resp: any) =>
       width: resp.dx(46),
       height: resp.dx(46),
       borderRadius: resp.dx(23),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.08,
-      shadowRadius: 14,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 4,
+      ...GLASS.shadow.soft,
     },
     notificationDot: {
       position: 'absolute',
@@ -383,41 +389,42 @@ const createStyles = (colors: any, resp: any) =>
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: '#EF4444',
+      backgroundColor: GLASS.error,
     },
     heroWrap: {
       marginBottom: resp.dy(8),
     },
     promoCard: {
-      borderRadius: resp.dx(28),
+      borderRadius: GLASS.radius.xxl,
       padding: resp.dx(22),
       marginBottom: resp.dy(12),
       width: '100%',
     },
     promoTitle: {
-      color: colors.WHITE_COLOR,
+      color: GLASS.textOnPrimary,
       fontSize: resp.df(22),
       fontWeight: '800',
       marginBottom: resp.dy(10),
       lineHeight: resp.dy(32),
     },
     promoSubtitle: {
-      color: colors.WHITE_COLOR,
+      color: GLASS.textOnPrimary,
       fontSize: resp.df(14),
       lineHeight: resp.dy(20),
       marginBottom: resp.dy(18),
+      opacity: 0.9,
     },
     findTutorBtn: {
       alignSelf: 'stretch',
       width: '100%',
       height: 48,
-      borderRadius: 14,
-      backgroundColor: '#fff',
+      borderRadius: GLASS.radius.md,
+      backgroundColor: GLASS.cardBgStrong,
       alignItems: 'center',
       justifyContent: 'center',
     },
     findTutorBtnText: {
-      color: String(colors.PRIMARY_COLOR || '#7548F5'),
+      color: GLASS.primary,
       fontSize: 16,
       fontWeight: '700',
     },
@@ -432,21 +439,19 @@ const createStyles = (colors: any, resp: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: resp.dx(12),
-      backgroundColor: colors.WHITE_COLOR,
-      borderRadius: resp.dx(20),
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       paddingHorizontal: resp.dx(18),
       paddingVertical: resp.dy(14),
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.05,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 2,
+      ...GLASS.shadow.soft,
       marginBottom: resp.dy(24),
     },
     searchInput: {
       flex: 1,
       fontSize: resp.df(14),
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
       padding: 0,
     },
     sectionHeader: {
@@ -465,12 +470,12 @@ const createStyles = (colors: any, resp: any) =>
       marginTop: resp.dy(8),
     },
     sectionTitle: {
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
       fontSize: resp.df(18),
       fontWeight: '700',
     },
     viewAll: {
-      color: colors.PRIMARY_COLOR,
+      color: GLASS.primary,
       fontSize: resp.df(13),
       fontWeight: '600',
     },
@@ -489,8 +494,17 @@ const createStyles = (colors: any, resp: any) =>
       justifyContent: 'space-between',
       gap: resp.dx(12),
     },
+    tutorsScroll: {
+      marginHorizontal: resp.dx(-4),
+      marginBottom: resp.dy(12),
+    },
+    tutorsRow: {
+      paddingHorizontal: resp.dx(4),
+      paddingBottom: resp.dy(6),
+      paddingRight: resp.dx(12),
+    },
     emptyText: {
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       marginBottom: resp.dy(16),
     },
   });

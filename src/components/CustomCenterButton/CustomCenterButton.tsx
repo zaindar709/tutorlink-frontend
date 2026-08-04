@@ -1,38 +1,108 @@
 import React from 'react';
-import { View, Pressable, StyleSheet } from 'react-native';
-import useUi from '../../hooks/ui/useUi';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import { useNavigationState } from '@react-navigation/native';
+import { GLASS } from '../../theme/glass';
+import Images from '../../assets/images';
 
-export const CustomCenterButton = ({ children, onPress }:any) => {
-    const {colors} = useUi();
-    const styles = createStyles(colors);
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+type Props = {
+  onPress?: (e: any) => void;
+  accessibilityState?: { selected?: boolean };
+};
+
+/** Elevated Home — label primary when Home tab is active (default). */
+export const CustomCenterButton = ({
+  onPress,
+  accessibilityState,
+}: Props) => {
+  const isHomeRoute = useNavigationState(state => {
+    if (!state) return true;
+    const route = state.routes?.[state.index];
+    return route?.name === 'Home';
+  });
+  const focused = accessibilityState?.selected ?? isHomeRoute;
+
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
-      style={styles.container}
-      onPress={onPress}
-    >
-      <View style={styles.buttonInner}>
-        {children}
+    <View style={styles.wrap}>
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={() => {
+          scale.value = withSpring(0.94, { damping: 16, stiffness: 320 });
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, { damping: 14, stiffness: 280 });
+        }}
+        style={[styles.container, animStyle]}
+      >
+        <LinearGradient
+          colors={[...GLASS.buttonGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.button}
+        >
+          <Image
+            source={Images.HomeIcon}
+            style={styles.icon}
+            resizeMode="contain"
+          />
+        </LinearGradient>
+      </AnimatedPressable>
+      <Text
+        style={[styles.label, focused ? styles.labelActive : styles.labelIdle]}
+        numberOfLines={1}
+      >
+        Home
+      </Text>
     </View>
-  </Pressable>
-)};
-const createStyles = (colors: any) => StyleSheet.create({
-  container: {
-    top: -22, 
-    justifyContent: 'center',
+  );
+};
+
+const styles = StyleSheet.create({
+  wrap: {
+    top: -18,
+    flex: 1,
     alignItems: 'center',
-    elevation: 5, 
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
+    justifyContent: 'center',
   },
-  buttonInner: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.PRIMARY_COLOR, 
-    borderWidth: 3,
-    borderColor: colors.WHITE_COLOR, 
+  container: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  button: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    ...GLASS.shadow.glow,
+  },
+  icon: {
+    width: 26,
+    height: 26,
+    tintColor: '#FFFFFF',
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  labelActive: {
+    color: GLASS.primary,
+  },
+  labelIdle: {
+    color: '#9CA3AF',
   },
 });

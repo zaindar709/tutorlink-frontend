@@ -28,6 +28,7 @@ import TutorBookingDetailsScreen from '../../screens/MainScreens/StudentMainScre
 import BookingPendingScreen from '../../screens/MainScreens/StudentMainScreens/BookingFlow/BookingPendingScreen';
 import BookingReviewScreen from '../../screens/MainScreens/StudentMainScreens/BookingFlow/BookingReviewScreen';
 import TutorBookingRequestDetailsScreen from '../../screens/MainScreens/TutorMainScreens/BookingFlow/TutorBookingRequestDetailsScreen';
+import DeveloperOptionsScreen from '../../screens/MainScreens/SharedScreens/DeveloperOptions';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,7 @@ const HomeNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
+        contentStyle: { backgroundColor: '#f6f7fc' },
       }}
     >
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
@@ -124,6 +126,10 @@ const HomeNavigator = () => {
       <Stack.Screen
         name="TutorBookingRequestDetailsScreen"
         component={TutorBookingRequestDetailsScreen}
+      />
+      <Stack.Screen
+        name="DeveloperOptionsScreen"
+        component={DeveloperOptionsScreen}
       />
     </Stack.Navigator>
   );

@@ -13,12 +13,13 @@ import {
 import { Icon, IconButton } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import {
-  SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
 import {
   TeachingMode,
@@ -91,12 +92,14 @@ const TutorBookingDetailsScreen = () => {
 
   if (loading || !tutor) {
     return (
-      <SafeAreaView style={styles.screen}>
+      <GlassScreen
+        scroll={false}
+        contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+      >
         <ActivityIndicator
-          style={{ marginTop: 40 }}
           color={colors.PRIMARY_COLOR as string}
         />
-      </SafeAreaView>
+      </GlassScreen>
     );
   }
 
@@ -135,7 +138,7 @@ const TutorBookingDetailsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <GlassScreen scroll={false} edges={['top', 'left', 'right']} contentStyle={styles.screen}>
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -148,14 +151,14 @@ const TutorBookingDetailsScreen = () => {
             icon="arrow-left"
             size={22}
             onPress={handleBack}
-            iconColor="#0F172A"
+            iconColor={GLASS.textPrimary}
           />
           <Text style={styles.topTitle}>Tutor details</Text>
           <View style={{ width: 48 }} />
         </View>
 
         <LinearGradient
-          colors={['#7548F5', '#5B2FD6', '#4C1D95']}
+          colors={[...GLASS.buttonGradient]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.hero}
@@ -461,7 +464,7 @@ const TutorBookingDetailsScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
@@ -469,28 +472,29 @@ export default TutorBookingDetailsScreen;
 
 const createStyles = (_colors: Record<string, unknown>, resp: any) =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#FFFFFF' },
+    screen: { flex: 1, backgroundColor: 'transparent' },
     content: { paddingBottom: 24 },
     topBar: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#fff',
+      backgroundColor: '#f6f7fc',
+      borderBottomWidth: 0,
     },
     topTitle: {
       flex: 1,
       textAlign: 'center',
       fontSize: 17,
       fontWeight: '700',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
     hero: {
       margin: 16,
-      borderRadius: 24,
+      borderRadius: GLASS.radius.xl,
       padding: 16,
       flexDirection: 'row',
       gap: 14,
     },
-    avatar: { width: 88, height: 88, borderRadius: 22 },
+    avatar: { width: 88, height: 88, borderRadius: GLASS.radius.lg },
     heroText: { flex: 1 },
     nameRow: {
       flexDirection: 'row',
@@ -498,7 +502,7 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       alignItems: 'center',
       gap: 8,
     },
-    name: { color: '#fff', fontSize: 20, fontWeight: '800' },
+    name: { color: GLASS.textOnPrimary, fontSize: 20, fontWeight: '800' },
     verified: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -506,9 +510,9 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       backgroundColor: 'rgba(255,255,255,0.15)',
       paddingHorizontal: 8,
       paddingVertical: 3,
-      borderRadius: 999,
+      borderRadius: GLASS.radius.full,
     },
-    verifiedText: { color: '#FDE68A', fontSize: 11, fontWeight: '700' },
+    verifiedText: { color: GLASS.accent, fontSize: 11, fontWeight: '700' },
     heroSub: { color: 'rgba(255,255,255,0.85)', marginTop: 4, fontSize: 13 },
     heroMeta: {
       flexDirection: 'row',
@@ -516,38 +520,40 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       gap: 4,
       marginTop: 8,
     },
-    heroMetaText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-    price: { color: '#FDE68A', fontWeight: '800', fontSize: 16, marginTop: 8 },
-    priceDark: { color: '#7548F5', fontWeight: '800', fontSize: 20 },
+    heroMetaText: { color: GLASS.textOnPrimary, fontSize: 13, fontWeight: '600' },
+    price: { color: GLASS.accent, fontWeight: '800', fontSize: 16, marginTop: 8 },
+    priceDark: { color: GLASS.primary, fontWeight: '800', fontSize: 20 },
     statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
     statCard: {
       flex: 1,
-      backgroundColor: '#fff',
-      borderRadius: 16,
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.lg,
       paddingVertical: 12,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
-    statValue: { fontWeight: '800', fontSize: 16, color: '#0F172A' },
-    statLabel: { color: '#64748B', fontSize: 11, marginTop: 2 },
+    statValue: { fontWeight: '800', fontSize: 16, color: GLASS.textPrimary },
+    statLabel: { color: GLASS.textSecondary, fontSize: 11, marginTop: 2 },
     card: {
       marginHorizontal: 16,
       marginTop: 14,
-      backgroundColor: '#fff',
-      borderRadius: 18,
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.xl,
       padding: 16,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
     sectionTitle: {
       fontSize: 15,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       marginBottom: 10,
     },
-    body: { color: '#475569', fontSize: 13, lineHeight: 20 },
-    muted: { color: '#94A3B8', fontSize: 12 },
+    body: { color: GLASS.textSecondary, fontSize: 13, lineHeight: 20 },
+    muted: { color: GLASS.textMuted, fontSize: 12 },
     chipRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -557,50 +563,57 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
     statusPill: {
       paddingHorizontal: 10,
       paddingVertical: 5,
-      borderRadius: 999,
+      borderRadius: GLASS.radius.full,
     },
-    statusAvailable: { backgroundColor: '#DCFCE7' },
-    statusBusy: { backgroundColor: '#FEF3C7' },
-    statusText: { fontSize: 12, fontWeight: '700', color: '#166534' },
+    statusAvailable: { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
+    statusBusy: { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
+    statusText: { fontSize: 12, fontWeight: '700', color: GLASS.success },
     slot: {
       paddingHorizontal: 14,
       paddingVertical: 10,
-      borderRadius: 12,
-      backgroundColor: '#EEF2FF',
+      borderRadius: GLASS.radius.md,
+      backgroundColor: GLASS.primarySoft,
     },
-    slotSelected: { backgroundColor: '#7548F5' },
+    slotSelected: { backgroundColor: GLASS.primary },
     slotDisabled: { backgroundColor: '#F1F5F9' },
-    slotText: { color: '#4338CA', fontWeight: '700', fontSize: 13 },
-    slotTextSelected: { color: '#fff' },
-    slotTextDisabled: { color: '#94A3B8' },
+    slotText: { color: GLASS.primaryDeep, fontWeight: '700', fontSize: 13 },
+    slotTextSelected: { color: GLASS.textOnPrimary },
+    slotTextDisabled: { color: GLASS.textMuted },
     chip: {
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderRadius: 999,
-      backgroundColor: '#F1F5F9',
+      borderRadius: GLASS.radius.full,
+      backgroundColor: GLASS.primarySoft,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
     },
-    chipActive: { backgroundColor: '#EDE9FE' },
-    chipText: { color: '#64748B', fontWeight: '600', fontSize: 12 },
-    chipTextActive: { color: '#7548F5' },
+    chipActive: {
+      backgroundColor: GLASS.primary,
+      borderColor: GLASS.primary,
+    },
+    chipText: { color: GLASS.textSecondary, fontWeight: '600', fontSize: 12 },
+    chipTextActive: { color: GLASS.textOnPrimary },
     certRow: {
       flexDirection: 'row',
       gap: 10,
       marginBottom: 12,
       alignItems: 'center',
     },
-    certTitle: { fontWeight: '700', color: '#0F172A', fontSize: 13 },
+    certTitle: { fontWeight: '700', color: GLASS.textPrimary, fontSize: 13 },
     reviewRow: { flexDirection: 'row', gap: 10, marginBottom: 14 },
     reviewAvatar: { width: 40, height: 40, borderRadius: 20 },
     similarCard: {
       width: 110,
       marginRight: 10,
-      backgroundColor: '#F8FAFC',
-      borderRadius: 14,
+      backgroundColor: GLASS.primarySoft,
+      borderRadius: GLASS.radius.md,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       padding: 10,
       alignItems: 'center',
     },
-    similarAvatar: { width: 56, height: 56, borderRadius: 18, marginBottom: 8 },
-    similarName: { fontWeight: '700', fontSize: 12, color: '#0F172A' },
+    similarAvatar: { width: 56, height: 56, borderRadius: GLASS.radius.lg, marginBottom: 8 },
+    similarName: { fontWeight: '700', fontSize: 12, color: GLASS.textPrimary },
     footer: {
       position: 'absolute',
       left: 0,
@@ -611,19 +624,19 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       justifyContent: 'space-between',
       paddingHorizontal: 16,
       paddingTop: 12,
-      backgroundColor: '#fff',
+      backgroundColor: '#f6f7fc',
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: '#E2E8F0',
+      borderTopColor: GLASS.cardBorder,
       gap: 12,
     },
     footerPriceBlock: { flexShrink: 1, maxWidth: '40%' },
-    footerLabel: { color: '#94A3B8', fontSize: 12 },
-    footerPrice: { color: '#0F172A', fontWeight: '800', fontSize: 17 },
+    footerLabel: { color: GLASS.textMuted, fontSize: 12 },
+    footerPrice: { color: GLASS.textPrimary, fontWeight: '800', fontSize: 17 },
     footerCta: {
       width: 168,
       height: 48,
       paddingHorizontal: 10,
-      borderRadius: 14,
+      borderRadius: GLASS.radius.md,
       elevation: 0,
       alignSelf: 'center',
     },
@@ -633,7 +646,7 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       maxWidth: '100%',
       height: 52,
       marginTop: 16,
-      borderRadius: 14,
+      borderRadius: GLASS.radius.md,
       elevation: 0,
       paddingHorizontal: 12,
       alignSelf: 'center',
@@ -647,9 +660,9 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       backgroundColor: 'rgba(15,23,42,0.45)',
     },
     sheet: {
-      backgroundColor: '#fff',
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      backgroundColor: '#FFFFFF',
+      borderTopLeftRadius: GLASS.radius.xl,
+      borderTopRightRadius: GLASS.radius.xl,
       paddingHorizontal: 20,
       paddingTop: 10,
       maxHeight: '88%',
@@ -659,13 +672,13 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       width: 40,
       height: 4,
       borderRadius: 2,
-      backgroundColor: '#CBD5E1',
+      backgroundColor: GLASS.inputBorder,
       marginBottom: 12,
     },
     sheetTitle: {
       fontSize: 18,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       marginBottom: 8,
     },
     payRow: {
@@ -673,10 +686,11 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       alignItems: 'center',
       justifyContent: 'space-between',
       padding: 12,
-      borderRadius: 14,
+      borderRadius: GLASS.radius.md,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
       marginBottom: 8,
+      backgroundColor: GLASS.primarySoft,
     },
-    payRowActive: { borderColor: '#7548F5', backgroundColor: '#F5F3FF' },
+    payRowActive: { borderColor: GLASS.cardBorderStrong, backgroundColor: GLASS.primarySoft },
   });

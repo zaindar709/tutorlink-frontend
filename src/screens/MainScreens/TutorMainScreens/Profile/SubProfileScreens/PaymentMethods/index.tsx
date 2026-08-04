@@ -8,7 +8,8 @@ import {
   Alert,
 } from 'react-native'
 import { Icon } from 'react-native-paper'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { GlassScreen } from '../../../../../../components/Glass'
+import { GLASS } from '../../../../../../theme/glass'
 import { useNavigation } from '@react-navigation/native'
 import useUi from '../../../../../../hooks/ui/useUi'
 import CustomButton from '../../../../../../components/CustomButton'
@@ -64,13 +65,13 @@ const PaymentMethodScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container]}> 
+    <GlassScreen scroll={false}>
       <CustomHeader navigation={navigation} title="Payment Methods" />
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.infoCard, { backgroundColor: colors.WHITE_COLOR }]}> 
+        <View style={styles.infoCard}>
           <View style={[styles.infoBadge, { backgroundColor: '#E6F7F0' }]}> 
             <Icon
               source="shield-lock"
@@ -102,8 +103,8 @@ const PaymentMethodScreen = () => {
               style={[
                 styles.methodCard,
                 {
-                  borderColor: isSelected ? colors.PRIMARY_COLOR : colors.GRAY_COLOR,
-                  backgroundColor: colors.WHITE_COLOR,
+                  borderColor: isSelected ? colors.PRIMARY_COLOR : GLASS.cardBorder,
+                  backgroundColor: isSelected ? GLASS.primarySoft : GLASS.cardBg,
                 },
               ]}
             >
@@ -151,38 +152,33 @@ const PaymentMethodScreen = () => {
           style={styles.addButton}
         />
 
-        <View style={[styles.noteCard, { backgroundColor: '#F8FAFF', borderColor: colors.GRAY_COLOR }]}> 
+        <View style={styles.noteCard}>
           <Text style={[styles.noteTitle, { color: colors.BLACK_COLOR }]}>Withdrawal Information</Text>
           <Text style={[styles.noteText, { color: colors.SECONDARY_COLOR }]}>Minimum withdrawal amount is PKR 1,000</Text>
           <Text style={[styles.noteText, { color: colors.SECONDARY_COLOR }]}>Withdrawals are processed within 24-48 hours</Text>
           <Text style={[styles.noteText, { color: colors.SECONDARY_COLOR }]}>Platform fee of 10% applies to all earnings</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   )
 }
 
 export default PaymentMethodScreen
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingBottom: 30,
     gap: 18,
   },
   infoCard: {
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 20,
     marginTop: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 18,
-    elevation: 6,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   infoBadge: {
     flexDirection: 'row',
@@ -215,16 +211,12 @@ const styles = StyleSheet.create({
   methodCard: {
     width: '100%',
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 16,
-    elevation: 4,
+    ...GLASS.shadow.soft,
   },
   methodIconWrapper: {
     width: 52,
@@ -274,9 +266,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   noteCard: {
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 20,
     borderWidth: 1,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   noteTitle: {
     fontSize: 16,

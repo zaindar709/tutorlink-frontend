@@ -8,12 +8,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import useUi from '../../../../hooks/ui/useUi';
 import ReviewHeader from '../../../../components/Tutor/ReviewHeader';
 import InterviewInfoCard from '../../../../components/Tutor/InterviewInfoCard';
 import ActionCards from '../../../../components/Tutor/ActionCard';
 import CustomButton from '../../../../components/CustomButton';
+import { AuthGlassBackground } from '../../../../components/AuthGlass';
+import { AUTH_GLASS } from '../../../../components/AuthGlass/authGlassTheme';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import { isTutorApproved } from '../../../../utils/tutor/tutorNavigation';
 
@@ -78,7 +79,7 @@ const DocumentReviewScreen = () => {
     !approved && !rejected && currentStatus !== 'rejected';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <AuthGlassBackground scroll={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
@@ -162,7 +163,7 @@ const DocumentReviewScreen = () => {
           Approved tutors appear in student search automatically.
         </Text>
       </ScrollView>
-    </SafeAreaView>
+    </AuthGlassBackground>
   );
 };
 
@@ -170,10 +171,6 @@ export default DocumentReviewScreen;
 
 const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8FAFC',
-    },
     content: {
       paddingBottom: 30,
     },
@@ -193,16 +190,16 @@ const createStyles = (colors: any, resp: any) =>
     statusTitle: {
       fontSize: resp.df(16),
       fontWeight: '700',
-      color: '#111827',
+      color: AUTH_GLASS.title,
       marginBottom: resp.dy(6),
     },
     statusBody: {
       fontSize: resp.df(13),
-      color: '#4B5563',
+      color: AUTH_GLASS.subtitle,
       lineHeight: resp.dy(20),
     },
     infoText: {
-      color: '#6B7280',
+      color: AUTH_GLASS.muted,
       fontSize: resp.df(12),
       textAlign: 'center',
       marginTop: resp.dy(20),

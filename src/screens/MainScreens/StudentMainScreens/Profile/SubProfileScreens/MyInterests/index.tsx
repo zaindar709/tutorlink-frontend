@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Chip } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import CustomInput from '../../../../../../components/CustomInput/CustomInput';
 import CustomButton from '../../../../../../components/CustomButton';
 import {
@@ -102,19 +102,20 @@ export default function StudentInterestsScreen({ navigation }: any) {
 
   if ((loading || !hydrated) && !profile) {
     return (
-      <SafeAreaView
-        style={[
+      <GlassScreen
+        scroll={false}
+        contentStyle={[
           styles.container,
           { justifyContent: 'center', alignItems: 'center' },
         ]}
       >
         <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </SafeAreaView>
+      </GlassScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="My Interests" />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -193,7 +194,7 @@ export default function StudentInterestsScreen({ navigation }: any) {
                 selectedColor={colors.PRIMARY_COLOR as string}
                 onPress={() => toggleSubject(subject)}
                 style={{
-                  backgroundColor: selected ? colors.LIGHT_PRIMARY : '#fff',
+                  backgroundColor: selected ? colors.LIGHT_PRIMARY : colors.GLASS_CARD,
                   borderColor: selected ? colors.PRIMARY_COLOR : '#E2E8F0',
                   borderWidth: 1,
                 }}
@@ -217,6 +218,6 @@ export default function StudentInterestsScreen({ navigation }: any) {
           }
         />
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

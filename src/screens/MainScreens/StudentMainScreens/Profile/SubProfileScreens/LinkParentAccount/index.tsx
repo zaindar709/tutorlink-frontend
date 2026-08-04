@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
@@ -78,7 +78,7 @@ export default function StudentLinkParentScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="Link Parent Account" />
       <ScrollView contentContainerStyle={styles.content}>
         <View
@@ -271,6 +271,6 @@ export default function StudentLinkParentScreen({ navigation }: any) {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

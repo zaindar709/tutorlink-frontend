@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 import EmojiPicker from './EmojiPicker';
 
 type Props = {
@@ -107,16 +108,7 @@ const MessageInput = ({
     emojiOpen || keyboardVisible ? 8 : Math.max(insets.bottom, 10);
 
   return (
-    <View
-      style={[
-        styles.wrap,
-        {
-          paddingBottom: bottomPad,
-          backgroundColor: colors.CHAT_COMPOSER_BG as string,
-          borderTopColor: colors.BORDER_COLOR as string,
-        },
-      ]}
-    >
+    <View style={[styles.wrap, { paddingBottom: bottomPad }]}>
       {recording ? (
         <View style={styles.recordingRow}>
           <Animated.View style={recStyle}>
@@ -165,15 +157,7 @@ const MessageInput = ({
           />
         </Pressable>
 
-        <View
-          style={[
-            styles.inputShell,
-            {
-              backgroundColor: colors.CHAT_INPUT_BG as string,
-              borderColor: colors.BORDER_COLOR as string,
-            },
-          ]}
-        >
+        <View style={styles.inputShell}>
           <Pressable onPress={toggleEmoji} style={styles.emojiBtn} hitSlop={6}>
             <MaterialCommunityIcons
               name={emojiOpen ? 'keyboard-outline' : 'emoticon-outline'}
@@ -269,6 +253,8 @@ const styles = StyleSheet.create({
   wrap: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: 10,
+    backgroundColor: GLASS.headerBg,
+    borderTopColor: GLASS.cardBorder,
   },
   row: {
     flexDirection: 'row',
@@ -289,6 +275,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 4,
     paddingVertical: 4,
+    backgroundColor: GLASS.inputBg,
+    borderColor: GLASS.inputBorder,
   },
   emojiBtn: {
     padding: 8,

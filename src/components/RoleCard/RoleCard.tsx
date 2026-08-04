@@ -1,58 +1,61 @@
 import React, { useMemo } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import { RadioButton } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
 import useUi from '../../hooks/ui/useUi';
+import { AUTH_GLASS } from '../AuthGlass/authGlassTheme';
+
+const ACCENT = '#F7B84B';
 
 function RoleCard({ role, isSelected, onSelect }: any) {
-  const { colors, resp } = useUi();
+  const { resp } = useUi();
   const styles = useMemo(
-    () => createStyles(colors, resp, isSelected),
-    [colors, resp, isSelected],
+    () => createStyles(resp, isSelected),
+    [resp, isSelected],
   );
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          scale: withSpring(isSelected ? 1.04 : 1, {
-            damping: 16,
-            stiffness: 120,
-          }),
-        },
-      ],
-    };
-  });
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        scale: withSpring(isSelected ? 1.02 : 1, {
+          damping: 18,
+          stiffness: 140,
+        }),
+      },
+    ],
+  }));
 
   return (
     <Animated.View style={animatedStyle}>
       <TouchableOpacity
         onPress={onSelect}
-        activeOpacity={0.9}
+        activeOpacity={0.88}
         style={styles.card}
       >
         <View style={styles.row}>
           <View style={styles.iconContainer}>
             <Text style={styles.icon}>{role.icon}</Text>
           </View>
+
           <View style={styles.textContainer}>
             <Text style={styles.title}>{role.title}</Text>
-            <Text style={styles.subtitle}>{role.subtitle}</Text>
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {role.subtitle}
+            </Text>
             <View style={styles.descriptionRow}>
               <Text style={styles.description}>{role.description}</Text>
-              {isSelected && <Text style={styles.arrow}>→</Text>}
+              {isSelected ? <Text style={styles.arrow}> →</Text> : null}
             </View>
           </View>
-          <RadioButton
-            value={role.id}
-            status={isSelected ? 'checked' : 'unchecked'}
-            onPress={onSelect}
-            color={colors.PRIMARY_COLOR as string}
-            uncheckedColor={colors.GRAY_COLOR as string}
-          />
+
+          <View style={styles.radioOuter}>
+            {isSelected ? (
+              <MaterialCommunityIcons name="check" size={14} color="#fff" />
+            ) : null}
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -63,20 +66,20 @@ export default React.memo(RoleCard, (prev, next) => {
   return prev.role.id === next.role.id && prev.isSelected === next.isSelected;
 });
 
-const createStyles = (colors: any, resp: any, isSelected: boolean) =>
+const createStyles = (resp: any, isSelected: boolean) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.WHITE_COLOR || '#fff',
-      padding: resp.dx(30),
-      height: resp.dy(150),
+      backgroundColor: isSelected
+        ? 'rgba(117, 72, 245, 0.12)'
+        : AUTH_GLASS.cardBg,
+      paddingVertical: resp.dy(18),
+      paddingHorizontal: resp.dx(16),
       borderRadius: resp.dx(20),
       borderWidth: isSelected ? 2 : 1,
       borderColor: isSelected
-        ? colors.PRIMARY_COLOR
-        : colors.BORDER_COLOR || '#eee',
-      marginBottom: resp.dy(15),
-      elevation: isSelected ? 6 : 2,
-      marginTop: resp.dy(10),
+        ? (AUTH_GLASS.primary as string)
+        : AUTH_GLASS.cardBorder,
+      marginBottom: resp.dy(12),
     },
 
     row: {
@@ -85,52 +88,70 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
     },
 
     iconContainer: {
-      width: resp.dx(60),
-      height: resp.dy(60),
-      borderRadius: resp.dx(16),
+      width: resp.dx(52),
+      height: resp.dy(52),
+      borderRadius: resp.dx(14),
       backgroundColor: isSelected
-        ? colors.PRIMARY_COLOR
-        : colors.LIGHT_PRIMARY || '#EAF2FF',
+        ? (AUTH_GLASS.primary as string)
+        : 'rgba(117, 72, 245, 0.1)',
       justifyContent: 'center',
       alignItems: 'center',
-      marginRight: resp.dx(15),
+      marginRight: resp.dx(12),
     },
 
     icon: {
-      fontSize: resp.df(28),
+      fontSize: resp.df(24),
     },
 
     textContainer: {
       flex: 1,
+      paddingRight: 8,
     },
 
     title: {
-      fontSize: resp.df(18),
-      color: isSelected ? colors.PRIMARY_COLOR : colors.TEXT_PRIMARY || '#000',
-      fontWeight: '600',
+      fontSize: resp.df(17),
+      color: AUTH_GLASS.title,
+      fontWeight: '700',
     },
 
     subtitle: {
-      color: colors.TEXT_SECONDARY || '#666',
-      fontSize: resp.df(13),
-      marginTop: resp.dy(2),
+      color: AUTH_GLASS.subtitle,
+      fontSize: resp.df(12),
+      marginTop: resp.dy(3),
+      lineHeight: resp.df(17),
     },
 
     descriptionRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: resp.dy(5),
+      marginTop: resp.dy(8),
+      flexWrap: 'wrap',
     },
 
     description: {
       fontSize: resp.df(12),
-      color: isSelected ? colors.ORANGE_COLOR : colors.GRAY || '#aaa',
+      fontWeight: isSelected ? '700' : '500',
+      color: isSelected ? ACCENT : AUTH_GLASS.muted,
     },
 
     arrow: {
-      marginLeft: resp.dx(6),
       fontSize: resp.df(14),
-      color: colors.ORANGE_COLOR,
-      fontWeight: 'bold',
+      color: ACCENT,
+      fontWeight: '800',
+    },
+
+    radioOuter: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: isSelected
+        ? (AUTH_GLASS.primary as string)
+        : AUTH_GLASS.inputBorder,
+      backgroundColor: isSelected
+        ? (AUTH_GLASS.primary as string)
+        : 'transparent',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
   });

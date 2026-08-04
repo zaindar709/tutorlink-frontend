@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,15 +8,18 @@ import {
   Image,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GlassScreen, GlassCard } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { useNavigation } from '@react-navigation/native';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import CustomButton from '../../../../components/CustomButton';
 import { logout } from '../../../../store/auth/authSlice';
 import { logoutUser } from '../../../../services/auth/authService';
+import { ApiUser } from '../../../../types/api.types';
+import { loadTutorEditableProfile } from '../../../../services/profile/tutorProfileLocalStore';
 
 const subjects = [
   {
@@ -99,6 +102,14 @@ const settingsData = [
     color: '#F97316',
     screen: 'SecurityPrivacyScreen',
   },
+  {
+    id: '6',
+    title: 'Developer Options',
+    subtitle: 'QA login, switch accounts & jumps',
+    icon: 'code-slash-outline',
+    color: '#64748B',
+    screen: 'DeveloperOptionsScreen',
+  },
 ];
 const VerificationItem = ({ item }: any) => {
   return (
@@ -121,13 +132,13 @@ const SettingItem = ({ item }: any) => {
   return (
     <TouchableOpacity
       activeOpacity={0.8}
-      style={styles.settingCard}
       onPress={() =>
         navigation.navigate('HomeNavigator', {
           screen: item.screen,
         })
       }
     >
+      <GlassCard style={styles.settingCard}>
       <View style={styles.settingLeft}>
         <View style={[styles.settingIcon, { backgroundColor: item.color }]}>
           <Ionicons name={item.icon} size={20} color="#fff" />
@@ -139,13 +150,14 @@ const SettingItem = ({ item }: any) => {
         </View>
       </View>
 
-      <Ionicons name="chevron-forward" size={20} color="#64748B" />
+      <Ionicons name="chevron-forward" size={20} color={GLASS.textSecondary} />
+      </GlassCard>
     </TouchableOpacity>
   );
 };
 const SubjectCard = ({ item }: any) => {
   return (
-    <View style={styles.subjectCard}>
+    <GlassCard style={styles.subjectCard}>
       <View style={styles.subjectLeft}>
         <View style={styles.subjectIcon}>
           <MaterialCommunityIcons name={item.icon} size={24} color="#8f73fd" />
@@ -160,13 +172,59 @@ const SubjectCard = ({ item }: any) => {
       <View style={styles.classBadge}>
         <Text style={styles.classBadgeText}>{item.maxClasses}</Text>
       </View>
-    </View>
+    </GlassCard>
   );
 };
 const TutorProfileScreen = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
+  const user = useSelector((state: any) => state.auth.user as ApiUser | null);
+  const displayName = String(user?.name || user?.fullName || '').trim() || 'Tutor';
+  const userId = String(
+    user?.uid || user?.firebaseUid || user?.id || user?._id || ''
+  );
   const [loggingOut, setLoggingOut] = useState(false);
+  const [localProfile, setLocalProfile] = useState({
+    bio: '',
+    phone: '',
+    email: '',
+    education: '',
+    hourlyRate: '',
+    experience: '',
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      const local = await loadTutorEditableProfile(userId || null);
+      if (!mounted) return;
+      setLocalProfile({
+        bio: local.bio || '',
+        phone: local.phone || String(user?.phoneNumber || user?.phone || ''),
+        email: local.email || String(user?.email || ''),
+        education: local.education || '',
+        hourlyRate: local.hourlyRate || '',
+        experience: local.experience || '',
+      });
+    };
+    void load();
+    const unsubscribe = navigation.addListener('focus', () => {
+      void load();
+    });
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [navigation, user, userId]);
+
+  const avatarUri = user?.avatarUrl || 'https://i.pravatar.cc/300';
+  const contactEmail = localProfile.email || user?.email || '';
+  const contactPhone =
+    localProfile.phone ||
+    String(user?.phoneNumber || user?.phone || '');
+  const bioText =
+    localProfile.bio ||
+    'Add a short bio from Edit Profile so students know your teaching style.';
 
   const handleLogout = async () => {
     try {
@@ -183,20 +241,19 @@ const TutorProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         <View style={styles.headerText}>
-          <Text style={{ color: '#000000', fontSize: 24, fontWeight: 600 }}>
-            Profile
-          </Text>
-          <Text style={{ color: '#4a4a4a' }}>Your Professional Identity</Text>
+          <Text style={styles.screenTitle}>Profile</Text>
+          <Text style={styles.screenSubtitle}>Your Professional Identity</Text>
         </View>
+
         {/* PROFILE CARD */}
         <LinearGradient
-          colors={['#6a82fc', '#8f73fd']}
+          colors={[...GLASS.buttonGradient]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.profileCard}
@@ -205,7 +262,7 @@ const TutorProfileScreen = () => {
             <View style={styles.imageWrapper}>
               <Image
                 source={{
-                  uri: 'https://i.pravatar.cc/300',
+                  uri: avatarUri,
                 }}
                 style={styles.profileImage}
               />
@@ -220,7 +277,9 @@ const TutorProfileScreen = () => {
 
             {/* INFO */}
             <View style={styles.infoContainer}>
-              <Text style={styles.name}>Prof. Ali Ahmed</Text>
+              <Text style={styles.name} numberOfLines={2}>
+                {displayName}
+              </Text>
 
               <View style={styles.row}>
                 <Ionicons
@@ -240,20 +299,49 @@ const TutorProfileScreen = () => {
             </View>
 
             {/* EDIT BUTTON */}
-            <TouchableOpacity style={styles.editBtn}>
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() =>
+                navigation.navigate('HomeNavigator', {
+                  screen: 'EditProfileScreen',
+                })
+              }
+            >
               <Ionicons name="create-outline" size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 
           {/* DESCRIPTION */}
-          <Text style={styles.description}>
-            Experienced educator specializing in Mathematics and Physics for O &
-            A Level students.
-          </Text>
+          <Text style={styles.description}>{bioText}</Text>
+
+          {(localProfile.education || localProfile.hourlyRate) && (
+            <View style={styles.metaChips}>
+              {localProfile.education ? (
+                <View style={styles.metaChip}>
+                  <Ionicons name="school-outline" size={13} color="#EDE9FE" />
+                  <Text style={styles.metaChipText}>
+                    {localProfile.education}
+                  </Text>
+                </View>
+              ) : null}
+              {localProfile.hourlyRate ? (
+                <View style={styles.metaChip}>
+                  <Ionicons name="cash-outline" size={13} color="#EDE9FE" />
+                  <Text style={styles.metaChipText}>
+                    Rs. {Number(localProfile.hourlyRate).toLocaleString()}/hr
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          )}
 
           {/* CONTACT */}
-          <Text style={styles.contact}>ali.ahmed@tutorlink.com</Text>
-          <Text style={styles.contact}>+92 300 1234567</Text>
+          {contactEmail ? (
+            <Text style={styles.contact}>{contactEmail}</Text>
+          ) : null}
+          {contactPhone ? (
+            <Text style={styles.contact}>{contactPhone}</Text>
+          ) : null}
         </LinearGradient>
 
         {/* STATS */}
@@ -348,6 +436,7 @@ const TutorProfileScreen = () => {
         </View>
 
         <View style={styles.verificationContainer}>
+          <GlassCard strong>
           <FlatList
             data={verificationData}
             scrollEnabled={false}
@@ -355,6 +444,7 @@ const TutorProfileScreen = () => {
             renderItem={({ item }) => <VerificationItem item={item} />}
             ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
           />
+          </GlassCard>
         </View>
 
         {/* SETTINGS */}
@@ -389,39 +479,34 @@ const TutorProfileScreen = () => {
           <Text style={styles.versionText}>TUTORLINK V1.1.0</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TutorProfileScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
-    padding: 16,
+    padding: GLASS.space.lg,
     paddingBottom: 40,
   },
   headerText: {
     marginBottom: 18,
     paddingHorizontal: 5,
   },
-
-  /* PROFILE CARD */
+  screenTitle: {
+    color: GLASS.textPrimary,
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  screenSubtitle: {
+    color: GLASS.textSecondary,
+  },
 
   profileCard: {
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 18,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    ...GLASS.shadow.medium,
   },
 
   topRow: {
@@ -518,6 +603,28 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 
+  metaChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  metaChipText: {
+    color: '#F5F3FF',
+    fontSize: 12,
+    fontWeight: '600',
+    maxWidth: 180,
+  },
+
   contact: {
     marginTop: 12,
     color: '#E9D5FF',
@@ -536,19 +643,13 @@ const styles = StyleSheet.create({
   statCard: {
     width: '31%',
     height: 130,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.lg,
     paddingVertical: 16,
     alignItems: 'center',
     borderWidth: 1,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   iconCircle: {
@@ -556,7 +657,7 @@ const styles = StyleSheet.create({
   },
 
   statValue: {
-    color: '#111827',
+    color: GLASS.textPrimary,
     fontSize: 22,
     fontWeight: '800',
   },
@@ -577,32 +678,16 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    color: '#000',
+    color: GLASS.textPrimary,
     fontSize: 18,
     fontWeight: '700',
     marginLeft: 8,
   },
 
-  /* SUBJECT CARD */
-
   subjectCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
 
   subjectLeft: {
@@ -613,56 +698,42 @@ const styles = StyleSheet.create({
   subjectIcon: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#f6f5fd',
+    borderRadius: GLASS.radius.sm,
+    backgroundColor: GLASS.primarySoft,
     borderWidth: 1,
-    borderColor: '#d5cbff',
+    borderColor: GLASS.cardBorder,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
 
   subjectName: {
-    color: '#111827',
+    color: GLASS.textPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
 
   subjectLevel: {
-    color: '#6B7280',
+    color: GLASS.textSecondary,
     fontSize: 13,
     marginTop: 4,
   },
 
   classBadge: {
-    backgroundColor: '#f6f5fd',
+    backgroundColor: GLASS.primarySoft,
     borderWidth: 1,
-    borderColor: '#d5cbff',
+    borderColor: GLASS.cardBorder,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: GLASS.radius.sm,
   },
 
   classBadgeText: {
-    color: '#8f73fd',
+    color: GLASS.primary,
     fontSize: 12,
     fontWeight: '700',
   },
-  verificationContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 4,
-  },
+  verificationContainer: {},
 
   verificationItem: {
     flexDirection: 'row',
@@ -686,28 +757,15 @@ const styles = StyleSheet.create({
   },
 
   verificationTitle: {
-    color: '#000',
+    color: GLASS.textPrimary,
     fontSize: 15,
     fontWeight: '600',
   },
 
   settingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
 
   settingLeft: {
@@ -725,13 +783,13 @@ const styles = StyleSheet.create({
   },
 
   settingTitle: {
-    color: '#000',
+    color: GLASS.textPrimary,
     fontSize: 15,
     fontWeight: '700',
   },
 
   settingSubtitle: {
-    color: '#8b8b8b',
+    color: GLASS.textSecondary,
     fontSize: 12,
     marginTop: 4,
   },
@@ -755,7 +813,7 @@ const styles = StyleSheet.create({
 
   versionText: {
     marginTop: 16,
-    color: '#94A3B8',
+    color: GLASS.textMuted,
     fontSize: 12,
     fontWeight: '500',
   },

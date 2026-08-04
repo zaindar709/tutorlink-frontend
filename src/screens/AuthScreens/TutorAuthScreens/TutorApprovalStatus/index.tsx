@@ -8,10 +8,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
+import { AuthGlassBackground, AuthGlassHeader } from '../../../../components/AuthGlass';
+import { AUTH_GLASS } from '../../../../components/AuthGlass/authGlassTheme';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import { isTutorApproved } from '../../../../utils/tutor/tutorNavigation';
 import { TutorOnboardingStatusData } from '../../../../types/api.types';
@@ -110,26 +111,24 @@ const TutorApprovalStatusScreen = () => {
   };
 
   const toneStyles = {
-    success: { bg: '#ECFDF5', border: '#BBF7D0', accent: '#059669' },
-    warning: { bg: '#FFF7ED', border: '#FED7AA', accent: '#D97706' },
-    info: { bg: '#EFF6FF', border: '#BFDBFE', accent: '#2563EB' },
-    danger: { bg: '#FEF2F2', border: '#FECACA', accent: '#DC2626' },
+    success: { bg: AUTH_GLASS.cardBg, border: '#BBF7D0', accent: '#059669' },
+    warning: { bg: AUTH_GLASS.cardBg, border: '#FED7AA', accent: '#D97706' },
+    info: { bg: AUTH_GLASS.cardBg, border: '#BFDBFE', accent: '#2563EB' },
+    danger: { bg: AUTH_GLASS.cardBg, border: '#FECACA', accent: '#DC2626' },
   }[meta.tone];
 
   return (
-    <SafeAreaView style={styles.container}>
+    <AuthGlassBackground scroll={false}>
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Approval Status</Text>
-          <Text style={styles.headerSubtitle}>
-            Track your tutor verification progress
-          </Text>
-        </View>
+        <AuthGlassHeader
+          title="Approval Status"
+          subtitle="Track your tutor verification progress"
+        />
 
         {loading && !status ? (
           <ActivityIndicator style={{ marginTop: 40 }} />
@@ -230,39 +229,22 @@ const TutorApprovalStatusScreen = () => {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </AuthGlassBackground>
   );
 };
 
 const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8FAFC',
-    },
     content: {
       paddingHorizontal: resp.dx(16),
       paddingBottom: resp.dy(30),
-    },
-    header: {
-      marginTop: resp.dy(12),
-      marginBottom: resp.dy(8),
-    },
-    headerTitle: {
-      fontSize: resp.df(24),
-      fontWeight: '800',
-      color: colors.BLACK || '#111827',
-    },
-    headerSubtitle: {
-      marginTop: resp.dy(4),
-      fontSize: resp.df(13),
-      color: colors.GRAY31 || '#6B7280',
     },
     statusCard: {
       marginTop: resp.dy(16),
       borderRadius: resp.dx(18),
       borderWidth: 1,
       padding: resp.dx(18),
+      backgroundColor: AUTH_GLASS.cardBg,
     },
     statusIcon: {
       width: 52,
@@ -275,31 +257,31 @@ const createStyles = (colors: any, resp: any) =>
     statusTitle: {
       fontSize: resp.df(18),
       fontWeight: '800',
-      color: '#111827',
+      color: AUTH_GLASS.title,
       marginBottom: resp.dy(6),
     },
     statusBody: {
       fontSize: resp.df(14),
-      color: '#4B5563',
+      color: AUTH_GLASS.subtitle,
       lineHeight: resp.dy(21),
     },
     submittedAt: {
       marginTop: resp.dy(10),
       fontSize: resp.df(12),
-      color: '#6B7280',
+      color: AUTH_GLASS.muted,
     },
     timelineCard: {
       marginTop: resp.dy(18),
-      backgroundColor: '#fff',
+      backgroundColor: AUTH_GLASS.cardBg,
       borderRadius: resp.dx(18),
       padding: resp.dx(18),
       borderWidth: 1,
-      borderColor: '#E5E7EB',
+      borderColor: AUTH_GLASS.cardBorder,
     },
     timelineTitle: {
       fontSize: resp.df(15),
       fontWeight: '700',
-      color: '#111827',
+      color: AUTH_GLASS.title,
       marginBottom: resp.dy(14),
     },
     timelineRow: {
@@ -326,17 +308,17 @@ const createStyles = (colors: any, resp: any) =>
     },
     timelineLabel: {
       fontSize: resp.df(14),
-      color: '#6B7280',
+      color: AUTH_GLASS.muted,
     },
     timelineLabelActive: {
-      color: '#111827',
+      color: AUTH_GLASS.title,
       fontWeight: '700',
     },
     hint: {
       marginTop: resp.dy(14),
       textAlign: 'center',
       fontSize: resp.df(12),
-      color: '#6B7280',
+      color: AUTH_GLASS.muted,
       lineHeight: resp.dy(18),
     },
   });

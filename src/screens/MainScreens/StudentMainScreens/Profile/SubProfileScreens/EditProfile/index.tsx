@@ -1,16 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Image,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { useSelector } from 'react-redux';
 import CustomInput from '../../../../../../components/CustomInput/CustomInput';
+import AppToast from '../../../../../../components/AppToast/AppToast';
 import {
   ProfileSubHeader,
   createProfileSubScreenStyles,
@@ -18,6 +19,7 @@ import {
 import useUi from '../../../../../../hooks/ui/useUi';
 import { useProfileImagePicker } from '../../../../../../hooks/ui/useProfileImagePicker';
 import { useProfile } from '../../../../../../hooks/api/useProfile';
+import { dismissProfileSuggestion } from '../../../../../../services/profile/profileSuggestionStore';
 
 const classOptions = ['Class 9', 'Class 10', 'Class 11', 'Class 12'];
 const boardOptions = [
@@ -59,6 +61,7 @@ const FieldLabel = ({
 export default function StudentEditProfileScreen({ navigation }: any) {
   const { colors } = useUi();
   const styles = useMemo(() => createProfileSubScreenStyles(colors), [colors]);
+  const authUser = useSelector((state: any) => state.auth.user);
   const { profile, loading, actionLoading, error, saveProfile, uploadAvatar } =
     useProfile();
 
@@ -69,6 +72,9 @@ export default function StudentEditProfileScreen({ navigation }: any) {
   const [board, setBoard] = useState('');
   const [bio, setBio] = useState('');
   const [avatarUri, setLocalAvatar] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Saved successfully');
+  const [goBackOnToastHide, setGoBackOnToastHide] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
@@ -81,17 +87,33 @@ export default function StudentEditProfileScreen({ navigation }: any) {
     setLocalAvatar(profile.avatarUrl || null);
   }, [profile]);
 
+  const handleToastHide = useCallback(() => {
+    setToastVisible(false);
+    if (goBackOnToastHide) {
+      setGoBackOnToastHide(false);
+      navigation.goBack();
+    }
+  }, [goBackOnToastHide, navigation]);
+
+  const showToast = (message: string, goBackAfter = false) => {
+    setToastMessage(message);
+    setGoBackOnToastHide(goBackAfter);
+    setToastVisible(true);
+  };
+
   const { openPicker } = useProfileImagePicker(async file => {
     setLocalAvatar(file.uri);
     const url = await uploadAvatar(file);
     if (!url) {
-      Alert.alert('Upload failed', error || 'Could not upload photo.');
+      showToast(error || 'Could not upload photo.');
+    } else {
+      showToast('Photo updated');
     }
   });
 
   const onSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Validation', 'Name is required.');
+      showToast('Name is required');
       return;
     }
     const ok = await saveProfile({
@@ -103,28 +125,36 @@ export default function StudentEditProfileScreen({ navigation }: any) {
       avatarUrl: avatarUri || undefined,
     });
     if (!ok) {
-      Alert.alert('Update failed', error || 'Could not save profile.');
+      showToast(error || 'Could not save profile.');
       return;
     }
-    Alert.alert('Saved', 'Profile updated successfully.');
-    navigation.goBack();
+
+    if (phone.trim() && grade) {
+      const uid = String(
+        authUser?.uid || authUser?.firebaseUid || authUser?.id || authUser?._id || ''
+      );
+      void dismissProfileSuggestion('student', uid);
+    }
+
+    showToast('Saved successfully', true);
   };
 
   if (loading && !profile) {
     return (
-      <SafeAreaView
-        style={[
+      <GlassScreen
+        scroll={false}
+        contentStyle={[
           styles.container,
           { justifyContent: 'center', alignItems: 'center' },
         ]}
       >
         <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </SafeAreaView>
+      </GlassScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader
         navigation={navigation}
         title="Edit Profile"
@@ -293,7 +323,7 @@ export default function StudentEditProfileScreen({ navigation }: any) {
                 paddingVertical: 8,
                 borderRadius: 20,
                 backgroundColor:
-                  board === option ? colors.PRIMARY_COLOR : '#fff',
+                  board === option ? colors.PRIMARY_COLOR : colors.GLASS_CARD,
                 borderWidth: 1,
                 borderColor:
                   board === option ? colors.PRIMARY_COLOR : '#E2E8F0',
@@ -332,6 +362,12 @@ export default function StudentEditProfileScreen({ navigation }: any) {
           />
         ) : null}
       </ScrollView>
-    </SafeAreaView>
+
+      <AppToast
+        visible={toastVisible}
+        message={toastMessage}
+        onHide={handleToastHide}
+      />
+    </GlassScreen>
   );
 }

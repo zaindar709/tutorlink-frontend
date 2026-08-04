@@ -1,13 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
   createProfileSubScreenStyles,
 } from '../../../../../../components/Profile';
 import useUi from '../../../../../../hooks/ui/useUi';
+import { GLASS } from '../../../../../../theme/glass';
 
 const POLICY_SECTIONS = [
   {
@@ -42,11 +43,14 @@ const POLICY_SECTIONS = [
 
 export default function StudentTermsPoliciesScreen({ navigation }: any) {
   const { colors } = useUi();
-  const styles = useMemo(() => createProfileSubScreenStyles(colors), [colors]);
+  const styles = useMemo(
+    () => ({ ...createProfileSubScreenStyles(colors), ...policyStyles }),
+    [colors]
+  );
   const [expandedId, setExpandedId] = useState<string>('terms');
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="Terms & Policies" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
@@ -66,46 +70,60 @@ export default function StudentTermsPoliciesScreen({ navigation }: any) {
             >
               <ProfileSectionCard>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 12,
-                      backgroundColor: colors.LIGHT_PRIMARY,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginRight: 12,
-                    }}
-                  >
+                  <View style={styles.policyIcon}>
                     <MaterialCommunityIcons
                       name={section.icon}
                       size={20}
                       color={colors.PRIMARY_COLOR}
                     />
                   </View>
-                  <Text style={{ flex: 1, fontWeight: '700', color: '#0F172A', fontSize: 15 }}>
-                    {section.title}
-                  </Text>
+                  <Text style={styles.policyTitle}>{section.title}</Text>
                   <MaterialCommunityIcons
                     name={expanded ? 'chevron-up' : 'chevron-down'}
                     size={22}
-                    color="#94A3B8"
+                    color={GLASS.textMuted}
                   />
                 </View>
                 {expanded ? (
-                  <Text style={{ marginTop: 12, color: '#64748B', lineHeight: 22, fontSize: 13 }}>
-                    {section.content}
-                  </Text>
+                  <Text style={styles.policyBody}>{section.content}</Text>
                 ) : null}
               </ProfileSectionCard>
             </TouchableOpacity>
           );
         })}
 
-        <Text style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, marginTop: 8 }}>
-          © 2026 TutorLink · All rights reserved
-        </Text>
+        <Text style={styles.footer}>© 2026 TutorLink · All rights reserved</Text>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }
+
+const policyStyles = StyleSheet.create({
+  policyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: GLASS.radius.sm,
+    backgroundColor: GLASS.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: GLASS.space.md,
+  },
+  policyTitle: {
+    flex: 1,
+    fontWeight: '700',
+    color: GLASS.textPrimary,
+    fontSize: 15,
+  },
+  policyBody: {
+    marginTop: 12,
+    color: GLASS.textSecondary,
+    lineHeight: 22,
+    fontSize: 13,
+  },
+  footer: {
+    textAlign: 'center',
+    color: GLASS.textMuted,
+    fontSize: 12,
+    marginTop: 8,
+  },
+});

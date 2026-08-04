@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TextInput as RNTextInput,
 } from 'react-native';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 const CustomInput = forwardRef<RNTextInput, any>(
   (
@@ -23,18 +24,35 @@ const CustomInput = forwardRef<RNTextInput, any>(
       rightIcon,
       onRightIconPress,
       style,
+      variant = 'glass',
       ...props
     },
     ref
   ) => {
     const { colors } = useUi();
+    const [focused, setFocused] = useState(false);
+    const isGlass = variant === 'glass';
 
     return (
       <View style={[styles.container, style]}>
-        {label ? <Text style={styles.label}>{label}</Text> : null}
+        {label ? (
+          <Text
+            style={[
+              styles.label,
+              isGlass && { color: GLASS.textSecondary },
+            ]}
+          >
+            {label}
+          </Text>
+        ) : null}
 
         <View
-          style={[styles.inputWrapper, error ? { borderColor: 'red' } : null]}
+          style={[
+            styles.inputWrapper,
+            isGlass && styles.glassWrapper,
+            focused && isGlass && styles.glassFocused,
+            error ? { borderColor: colors.ERROR_COLOR || 'red' } : null,
+          ]}
         >
           {leftIcon ? (
             <View style={{ marginRight: 8 }}>{leftIcon}</View>
@@ -45,10 +63,15 @@ const CustomInput = forwardRef<RNTextInput, any>(
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor="#999"
+            placeholderTextColor={
+              isGlass ? GLASS.placeholder : '#94A3B8'
+            }
             secureTextEntry={secureTextEntry}
             keyboardType={keyboardType}
-            style={styles.input}
+            style={[styles.input, isGlass && styles.glassInput]}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            selectionColor={GLASS.primary}
             {...props}
           />
 
@@ -79,8 +102,8 @@ const styles = StyleSheet.create({
   },
   label: {
     marginBottom: 6,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#333',
   },
   inputWrapper: {
@@ -92,9 +115,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: '#fff',
   },
+  glassWrapper: {
+    backgroundColor: GLASS.inputBg,
+    borderColor: GLASS.inputBorder,
+    borderWidth: 1,
+    borderRadius: GLASS.radius.lg,
+    minHeight: 52,
+  },
+  glassFocused: {
+    borderColor: GLASS.inputBorderFocus,
+    backgroundColor: GLASS.cardBgStrong,
+  },
   input: {
     flex: 1,
     height: 48,
     color: '#000',
+  },
+  glassInput: {
+    height: 52,
+    color: GLASS.textPrimary,
+    fontWeight: '500',
   },
 });

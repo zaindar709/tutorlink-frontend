@@ -1,10 +1,14 @@
 import { StyleSheet } from "react-native";
+import { AUTH_GLASS } from '../../../components/AuthGlass/authGlassTheme';
 
 export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     screen: {
+      flexGrow: 1,
+      justifyContent: 'center',
+    },
+    flex: {
       flex: 1,
-      backgroundColor: '#FFFFFF',
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: resp.dx(20),
@@ -90,19 +94,19 @@ export const createStyles = (colors: any, resp: any) =>
     titleText: {
       fontSize: resp.df(24),
       fontWeight: '700',
-      color: '#111827',
+      color: AUTH_GLASS.title,
       marginBottom: resp.dy(12),
       textAlign: 'center',
     },
     subtitleText: {
-      fontSize: resp.df(14),
-      color: '#4B5563',
+      fontSize: resp.df(15),
+      color: AUTH_GLASS.subtitle,
       lineHeight: resp.df(22),
       textAlign: 'center',
       maxWidth: '85%',
     },
     boldText: {
       fontWeight: '700',
-      color: '#2563EB',
+      color: AUTH_GLASS.link,
     },
   });

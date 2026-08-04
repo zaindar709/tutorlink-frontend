@@ -8,6 +8,7 @@ import {
   Modal,
 } from 'react-native';
 import useUi from '../../../hooks/ui/useUi';
+import { GLASS } from '../../../theme/glass';
 
 const subjects = [
   'Mathematics',
@@ -120,10 +121,12 @@ const createStyles = (colors: any, resp: any) =>
     modalContainer: {
       width: '90%',
       maxHeight: '70%',
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: GLASS.cardBgStrong,
       borderRadius: resp.dxy(20),
       padding: resp.dx(20),
       elevation: 10,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
     },
 
     // ✅ HEADER ROW
@@ -159,17 +162,17 @@ const createStyles = (colors: any, resp: any) =>
 
     subjectCard: {
       borderWidth: 1,
-      borderColor: '#E5E7EB',
+      borderColor: GLASS.cardBorder,
       borderRadius: resp.dxy(12),
       paddingVertical: resp.dy(16),
       paddingHorizontal: resp.dx(15),
       marginBottom: resp.dy(10),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: GLASS.cardBg,
     },
 
     selectedCard: {
-      borderColor: '#1E4ED8',
-      backgroundColor: '#EEF4FF',
+      borderColor: GLASS.primary,
+      backgroundColor: GLASS.primarySoft,
     },
 
     subjectText: {

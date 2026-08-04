@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
@@ -57,19 +57,20 @@ export default function StudentNotificationsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[
+      <GlassScreen
+        scroll={false}
+        contentStyle={[
           styles.container,
           { justifyContent: 'center', alignItems: 'center' },
         ]}
       >
         <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </SafeAreaView>
+      </GlassScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="Notifications" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
@@ -106,6 +107,6 @@ export default function StudentNotificationsScreen({ navigation }: any) {
           />
         </ProfileSectionCard>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

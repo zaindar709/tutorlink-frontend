@@ -3,12 +3,11 @@ import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ChatConversation } from '../../constants/chatMockData';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 import OnlineIndicator from './OnlineIndicator';
 import VerifiedBadge from './VerifiedBadge';
-import TypingIndicator from './TypingIndicator';
 import MessageStatusIcon from './MessageStatus';
 import { formatListTime } from '../../utils/chat/formatters';
 
@@ -18,170 +17,146 @@ type Props = {
   onPress: () => void;
   onArchive?: () => void;
   onPin?: () => void;
+  showDivider?: boolean;
 };
 
-const ChatCard = ({ item, index, onPress, onArchive, onPin }: Props) => {
-  const { colors, resp } = useUi();
+const ChatCard = ({
+  item,
+  onPress,
+  onArchive,
+  onPin,
+  showDivider = true,
+}: Props) => {
+  const { resp } = useUi();
+  const hasUnread = item.unreadCount > 0;
 
   const renderRight = () => (
     <View style={styles.actions}>
-      <RectButton
-        style={[styles.actionBtn, { backgroundColor: colors.PRIMARY_COLOR as string }]}
-        onPress={onPin}
-      >
+      <RectButton style={[styles.actionBtn, styles.pinBtn]} onPress={onPin}>
         <MaterialCommunityIcons name="pin" size={20} color="#fff" />
-        <Text style={styles.actionText}>Pin</Text>
       </RectButton>
-      <RectButton
-        style={[styles.actionBtn, { backgroundColor: '#64748B' }]}
-        onPress={onArchive}
-      >
+      <RectButton style={[styles.actionBtn, styles.archiveBtn]} onPress={onArchive}>
         <MaterialCommunityIcons name="archive-outline" size={20} color="#fff" />
-        <Text style={styles.actionText}>Archive</Text>
       </RectButton>
     </View>
   );
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
-      <Swipeable renderRightActions={renderRight} overshootRight={false}>
-        <Pressable
-          onPress={onPress}
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.CARD_COLOR as string,
-              borderColor: item.pinned
-                ? (colors.PRIMARY_LIGHT as string)
-                : (colors.BORDER_COLOR as string),
-            },
-          ]}
-        >
+    <Swipeable renderRightActions={renderRight} overshootRight={false}>
+      <Pressable
+        onPress={onPress}
+        android_ripple={{ color: 'rgba(117,72,245,0.08)' }}
+        style={({ pressed }) => [styles.wrap, pressed && styles.wrapPressed]}
+      >
+        <View style={styles.row}>
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: item.participant.avatar }} style={styles.avatar} />
-            <OnlineIndicator online={!!item.participant.isOnline} size={12} />
+            <Image
+              source={{ uri: item.participant.avatar }}
+              style={styles.avatar}
+            />
+            <OnlineIndicator online={!!item.participant.isOnline} size={11} />
           </View>
 
-          <View style={styles.body}>
+          <View style={styles.content}>
             <View style={styles.topRow}>
               <View style={styles.nameRow}>
                 {item.pinned ? (
                   <MaterialCommunityIcons
                     name="pin"
-                    size={13}
-                    color={colors.PRIMARY_COLOR as string}
+                    size={12}
+                    color={GLASS.primary}
                     style={{ marginRight: 4 }}
                   />
                 ) : null}
                 <Text
                   numberOfLines={1}
-                  style={{
-                    color: colors.TEXT_PRIMARY as string,
-                    fontSize: resp.df(15),
-                    fontWeight: '700',
-                    maxWidth: resp.dx(160),
-                  }}
+                  style={[
+                    styles.name,
+                    {
+                      fontSize: resp.df(16),
+                      fontWeight: hasUnread ? '700' : '600',
+                    },
+                  ]}
                 >
                   {item.participant.name}
                 </Text>
-                <VerifiedBadge verified={!!item.participant.isVerified} size={15} />
+                <VerifiedBadge
+                  verified={!!item.participant.isVerified}
+                  size={14}
+                />
               </View>
               <Text
-                style={{
-                  color: item.unreadCount
-                    ? (colors.PRIMARY_COLOR as string)
-                    : (colors.TEXT_SECONDARY as string),
-                  fontSize: resp.df(11),
-                  fontWeight: item.unreadCount ? '700' : '500',
-                }}
+                style={[
+                  styles.time,
+                  {
+                    fontSize: resp.df(12),
+                    color: hasUnread ? GLASS.primary : GLASS.textMuted,
+                    fontWeight: hasUnread ? '600' : '400',
+                  },
+                ]}
               >
                 {formatListTime(item.lastMessageAt)}
               </Text>
             </View>
 
-            <View
-              style={[
-                styles.subjectPill,
-                { backgroundColor: colors.LIGHT_PRIMARY as string },
-              ]}
-            >
-              <Text
-                style={{
-                  color: colors.PRIMARY_COLOR as string,
-                  fontSize: 10,
-                  fontWeight: '700',
-                }}
-              >
-                {item.subject}
-              </Text>
-            </View>
-
             <View style={styles.bottomRow}>
               {item.isTyping ? (
-                <View style={styles.previewRow}>
-                  <TypingIndicator compact />
-                  <Text
-                    style={{
-                      color: colors.PRIMARY_COLOR as string,
-                      fontSize: resp.df(12),
-                      marginLeft: 6,
-                      fontWeight: '600',
-                    }}
-                  >
-                    typing…
-                  </Text>
-                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.typing, { fontSize: resp.df(13) }]}
+                >
+                  Typing...
+                </Text>
               ) : (
-                <View style={styles.previewRow}>
-                  {item.lastStatus && item.unreadCount === 0 ? (
-                    <MessageStatusIcon
-                      status={item.lastStatus}
-                      isMine
-                    />
-                  ) : null}
-                  <Text
-                    numberOfLines={1}
-                    style={{
-                      color: colors.TEXT_SECONDARY as string,
-                      fontSize: resp.df(13),
-                      flex: 1,
-                      marginLeft: 4,
-                    }}
-                  >
-                    {item.lastMessage}
-                  </Text>
-                </View>
-              )}
-
-              {item.unreadCount > 0 ? (
-                <View
+                <Text
+                  numberOfLines={1}
                   style={[
-                    styles.badge,
-                    { backgroundColor: colors.CHAT_UNREAD_BADGE as string },
+                    styles.preview,
+                    {
+                      fontSize: resp.df(13),
+                      color: hasUnread ? GLASS.primary : GLASS.textSecondary,
+                      fontWeight: hasUnread ? '500' : '400',
+                    },
                   ]}
                 >
-                  <Text style={styles.badgeText}>
-                    {item.unreadCount > 9 ? '9+' : item.unreadCount}
-                  </Text>
-                </View>
-              ) : null}
+                  {item.lastMessage}
+                </Text>
+              )}
+
+              <View style={styles.trailing}>
+                {hasUnread ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {item.unreadCount > 9 ? '9+' : item.unreadCount}
+                    </Text>
+                  </View>
+                ) : item.lastStatus ? (
+                  <MessageStatusIcon status={item.lastStatus} isMine />
+                ) : null}
+              </View>
             </View>
           </View>
-        </Pressable>
-      </Swipeable>
-    </Animated.View>
+        </View>
+
+        {showDivider ? <View style={styles.divider} /> : null}
+      </Pressable>
+    </Swipeable>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
+  wrap: {
+    backgroundColor: 'transparent',
+  },
+  wrapPressed: {
+    backgroundColor: 'rgba(117, 72, 245, 0.04)',
+  },
+  row: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
+    alignItems: 'center',
+    paddingLeft: 4,
+    paddingRight: 4,
     paddingVertical: 12,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 18,
-    borderWidth: 1,
   },
   avatarWrap: {
     width: 52,
@@ -191,40 +166,54 @@ const styles = StyleSheet.create({
   avatar: {
     width: 52,
     height: 52,
-    borderRadius: 18,
+    borderRadius: 26,
+    backgroundColor: GLASS.primarySoft,
   },
-  body: {
+  content: {
     flex: 1,
+    minWidth: 0,
   },
   topRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
+    minWidth: 0,
   },
-  subjectPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 4,
-    marginBottom: 6,
+  name: {
+    color: GLASS.textPrimary,
+    flexShrink: 1,
+  },
+  time: {
+    flexShrink: 0,
   },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minHeight: 20,
   },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  preview: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
+  },
+  typing: {
+    flex: 1,
+    marginRight: 10,
+    color: GLASS.primary,
+    fontStyle: 'italic',
+    fontWeight: '500',
+  },
+  trailing: {
+    minWidth: 22,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   badge: {
     minWidth: 20,
@@ -233,29 +222,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+    backgroundColor: GLASS.primary,
   },
   badgeText: {
     color: '#fff',
     fontSize: 11,
     fontWeight: '700',
   },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(148, 163, 184, 0.45)',
+    width: '100%',
+  },
   actions: {
     flexDirection: 'row',
-    marginBottom: 10,
-    marginRight: 16,
   },
   actionBtn: {
-    width: 72,
+    width: 64,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 16,
-    marginLeft: 8,
   },
-  actionText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 4,
+  pinBtn: {
+    backgroundColor: GLASS.primary,
+  },
+  archiveBtn: {
+    backgroundColor: '#64748B',
   },
 });
 

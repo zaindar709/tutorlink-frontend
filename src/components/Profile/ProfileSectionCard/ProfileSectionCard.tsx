@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { GLASS, glassTypography } from '../../../theme/glass';
 
 type Props = {
   title?: string;
@@ -18,20 +19,17 @@ export default function ProfileSectionCard({ title, children, style }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#7548F5',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    backgroundColor: GLASS.cardBg,
+    borderRadius: GLASS.radius.lg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    padding: GLASS.space.lg,
+    marginBottom: GLASS.space.md,
+    ...GLASS.shadow.soft,
   },
   title: {
+    ...glassTypography.h3,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
+    marginBottom: GLASS.space.md,
   },
 });

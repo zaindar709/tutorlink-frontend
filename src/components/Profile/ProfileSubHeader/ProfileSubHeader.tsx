@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import BackButton from '../../../components/BackButton/BackButton';
 import useUi from '../../../hooks/ui/useUi';
+import { GLASS, glassTypography } from '../../../theme/glass';
 
 type Props = {
   navigation: { goBack: () => void };
@@ -76,9 +77,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#f6f7fc',
+    borderBottomWidth: 0,
   },
   side: {
     width: 50,
@@ -91,9 +91,8 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
+    ...glassTypography.h3,
+    fontSize: 17,
   },
   actionBtn: {
     width: 40,
@@ -101,6 +100,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
+    ...GLASS.shadow.soft,
   },
 });

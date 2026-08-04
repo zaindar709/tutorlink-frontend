@@ -2,6 +2,7 @@ import {StyleSheet, View} from 'react-native';
 import {Text} from 'react-native-paper';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import CustomButton from '../../../CustomButton';
+import { GLASS } from '../../../../theme/glass';
 
 export const BookingRequestCard = ({
   item,
@@ -79,20 +80,13 @@ export const BookingRequestCard = ({
 const styles = (colors: any, resp: any) =>
   StyleSheet.create({
     requestCard: {
-      backgroundColor: '#fff',
-      borderRadius: resp.dx(18),
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.lg,
       padding: resp.dx(14),
       marginBottom: resp.dx(16),
-
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.06,
-      shadowRadius: 6,
-
-      elevation: 3,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
 
     requestTopRow: {

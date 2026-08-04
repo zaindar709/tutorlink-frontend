@@ -10,8 +10,9 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../../../../hooks/ui/useUi';
 import EarningHeader from '../../../../../../../components/EarningHeader';
+import { GlassScreen } from '../../../../../../../components/Glass';
+import { GLASS } from '../../../../../../../theme/glass';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const TransactionCompleted = () => {
   const { colors, resp, appStyles } = useUi();
@@ -34,7 +35,7 @@ const TransactionCompleted = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <GlassScreen scroll={false}>
       <EarningHeader
         navigation={navigation}
         title="Transaction Details"
@@ -262,17 +263,13 @@ const TransactionCompleted = () => {
           Transaction ID{'\n'}TXN0000000001
         </Text>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TransactionCompleted;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -281,8 +278,11 @@ const styles = StyleSheet.create({
   },
   topCard: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: GLASS.radius.lg,
     padding: 18,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   topHeader: {
@@ -331,9 +331,11 @@ const styles = StyleSheet.create({
   infoCard: {
     marginTop: 12,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: GLASS.radius.lg,
     padding: 14,
-    backgroundColor: '#fff',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   cardTitle: {
     fontSize: 14,
@@ -364,9 +366,11 @@ const styles = StyleSheet.create({
   smallCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: GLASS.radius.lg,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   kvRow: {
     flexDirection: 'row',

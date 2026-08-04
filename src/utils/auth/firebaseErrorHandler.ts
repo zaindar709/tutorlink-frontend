@@ -14,15 +14,16 @@ export const getFirebaseErrorMessage = (error: unknown): string | null => {
   }
 
   const { code, message } = error;
+  const codeSuffix = code ? ` [${code}]` : '';
 
   switch (code) {
     case 'auth/email-already-in-use':
       return 'This email is already registered. Please log in instead.';
     case 'auth/invalid-credential':
     case 'auth/wrong-password':
-      return 'Incorrect email or password. Please try again.';
+      return `Incorrect email or password. If this email was used before, try Forgot Password or a new email.${codeSuffix}`;
     case 'auth/user-not-found':
-      return 'No account found for this email. Please sign up first.';
+      return `No account found for this email. Please sign up first.${codeSuffix}`;
     case 'auth/invalid-email':
       return 'Enter a valid email address.';
     case 'auth/weak-password':
@@ -54,14 +55,16 @@ export const getFirebaseErrorMessage = (error: unknown): string | null => {
 
   if (
     lowerMessage.includes('supplied auth credential') ||
-    lowerMessage.includes('invalid-credential')
+    lowerMessage.includes('invalid-credential') ||
+    lowerMessage.includes('invalid_login_credentials') ||
+    lowerMessage.includes('invalid login credentials')
   ) {
-    return 'This email may already be registered. Try Login with your existing password, or use Forgot Password.';
+    return `Incorrect email or password. If you registered earlier, use Forgot Password or sign up with a new email.${codeSuffix}`;
   }
 
   if (lowerMessage.includes('no user currently signed in')) {
     return null;
   }
 
-  return message || null;
+  return message ? `${message}${codeSuffix}` : null;
 };

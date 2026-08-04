@@ -9,8 +9,9 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { useNavigation } from '@react-navigation/native';
 import { useBookings } from '../../../../hooks/api/useBookings';
 import { getBookingParticipantName } from '../../../../utils/api/bookingHelpers';
@@ -133,7 +134,7 @@ const TutorRequestsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <GlassScreen scroll={false}>
       <ScrollView contentContainerStyle={styles.listContent}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Requests</Text>
@@ -156,37 +157,38 @@ const TutorRequestsScreen = () => {
           bookings.map(item => <View key={item._id}>{renderItem({ item })}</View>)
         )}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TutorRequestsScreen;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { paddingBottom: 8 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  headerSubtitle: { marginTop: 4, color: '#6B7280' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: GLASS.textPrimary },
+  headerSubtitle: { marginTop: 4, color: GLASS.textSecondary },
   sectionLabel: {
     marginTop: 8,
     marginBottom: 10,
     fontSize: 12,
     fontWeight: '800',
-    color: '#64748B',
+    color: GLASS.textMuted,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  listContent: { padding: 16, paddingBottom: 40 },
-  emptyText: { textAlign: 'center', color: '#6B7280', marginTop: 12 },
+  listContent: {
+    padding: GLASS.space.lg,
+    paddingBottom: 40,
+  },
+  emptyText: { textAlign: 'center', color: GLASS.textSecondary, marginTop: 12 },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: GLASS.cardBg,
+    borderRadius: GLASS.radius.xl,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    padding: GLASS.space.lg,
+    marginBottom: GLASS.space.lg,
+    ...GLASS.shadow.soft,
   },
   topRow: { flexDirection: 'row', alignItems: 'flex-start' },
   avatar: {
@@ -203,7 +205,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  name: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  name: { fontSize: 16, fontWeight: '700', color: GLASS.textPrimary },
   newBadge: {
     backgroundColor: '#FEE2E2',
     paddingHorizontal: 8,
@@ -236,37 +238,44 @@ const styles = StyleSheet.create({
   subjectBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    padding: 12,
-    marginTop: 16,
+    backgroundColor: GLASS.primarySoft,
+    borderRadius: GLASS.radius.md,
+    padding: GLASS.space.md,
+    marginTop: GLASS.space.lg,
     gap: 12,
   },
   iconBox: {
     width: 40,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EDE9FE',
+    borderRadius: GLASS.radius.sm,
+    backgroundColor: GLASS.cardBgStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  subjectLabel: { color: '#9CA3AF', fontSize: 12 },
-  subjectName: { color: '#111827', fontSize: 15, fontWeight: '700', marginTop: 2 },
+  subjectLabel: { color: GLASS.textMuted, fontSize: 12 },
+  subjectName: {
+    color: GLASS.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    marginTop: 2,
+  },
   buttonRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
+    backgroundColor: GLASS.primary,
+    borderRadius: GLASS.radius.sm,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  acceptText: { color: '#fff', fontWeight: '700' },
+  acceptText: { color: GLASS.textOnPrimary, fontWeight: '700' },
   declineButton: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    backgroundColor: GLASS.cardBgStrong,
+    borderRadius: GLASS.radius.sm,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  declineText: { color: '#374151', fontWeight: '700' },
+  declineText: { color: GLASS.textPrimary, fontWeight: '700' },
 });

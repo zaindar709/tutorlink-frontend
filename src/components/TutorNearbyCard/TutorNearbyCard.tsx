@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 const DEFAULT_AVATAR =
   'https://randomuser.me/api/portraits/lego/1.jpg';
@@ -88,19 +89,16 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
   StyleSheet.create({
     card: {
       width: resp.pw(85),
+      alignSelf: 'center',
       minHeight: resp.dy(108),
-      borderRadius: resp.dx(24),
-      backgroundColor: colors.WHITE_COLOR,
+      borderRadius: GLASS.radius.xl,
+      backgroundColor: '#FFFFFF',
       padding: resp.dy(14),
       flexDirection: 'row',
       alignItems: 'center',
       borderWidth: isSelected ? 2 : 1,
-      borderColor: isSelected ? colors.PRIMARY_COLOR : colors.LIGHT_GRAY,
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.08,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 4,
+      borderColor: isSelected ? GLASS.primary : GLASS.cardBorder,
+      ...GLASS.shadow.soft,
       marginBottom: resp.dy(14),
     },
     avatarWrapper: {
@@ -108,7 +106,7 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       height: resp.dx(56),
       borderRadius: resp.dx(18),
       overflow: 'hidden',
-      backgroundColor: colors.PRIMARY_COLOR + '15',
+      backgroundColor: 'transparent',
     },
     avatarImage: {
       width: '100%',

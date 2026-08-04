@@ -4,7 +4,7 @@ export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
     },
     container: {
       padding: resp.dx(20),
@@ -19,19 +19,19 @@ export const createStyles = (colors: any, resp: any) =>
     title: {
       fontSize: resp.df(28),
       fontWeight: '700',
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.TEXT_PRIMARY || colors.BLACK_COLOR,
       marginBottom: resp.dy(12),
     },
     subtitle: {
-      fontSize: resp.df(14),
-      color: colors.GRAY_COLOR,
+      fontSize: resp.df(15),
+      color: colors.AUTH_SUBTEXT || colors.TEXT_SECONDARY,
       lineHeight: resp.df(22),
     },
     label: {
       marginBottom: resp.dy(18),
       fontSize: resp.df(14),
       fontWeight: '600',
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.TEXT_PRIMARY || colors.BLACK_COLOR,
     },
     codeRow: {
       flexDirection: 'row',
@@ -44,7 +44,7 @@ export const createStyles = (colors: any, resp: any) =>
       borderRadius: 16,
       borderWidth: 1,
       borderColor: '#DDD',
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
       fontSize: resp.df(22),
       color: colors.BLACK_COLOR,
       fontWeight: '700',

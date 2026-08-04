@@ -1,24 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Icon } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import useUi from '../../../hooks/ui/useUi';
-import CustomInput from '../../../components/CustomInput/CustomInput';
-import CustomButton from '../../../components/CustomButton';
-import BackButton from '../../../components/BackButton/BackButton';
-import { validatePassword, validateConfirmPassword } from '../../../utils/validations/authValidation';
-import { createStyles } from './styles';
+import {
+  validatePassword,
+  validateConfirmPassword,
+} from '../../../utils/validations/authValidation';
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  GlassCard,
+  GlassInput,
+  GlassPrimaryButton,
+  AUTH_GLASS,
+} from '../../../components/AuthGlass';
 
 const NewPasswordScreen = () => {
-  const { colors, resp } = useUi();
-  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { email = '', role = 'student' } = route.params || {};
@@ -48,16 +46,13 @@ const NewPasswordScreen = () => {
       return;
     }
 
-    const confirmError = validateConfirmPassword(newPassword, confirmPassword);
-    if (confirmError) {
-      setConfirmError(confirmError);
+    const confirmErr = validateConfirmPassword(newPassword, confirmPassword);
+    if (confirmErr) {
+      setConfirmError(confirmErr);
       return;
     }
 
-    // Reset password successful
     console.log('RESET PASSWORD:', { email, newPassword, role });
-    
-    // Navigate to SuccessScreen
     navigation.navigate('SuccessScreen', { role });
   };
 
@@ -65,113 +60,124 @@ const NewPasswordScreen = () => {
   const isConfirmValid = !validateConfirmPassword(newPassword, confirmPassword);
   const isFormValid = isPasswordValid && isConfirmValid;
 
-  const buttonStyle = useMemo(() => {
-    return {
-      ...styles.resetButton,
-      ...(isFormValid ? {} : styles.disabledButton),
-    };
-  }, [isFormValid, styles.resetButton, styles.disabledButton]);
+  const requirementStyle = useMemo(
+    () => ({
+      met: { color: '#86EFAC', fontWeight: '600' as const },
+      base: { color: AUTH_GLASS.muted },
+    }),
+    []
+  );
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding">
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => navigation.goBack()} />
-        </View>
+    <AuthGlassBackground>
+      <AuthGlassHeader
+        title="New Password"
+        subtitle="Create a strong password for your account"
+        onBack={() => navigation.goBack()}
+      />
 
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>New Password</Text>
-          <Text style={styles.subtitle}>
-            Create a strong password for your account
-          </Text>
-        </View>
-
-        <View style={styles.formCard}>
-          <View style={styles.passwordInputContainer}>
-            <Text style={styles.label}>New Password</Text>
-            <CustomInput
-              placeholder="Enter new password"
-              value={newPassword}
-              onChangeText={handleNewPasswordChange}
-              secureTextEntry={!showNewPassword}
-              error={passwordError}
-              leftIcon={
-                <Icon
-                  source="lock-outline"
-                  size={20}
-                  color={colors.PLACEHOLDER_TEXTCOLOR as string}
-                />
-              }
-              rightIcon={
-                <Icon
-                  source={showNewPassword ? 'eye' : 'eye-off'}
-                  size={20}
-                  color={colors.PLACEHOLDER_TEXTCOLOR as string}
-                />
-              }
-              onRightIconPress={() => setShowNewPassword(!showNewPassword)}
+      <GlassCard>
+        <GlassInput
+          label="New Password"
+          placeholder="Enter new password"
+          value={newPassword}
+          onChangeText={handleNewPasswordChange}
+          secureTextEntry={!showNewPassword}
+          autoCapitalize="none"
+          error={passwordError}
+          leftIcon={
+            <MaterialCommunityIcons
+              name="lock-outline"
+              size={20}
+              color={AUTH_GLASS.placeholder}
             />
-          </View>
-
-          <View style={styles.passwordInputContainer}>
-            <Text style={styles.label}>Confirm New Password</Text>
-            <CustomInput
-              placeholder="Confirm new password"
-              value={confirmPassword}
-              onChangeText={handleConfirmPasswordChange}
-              secureTextEntry={!showConfirmPassword}
-              error={confirmError}
-              leftIcon={
-                <Icon
-                  source="lock-outline"
-                  size={20}
-                  color={colors.PLACEHOLDER_TEXTCOLOR as string}
-                />
-              }
-              rightIcon={
-                <Icon
-                  source={showConfirmPassword ? 'eye' : 'eye-off'}
-                  size={20}
-                  color={colors.PLACEHOLDER_TEXTCOLOR as string}
-                />
-              }
-              onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
+          }
+          rightIcon={
+            <MaterialCommunityIcons
+              name={showNewPassword ? 'eye' : 'eye-off'}
+              size={20}
+              color={AUTH_GLASS.placeholder}
             />
-          </View>
-
-          <View style={styles.requirementsList}>
-            <Text style={styles.requirementText}>
-              Must be at least 8 characters long
-            </Text>
-            <Text style={styles.requirementText}>
-              Include 1 uppercase letter (A-Z)
-            </Text>
-            <Text style={styles.requirementText}>
-              Include 1 lowercase letter (a-z)
-            </Text>
-            <Text style={styles.requirementText}>
-              Include 1 number (0-9)
-            </Text>
-            <Text style={styles.requirementText}>
-              Include one special character (@$!%*?&)
-            </Text>
-          </View>
-        </View>
-
-        <CustomButton
-          title="Reset Password"
-          onPress={handleResetPassword}
-          style={buttonStyle}
-          disabled={!isFormValid}
+          }
+          onRightIconPress={() => setShowNewPassword(!showNewPassword)}
         />
 
+        <GlassInput
+          label="Confirm New Password"
+          placeholder="Confirm new password"
+          value={confirmPassword}
+          onChangeText={handleConfirmPasswordChange}
+          secureTextEntry={!showConfirmPassword}
+          autoCapitalize="none"
+          error={confirmError}
+          leftIcon={
+            <MaterialCommunityIcons
+              name="lock-check-outline"
+              size={20}
+              color={AUTH_GLASS.placeholder}
+            />
+          }
+          rightIcon={
+            <MaterialCommunityIcons
+              name={showConfirmPassword ? 'eye' : 'eye-off'}
+              size={20}
+              color={AUTH_GLASS.placeholder}
+            />
+          }
+          onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
+        />
+
+        <View style={styles.requirementsList}>
+          <Text style={[styles.requirementText, requirementStyle.base]}>
+            Must be at least 8 characters long
+          </Text>
+          <Text style={[styles.requirementText, requirementStyle.base]}>
+            Include 1 uppercase letter (A-Z)
+          </Text>
+          <Text style={[styles.requirementText, requirementStyle.base]}>
+            Include 1 lowercase letter (a-z)
+          </Text>
+          <Text style={[styles.requirementText, requirementStyle.base]}>
+            Include 1 number (0-9)
+          </Text>
+          <Text style={[styles.requirementText, requirementStyle.base]}>
+            Include one special character (@$!%*?&)
+          </Text>
+        </View>
+      </GlassCard>
+
+      <View style={{ marginTop: 20 }}>
+        <GlassPrimaryButton
+          title="Reset Password"
+          onPress={handleResetPassword}
+          disabled={!isFormValid}
+        />
         <Text style={styles.roleText}>{roleLabel} password reset</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </AuthGlassBackground>
   );
 };
+
+const styles = StyleSheet.create({
+  requirementsList: {
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: AUTH_GLASS.cardBorder,
+  },
+  requirementText: {
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 6,
+  },
+  roleText: {
+    marginTop: 20,
+    textAlign: 'center',
+    color: AUTH_GLASS.muted,
+    fontSize: 13,
+  },
+});
 
 export default NewPasswordScreen;

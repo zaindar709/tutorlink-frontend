@@ -7,8 +7,9 @@ import {
   ScrollView,
   FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GlassScreen, GlassCard } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
 import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -86,7 +87,7 @@ const transactions = [
 
 const TransactionCard = ({ item, colors, resp }: any) => {
   return (
-    <View style={styles(colors, resp).transactionCard}>
+    <GlassCard style={styles(colors, resp).transactionCard}>
       <View style={{ flexDirection: 'row' }}>
         <View
           style={[
@@ -155,7 +156,7 @@ const TransactionCard = ({ item, colors, resp }: any) => {
           {item.status}
         </Text>
       </View>
-    </View>
+    </GlassCard>
   );
 };
 
@@ -163,7 +164,7 @@ const HeaderCard = ({ colors, resp }: any) => {
   const navigation = useNavigation<any>();
   return (
     <LinearGradient
-      colors={['#6366F1', '#8B5CF6', '#A855F7']}
+      colors={[...GLASS.buttonGradient]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={styles(colors, resp).headerCard}
@@ -346,16 +347,14 @@ export default function TutorEarningsScreen() {
   const navigation = useNavigation<any>();
 
   return (
-    <SafeAreaView style={styles(colors, resp).container}>
+    <GlassScreen scroll={false}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles(colors, resp).content}
       >
         <View style={styles(colors, resp).headerText}>
-          <Text style={{ color: '#030303', fontSize: 24, fontWeight: 600 }}>
-            Earnings
-          </Text>
-          <Text style={{ color: '#818181' }}>
+          <Text style={styles(colors, resp).screenTitle}>Earnings</Text>
+          <Text style={styles(colors, resp).screenSubtitle}>
             Track your Incomes and withdrawals
           </Text>
         </View>
@@ -376,13 +375,7 @@ export default function TutorEarningsScreen() {
               marginBottom: 16,
             }}
           >
-            <Text
-              style={{
-                color: '#111827',
-                fontSize: 18,
-                fontWeight: '600',
-              }}
-            >
+            <Text style={styles(colors, resp).sectionHeading}>
               Recent Transactions
             </Text>
 
@@ -393,15 +386,7 @@ export default function TutorEarningsScreen() {
                 })
               }
             >
-              <Text
-                style={{
-                  color: '#2563EB',
-                  fontSize: 14,
-                  fontWeight: '500',
-                }}
-              >
-                View All
-              </Text>
+              <Text style={styles(colors, resp).viewAllLink}>View All</Text>
             </TouchableOpacity>
           </View>
 
@@ -417,40 +402,43 @@ export default function TutorEarningsScreen() {
           />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }
 
 const styles = (colors: any, resp: any) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
-    },
-
     content: {
-      padding: resp.dx(16),
+      padding: resp.dx(GLASS.space.lg),
       paddingBottom: resp.dy(30),
     },
     headerText: {
       marginBottom: resp.dy(20),
       paddingHorizontal: resp.dx(4),
     },
-    // HEADER CARD
+    screenTitle: {
+      color: GLASS.textPrimary,
+      fontSize: 24,
+      fontWeight: '600',
+    },
+    screenSubtitle: {
+      color: GLASS.textSecondary,
+    },
+    sectionHeading: {
+      color: GLASS.textPrimary,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    viewAllLink: {
+      color: GLASS.primary,
+      fontSize: 14,
+      fontWeight: '500',
+    },
 
     headerCard: {
-      borderRadius: resp.dx(24),
+      borderRadius: resp.dx(GLASS.radius.xxl),
       padding: resp.dy(18),
-      backgroundColor: '#7C4DFF',
-
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 6,
-      },
-      shadowOpacity: 0.2,
-      shadowRadius: 8,
-      elevation: 6,
+      ...GLASS.shadow.medium,
     },
 
     topRow: {
@@ -535,18 +523,11 @@ const styles = (colors: any, resp: any) =>
 
     statCard: {
       width: '48%',
-      borderRadius: resp.dx(18),
+      borderRadius: resp.dx(GLASS.radius.lg),
       padding: resp.dy(16),
       borderWidth: 1,
-      borderColor: 'rgba(99,102,241,0.10)',
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 10,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 14,
-      elevation: 8,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
     statIcon: {
       width: resp.dx(36),
@@ -576,19 +557,12 @@ const styles = (colors: any, resp: any) =>
     // CHART
     chartContainer: {
       marginTop: resp.dy(20),
-      backgroundColor: '#FFFFFF',
-      borderRadius: resp.dx(20),
+      backgroundColor: GLASS.cardBg,
+      borderRadius: resp.dx(GLASS.radius.xl),
       padding: resp.dy(16),
-      shadowColor: '#000',
-      shadowOffset: {
-        width: 0,
-        height: 12,
-      },
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      elevation: 10,
+      ...GLASS.shadow.soft,
       borderWidth: 1,
-      borderColor: 'rgba(99,102,241,0.08)',
+      borderColor: GLASS.cardBorder,
     },
 
     chartHeader: {
@@ -599,11 +573,13 @@ const styles = (colors: any, resp: any) =>
     },
 
     chartTitle: {
-      color: '#111827',
+      color: GLASS.textPrimary,
+      fontWeight: '700',
     },
 
     analyticsText: {
-      color: '#6366F1',
+      color: GLASS.primary,
+      fontWeight: '600',
     },
 
     chartArea: {
@@ -617,7 +593,7 @@ const styles = (colors: any, resp: any) =>
     },
 
     axisLabel: {
-      color: '#94A3B8',
+      color: GLASS.textMuted,
       fontSize: resp.dx(11),
     },
 
@@ -652,7 +628,7 @@ const styles = (colors: any, resp: any) =>
 
     lineBar: {
       width: 3,
-      backgroundColor: '#3B82F6',
+      backgroundColor: GLASS.primary,
       borderRadius: 10,
     },
 
@@ -660,32 +636,18 @@ const styles = (colors: any, resp: any) =>
       width: resp.dx(10),
       height: resp.dx(10),
       borderRadius: resp.dx(5),
-      backgroundColor: '#2563EB',
+      backgroundColor: GLASS.primaryDeep,
       marginTop: -2,
       marginBottom: resp.dy(10),
     },
 
     weekLabel: {
-      color: '#94A3B8',
+      color: GLASS.textMuted,
       fontSize: resp.dx(11),
       marginTop: resp.dy(4),
     },
     transactionCard: {
-      backgroundColor: '#FFFFFF',
-      borderRadius: 18,
-      padding: 16,
       marginBottom: 14,
-      borderWidth: 1,
-      borderColor: '#E5E7EB',
-
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-      elevation: 2,
     },
 
     transactionIcon: {
@@ -697,13 +659,13 @@ const styles = (colors: any, resp: any) =>
     },
 
     transactionTitle: {
-      color: '#111827',
+      color: GLASS.textPrimary,
       fontSize: 15,
       fontWeight: '700',
     },
 
     transactionName: {
-      color: '#6B7280',
+      color: GLASS.textSecondary,
       fontSize: 12,
       marginTop: 4,
     },
@@ -714,7 +676,7 @@ const styles = (colors: any, resp: any) =>
     },
 
     transactionDate: {
-      color: '#9CA3AF',
+      color: GLASS.textMuted,
       fontSize: 11,
       marginTop: 6,
     },

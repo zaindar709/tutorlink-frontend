@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import { useNavigation } from '@react-navigation/native';
 
 import useUi from '../../../../../../hooks/ui/useUi';
@@ -23,17 +24,13 @@ const SecurityPrivacyScreen = () => {
   const [loginAlertsEnabled, setLoginAlertsEnabled] = useState(true);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false}>
       <CustomHeader navigation={navigation} title="Security & Privacy" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
-        <View
-          style={[
-            styles.heroCard,
-            { backgroundColor: colors.WHITE_COLOR },
-          ]}>
+        <View style={styles.heroCard}>
           <View
             style={[
               styles.heroBadge,
@@ -82,11 +79,7 @@ const SecurityPrivacyScreen = () => {
           Security Features
         </Text>
 
-        <View
-          style={[
-            styles.featureCard,
-            { backgroundColor: colors.WHITE_COLOR },
-          ]}>
+        <View style={styles.featureCard}>
           <View style={styles.featureLeft}>
             <View
               style={[
@@ -134,11 +127,7 @@ const SecurityPrivacyScreen = () => {
           />
         </View>
 
-        <View
-          style={[
-            styles.featureCard,
-            { backgroundColor: colors.WHITE_COLOR },
-          ]}>
+        <View style={styles.featureCard}>
           <View style={styles.featureLeft}>
             <View
               style={[
@@ -194,12 +183,7 @@ const SecurityPrivacyScreen = () => {
           Account Actions
         </Text>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[
-            styles.actionCard,
-            { backgroundColor: colors.WHITE_COLOR },
-          ]}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.actionCard}>
           <View style={styles.actionLeft}>
             <View
               style={[
@@ -239,12 +223,7 @@ const SecurityPrivacyScreen = () => {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[
-            styles.actionCard,
-            { backgroundColor: colors.WHITE_COLOR },
-          ]}>
+        <TouchableOpacity activeOpacity={0.8} style={styles.actionCard}>
           <View style={styles.actionLeft}>
             <View
               style={[
@@ -290,14 +269,7 @@ const SecurityPrivacyScreen = () => {
           style={styles.button}
         />
 
-        <View
-          style={[
-            styles.tipCard,
-            {
-              backgroundColor: '#FFFBEB',
-              borderColor: '#FCD34D',
-            },
-          ]}>
+        <View style={styles.tipCard}>
           <Text
             style={[
               styles.tipTitle,
@@ -339,18 +311,13 @@ const SecurityPrivacyScreen = () => {
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default SecurityPrivacyScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-
   content: {
     paddingHorizontal: 20,
     paddingBottom: 30,
@@ -359,16 +326,12 @@ const styles = StyleSheet.create({
 
   heroCard: {
     marginTop: 20,
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowRadius: 18,
-    elevation: 6,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   heroBadge: {
@@ -402,22 +365,19 @@ const styles = StyleSheet.create({
   sectionHeading: {
     fontSize: 18,
     fontWeight: '700',
+    color: GLASS.textPrimary,
   },
 
   featureCard: {
-    borderRadius: 22,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowRadius: 14,
-    elevation: 3,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   featureLeft: {
@@ -451,19 +411,15 @@ const styles = StyleSheet.create({
   },
 
   actionCard: {
-    borderRadius: 22,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowRadius: 14,
-    elevation: 3,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   actionLeft: {
@@ -497,9 +453,12 @@ const styles = StyleSheet.create({
   },
 
   tipCard: {
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 20,
     borderWidth: 1,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
 
   tipTitle: {

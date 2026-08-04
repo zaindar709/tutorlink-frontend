@@ -1,40 +1,36 @@
 import { StyleSheet } from 'react-native';
+import { GLASS, glassTypography } from '../../theme/glass';
 
-export const createProfileSubScreenStyles = (colors: Record<string, string>) =>
+export const createProfileSubScreenStyles = (_colors: Record<string, any>) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#FFFFFF',
     },
     content: {
       padding: 16,
       paddingBottom: 32,
     },
     heroCard: {
-      backgroundColor: colors.WHITE_COLOR,
-      borderRadius: 16,
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xl,
       padding: 18,
       marginBottom: 16,
-      shadowColor: '#7548F5',
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      elevation: 2,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
     heroTitle: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.BLACK_COLOR,
+      ...glassTypography.h3,
       marginBottom: 6,
     },
     heroSubtitle: {
+      ...glassTypography.subtitle,
       fontSize: 13,
-      lineHeight: 20,
-      color: colors.LIGHT_GRAY,
     },
     sectionLabel: {
-      fontSize: 13,
+      fontSize: 12,
       fontWeight: '700',
-      color: '#64748B',
+      color: GLASS.textMuted,
       marginBottom: 10,
       marginTop: 4,
       textTransform: 'uppercase',

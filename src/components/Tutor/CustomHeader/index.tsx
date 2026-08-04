@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import BackButton from '../../BackButton/BackButton';
+import { GLASS, glassTypography } from '../../../theme/glass';
 
 const CustomHeader = ({
   navigation,
@@ -19,7 +20,6 @@ const CustomHeader = ({
 }: any) => {
   return (
     <View style={styles.container}>
-      {/* Left */}
       <View style={styles.sideContainer}>
         {showBackButton ? (
           <BackButton
@@ -32,18 +32,13 @@ const CustomHeader = ({
         )}
       </View>
 
-      {/* Center */}
       <Text numberOfLines={1} style={styles.title}>
         {title}
       </Text>
 
-      {/* Right */}
       <View style={styles.sideContainer}>
         {showSaveButton ? (
-          <TouchableOpacity
-            onPress={onSave}
-            style={styles.actionButton}
-          >
+          <TouchableOpacity onPress={onSave} style={styles.actionButton}>
             <MaterialCommunityIcons
               name="content-save-outline"
               size={20}
@@ -51,15 +46,8 @@ const CustomHeader = ({
             />
           </TouchableOpacity>
         ) : rightIcon ? (
-          <TouchableOpacity
-            onPress={onRightPress}
-            style={styles.actionButton}
-          >
-            <MaterialCommunityIcons
-              name={rightIcon}
-              size={20}
-              color="#fff"
-            />
+          <TouchableOpacity onPress={onRightPress} style={styles.actionButton}>
+            <MaterialCommunityIcons name={rightIcon} size={20} color="#fff" />
           </TouchableOpacity>
         ) : (
           <View style={{ width: 40 }} />
@@ -70,38 +58,35 @@ const CustomHeader = ({
 };
 
 export default CustomHeader;
+
 const styles = StyleSheet.create({
   container: {
     height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
+    backgroundColor: GLASS.headerBg,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: GLASS.cardBorder,
   },
-
   sideContainer: {
     width: 50,
     alignItems: 'center',
     justifyContent: 'center',
   },
-
   title: {
     flex: 1,
     textAlign: 'center',
+    ...glassTypography.h3,
     fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
   },
-
   actionButton: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#4F46E5',
+    backgroundColor: GLASS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    ...GLASS.shadow.soft,
   },
 });

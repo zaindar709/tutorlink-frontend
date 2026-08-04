@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 type TrendDataPoint = {
   label: string;
@@ -169,7 +170,7 @@ export default TrendChart;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBg,
 
     borderRadius: 20,
     padding: 16,

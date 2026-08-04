@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { GLASS } from '../../../../theme/glass';
 
 interface Props {
   item: any;
@@ -76,12 +77,13 @@ export const TodaySessionCard = ({
 const styles = (resp: any) =>
   StyleSheet.create({
     card: {
-      backgroundColor: '#F1F5F9',
-      borderRadius: resp.dx(16),
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xl,
       padding: resp.dx(14),
       marginBottom: resp.dy(12),
       borderWidth: 1,
-      borderColor: '#BFDBFE',
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
 
     topRow: {
@@ -93,7 +95,7 @@ const styles = (resp: any) =>
       width: resp.dx(42),
       height: resp.dx(42),
       borderRadius: resp.dx(12),
-      backgroundColor: '#FFFFFF',
+      backgroundColor: GLASS.cardBgStrong,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -141,16 +143,16 @@ const styles = (resp: any) =>
       flex: 1,
       height: resp.dy(46),
       borderRadius: resp.dx(12),
-      backgroundColor: '#FFFFFF',
+      backgroundColor: GLASS.cardBgStrong,
       borderWidth: 1,
-      borderColor: '#BFDBFE',
+      borderColor: GLASS.cardBorder,
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
     },
 
     secondaryButtonText: {
-      color: '#3366E8',
+      color: GLASS.primary,
       fontWeight: '700',
       fontSize: resp.df(13),
       marginLeft: resp.dx(6),

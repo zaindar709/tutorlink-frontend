@@ -21,7 +21,8 @@ const TOKEN_CACHE_TTL_MS = 4 * 60 * 1000;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  // Render free tier cold-starts can exceed 15s — keep patient for release testing.
+  timeout: 35000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',

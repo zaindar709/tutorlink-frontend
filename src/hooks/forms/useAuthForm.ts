@@ -7,6 +7,7 @@ import {
   validateConfirmPassword,
   validateEmail,
   validateFullName,
+  validateLoginPassword,
   validatePassword,
 } from '../../utils/validations/authValidation';
 import {
@@ -66,7 +67,10 @@ export const useAuthForm = (
     let error = '';
     if (field === 'fullName') error = validateFullName(value);
     if (field === 'email') error = validateEmail(value);
-    if (field === 'password') error = validatePassword(value);
+    if (field === 'password') {
+      error =
+        mode === 'login' ? validateLoginPassword(value) : validatePassword(value);
+    }
     if (field === 'confirmPassword')
       error = validateConfirmPassword(form.password, value);
 
@@ -85,7 +89,10 @@ export const useAuthForm = (
     }
 
     newErrors.email = validateEmail(form.email);
-    newErrors.password = validatePassword(form.password);
+    newErrors.password =
+      mode === 'login'
+        ? validateLoginPassword(form.password)
+        : validatePassword(form.password);
 
     setErrors(newErrors);
     return Object.values(newErrors).every(value => !value);
@@ -175,9 +182,18 @@ export const useAuthForm = (
     tutorSubject?: string;
     tutorGrades?: string[];
   }) => {
-    if (!validateForm()) return;
+    // Ignore RN press events accidentally passed via onPress={submit}
+    const safeOptions =
+      overrideOptions &&
+      typeof overrideOptions === 'object' &&
+      !('nativeEvent' in overrideOptions)
+        ? overrideOptions
+        : undefined;
 
-    const activeOptions = { ...options, ...overrideOptions };
+    if (!validateForm()) return;
+    if (loading) return;
+
+    const activeOptions = { ...options, ...safeOptions };
 
     setLoadingState(true);
     dispatch(setLoading(true));
@@ -201,11 +217,15 @@ export const useAuthForm = (
               selectedClass: activeOptions?.selectedClass,
             });
 
+      // Prefer requested role for navigation when backend omits it,
+      // but never override a conflicting backend role (asserted in authService).
+      const sessionRole = (session.role || role) as AuthRole;
+
       dispatch(
         setUser({
           user: session.user,
           token: session.token,
-          role: session.role,
+          role: sessionRole,
         })
       );
 
@@ -217,15 +237,18 @@ export const useAuthForm = (
       );
 
       // Navigate first; push permission is scheduled after interactions settle.
-      await navigateAfterAuth(session.role, mode === 'signup', activeOptions);
+      await navigateAfterAuth(sessionRole, mode === 'signup', activeOptions);
     } catch (error) {
       const message = getApiErrorMessage(error);
+      const lower = message.toLowerCase();
+      const isRoleConflict = lower.includes('registered as a');
       const isExistingAccount =
-        message.toLowerCase().includes('already') ||
-        message.toLowerCase().includes('exists') ||
-        message.toLowerCase().includes('registered');
+        !isRoleConflict &&
+        (lower.includes('already') ||
+          lower.includes('exists') ||
+          lower.includes('registered with a different'));
       const isMissingProfile =
-        message.toLowerCase().includes('not found') ||
+        lower.includes('not found') ||
         (error as { response?: { status?: number } })?.response?.status === 404;
 
       const loginScreen =
@@ -235,30 +258,42 @@ export const useAuthForm = (
             ? 'ParentLinkRedeemScreen'
             : 'StudentLoginScreen';
 
-      const alertBody = isMissingProfile
-        ? `${message}\n\nFirebase account exists but server profile was missing. Try again — app will create it.`
-        : isExistingAccount
-          ? message ||
-            'This email is already registered. Please log in instead.'
-          : message;
+      const studentLogin = 'StudentLoginScreen';
 
-      const timing = formatAuthTimingForAlert();
-      Alert.alert(
-        isExistingAccount
+      const alertTitle = isRoleConflict
+        ? 'Wrong role for this email'
+        : isExistingAccount
           ? 'Account already exists'
           : isMissingProfile
             ? 'Profile not found'
-            : 'Authentication failed',
+            : 'Authentication failed';
+
+      const alertBody = isMissingProfile
+        ? `${message}\n\nFirebase account exists but server profile was missing. Try again — app will create it.`
+        : message;
+
+      const timing = formatAuthTimingForAlert();
+      Alert.alert(
+        alertTitle,
         timing ? `${alertBody}\n\n${timing}` : alertBody,
-        isExistingAccount
+        isRoleConflict
           ? [
               { text: 'Cancel', style: 'cancel' },
               {
-                text: 'Go to Login',
-                onPress: () => navigation.replace(loginScreen, { role }),
+                text: 'Student Login',
+                onPress: () =>
+                  navigation.replace(studentLogin, { role: 'student' }),
               },
             ]
-          : undefined
+          : isExistingAccount
+            ? [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Go to Login',
+                  onPress: () => navigation.replace(loginScreen, { role }),
+                },
+              ]
+            : undefined
       );
     } finally {
       setLoadingState(false);

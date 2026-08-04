@@ -1,14 +1,16 @@
 import { StyleSheet } from "react-native";
+import { GLASS } from "../../../../theme/glass";
 
 export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
+      backgroundColor: 'transparent',
     },
 
     screen: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: 'transparent',
     },
 
     mapWrapper: {
@@ -35,14 +37,12 @@ export const createStyles = (colors: any, resp: any) =>
       width: resp.dx(48),
       height: resp.dx(48),
       borderRadius: resp.dx(24),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: '#FFFFFF',
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.1,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 5 },
-      elevation: 5,
+      ...GLASS.shadow.soft,
     },
     markerContainer: {
       alignItems: 'center',
@@ -77,9 +77,9 @@ export const createStyles = (colors: any, resp: any) =>
       height: resp.dx(58),
       borderRadius: resp.dx(29),
       borderWidth: 3,
-      borderColor: colors.WHITE_COLOR,
+      borderColor: GLASS.cardBgStrong,
       overflow: 'hidden',
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: GLASS.cardBgStrong,
     },
 
     imageWrapperSelected: {
@@ -100,7 +100,7 @@ export const createStyles = (colors: any, resp: any) =>
       borderRadius: resp.dx(6),
       backgroundColor: '#1ED760',
       borderWidth: 2,
-      borderColor: colors.WHITE_COLOR,
+      borderColor: GLASS.cardBgStrong,
     },
     errorBanner: {
       position: 'absolute',
@@ -108,13 +108,15 @@ export const createStyles = (colors: any, resp: any) =>
       left: resp.dx(16),
       right: resp.dx(16),
       zIndex: 20,
-      backgroundColor: '#FFF4E5',
-      borderRadius: resp.dx(12),
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.md,
+      borderWidth: 1,
+      borderColor: GLASS.warning,
       paddingHorizontal: resp.dx(12),
       paddingVertical: resp.dy(8),
     },
     errorText: {
-      color: '#9A6700',
+      color: GLASS.warning,
       fontSize: resp.df(12),
       fontWeight: '600',
     },

@@ -3,7 +3,6 @@ import {
   View,
   StyleSheet,
   FlatList,
-  StatusBar,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
@@ -12,6 +11,7 @@ import {
   Text,
   Alert,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
@@ -41,6 +41,7 @@ import { useChatMessages } from '../../../../../hooks/api/useChatMessages';
 import { createConversation } from '../../../../../services/chat/chatService';
 import { isInquiryConversationId } from '../../../../../services/chat/localInquiryChat';
 import { ApiUser } from '../../../../../types/api.types';
+import { GLASS } from '../../../../../theme/glass';
 
 type ListItem =
   | { kind: 'date'; id: string; label: string }
@@ -341,25 +342,25 @@ const ChatScreen = () => {
 
   if (!resolvedChatId || resolving) {
     return (
-      <View
-        style={[
-          styles.screen,
-          styles.centered,
-          { backgroundColor: colors.BACKGROUND as string },
-        ]}
-      >
+      <View style={[styles.screen, styles.centered]}>
+        <LinearGradient
+          colors={[...GLASS.screenGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         <ActivityIndicator color={colors.PRIMARY_COLOR as string} />
       </View>
     );
   }
 
   return (
-    <View
-      style={[styles.screen, { backgroundColor: colors.BACKGROUND as string }]}
-    >
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor={colors.WHITE_COLOR as string}
+    <View style={styles.screen}>
+      <LinearGradient
+        colors={[...GLASS.screenGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
       />
 
       <ChatHeader
@@ -377,8 +378,8 @@ const ChatScreen = () => {
 
       {isInquiryConversationId(resolvedChatId) ? (
         <Text style={styles.previewBanner}>
-          Pre-booking preview — messages stay on this device until backend
-          accepts participantId (no bookingId).
+          Offline preview — this chat is only on your device. Tutor will receive
+          messages once the server accepts chat without booking.
         </Text>
       ) : null}
 
@@ -479,6 +480,7 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+    backgroundColor: GLASS.screenGradient[0],
   },
   centered: {
     alignItems: 'center',

@@ -7,8 +7,9 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
 
 const days = [
@@ -68,7 +69,7 @@ const schedule = [
     status: 'Online',
     button: 'View Details',
     secondaryBtn: 'Reschedule',
-    cardBg: '#FFFFFF',
+    cardBg: GLASS.cardBg,
     border: '#BFDBFE',
   },
 
@@ -87,7 +88,7 @@ const schedule = [
     status: 'Online',
     button: 'View Details',
     secondaryBtn: 'Reschedule',
-    cardBg: '#FFFFFF',
+    cardBg: GLASS.cardBg,
     border: '#BFDBFE',
   },
 ];
@@ -96,7 +97,7 @@ const TutorScheduleScreen = () => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <Text style={styles.heading}>My Schedule</Text>
@@ -286,23 +287,18 @@ const TutorScheduleScreen = () => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TutorScheduleScreen;
 
-const createStyles = (colors: any, resp: any) =>
+const createStyles = (colors: any, _resp: any) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8FAFC',
-    },
-
     heading: {
       fontSize: 26,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       marginTop: 18,
       marginHorizontal: 20,
     },
@@ -310,7 +306,7 @@ const createStyles = (colors: any, resp: any) =>
     subHeading: {
       marginHorizontal: 20,
       marginTop: 4,
-      color: '#64748B',
+      color: GLASS.textSecondary,
       fontSize: 13,
     },
 
@@ -334,20 +330,22 @@ const createStyles = (colors: any, resp: any) =>
     weekTitle: {
       fontSize: 20,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
 
     weekBadge: {
-      backgroundColor: '#EEF2FF',
+      backgroundColor: GLASS.primarySoft,
       paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: 20,
+      borderRadius: GLASS.radius.full,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
     },
 
     weekBadgeText: {
       fontSize: 12,
       fontWeight: '700',
-      color: '#4F46E5',
+      color: GLASS.primary,
     },
 
     calendarContainer: {
@@ -365,8 +363,10 @@ const createStyles = (colors: any, resp: any) =>
     navBtn: {
       width: 34,
       height: 34,
-      borderRadius: 12,
-      backgroundColor: '#F1F5F9',
+      borderRadius: GLASS.radius.sm,
+      backgroundColor: GLASS.cardBg,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -374,23 +374,20 @@ const createStyles = (colors: any, resp: any) =>
     dayItem: {
       width: 64,
       height: 80,
-      borderRadius: 18,
-      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.lg,
+      backgroundColor: GLASS.cardBg,
       justifyContent: 'center',
       alignItems: 'center',
       marginHorizontal: 6,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
-      shadowColor: '#000',
-      shadowOpacity: 0.05,
-      shadowRadius: 8,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
 
     dayItemActive: {
       backgroundColor: colors.PRIMARY_COLOR,
-      shadowColor: '#2563EB',
+      borderColor: GLASS.primaryDeep,
+      shadowColor: GLASS.primary,
       shadowOpacity: 0.25,
       shadowRadius: 10,
       elevation: 5,
@@ -399,14 +396,14 @@ const createStyles = (colors: any, resp: any) =>
 
     dayName: {
       fontSize: 12,
-      color: '#64748B',
+      color: GLASS.textSecondary,
       fontWeight: '600',
     },
 
     dayNumber: {
       fontSize: 22,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       marginTop: 4,
     },
 
@@ -432,19 +429,22 @@ const createStyles = (colors: any, resp: any) =>
     statsCard: {
       borderWidth: 1,
       width: '48%',
-      borderRadius: 18,
+      borderRadius: GLASS.radius.lg,
       padding: 16,
+      backgroundColor: GLASS.cardBg,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
 
     statsTitle: {
       fontSize: 12,
-      color: '#64748B',
+      color: GLASS.textSecondary,
     },
 
     statsValue: {
       fontSize: 26,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       marginTop: 8,
     },
 
@@ -500,14 +500,10 @@ const createStyles = (colors: any, resp: any) =>
       marginLeft: 10,
     },
     sessionCard: {
-      borderRadius: 20,
+      borderRadius: GLASS.radius.xl,
       borderWidth: 1,
       padding: 14,
-      shadowColor: '#000',
-      shadowOpacity: 0.06,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 3,
+      ...GLASS.shadow.soft,
     },
 
     liveBadge: {
@@ -550,18 +546,18 @@ const createStyles = (colors: any, resp: any) =>
     studentName: {
       fontSize: 16,
       fontWeight: '800',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
 
     subjectText: {
       fontSize: 14,
-      color: '#475569',
+      color: GLASS.textSecondary,
       marginTop: 2,
     },
 
     topicText: {
       fontSize: 14,
-      color: '#475569',
+      color: GLASS.textSecondary,
       marginBottom: 10,
     },
 
@@ -585,7 +581,7 @@ const createStyles = (colors: any, resp: any) =>
 
     infoText: {
       fontSize: 12,
-      color: '#64748B',
+      color: GLASS.textSecondary,
     },
 
     btnRow: {
@@ -610,42 +606,42 @@ const createStyles = (colors: any, resp: any) =>
     },
 
     detailsBtn: {
-      backgroundColor: '#EEF2FF',
+      backgroundColor: GLASS.primarySoft,
     },
 
     detailsBtnText: {
-      color: '#4F46E5',
+      color: GLASS.primary,
     },
 
     secondaryBtn: {
       marginLeft: 10,
-      backgroundColor: '#F8FAFC',
+      backgroundColor: GLASS.cardBg,
       paddingHorizontal: 14,
       paddingVertical: 12,
-      borderRadius: 14,
+      borderRadius: GLASS.radius.md,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
     },
 
     secondaryBtnText: {
-      color: '#334155',
+      color: GLASS.textPrimary,
       fontSize: 12,
       fontWeight: '600',
     },
 
     freeCard: {
       height: 80,
-      borderRadius: 18,
+      borderRadius: GLASS.radius.lg,
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: '#CBD5E1',
-      backgroundColor: '#F8FAFC',
+      borderColor: GLASS.cardBorderStrong,
+      backgroundColor: GLASS.cardBg,
       justifyContent: 'center',
       paddingHorizontal: 16,
     },
 
     freeText: {
-      color: '#94A3B8',
+      color: GLASS.textMuted,
       fontSize: 14,
       fontWeight: '600',
     },

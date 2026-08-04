@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
@@ -58,7 +58,7 @@ export default function StudentSessionHistoryScreen({ navigation }: any) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="Session History" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
@@ -78,7 +78,7 @@ export default function StudentSessionHistoryScreen({ navigation }: any) {
                 paddingVertical: 8,
                 borderRadius: 20,
                 backgroundColor:
-                  filter === item.value ? colors.PRIMARY_COLOR : '#fff',
+                  filter === item.value ? colors.PRIMARY_COLOR : colors.GLASS_CARD,
                 borderWidth: 1,
                 borderColor:
                   filter === item.value ? colors.PRIMARY_COLOR : '#E2E8F0',
@@ -255,6 +255,6 @@ export default function StudentSessionHistoryScreen({ navigation }: any) {
           })
         )}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

@@ -1,21 +1,16 @@
 import React, { useMemo } from 'react';
-import {
-  View,
-  Text,
-  Animated,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Animated, TouchableOpacity } from 'react-native';
 import useUi from '../../../hooks/ui/useUi';
 import { createStyles } from './Onboarding.styles';
 import { useOnboarding } from '../../../hooks/useOnboarding';
 import OnboardingItem from '../../../components/OnboardingItem/OnboardingItem';
 import { getOnboardingData } from '../../../constants/Onboarding.data';
-import CustomButton from '../../../components/CustomButton';
 import { useNavigation } from '@react-navigation/native';
-
-const { width } = Dimensions.get('window');
+import {
+  AuthGlassBackground,
+  GlassPrimaryButton,
+  AUTH_GLASS,
+} from '../../../components/AuthGlass';
 
 export default function OnboardingScreens({
   onComplete,
@@ -23,7 +18,7 @@ export default function OnboardingScreens({
   onComplete?: () => void;
 }) {
   const { colors, resp } = useUi();
-  const styles = createStyles(colors, resp);
+  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const onboardingData = useMemo(() => getOnboardingData(colors), [colors]);
   const navigation = useNavigation();
   const {
@@ -33,17 +28,19 @@ export default function OnboardingScreens({
     handleNext,
     onViewableItemsChanged,
   } = useOnboarding(onboardingData.length, onComplete);
+
   const handleComplete = () => {
     onComplete?.();
     (navigation as any).replace('RoleSelectionScreen');
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <AuthGlassBackground scroll={false} contentStyle={styles.container}>
       <TouchableOpacity style={styles.skipBtn} onPress={handleComplete}>
         <Text style={styles.skipText}>Skip</Text>
       </TouchableOpacity>
-      <View style={styles.itemContainer}>
+
+      <View style={styles.listWrap}>
         <Animated.FlatList
           ref={flatListRef}
           data={onboardingData}
@@ -67,34 +64,32 @@ export default function OnboardingScreens({
           )}
         />
       </View>
+
       <View style={styles.footer}>
         <View style={styles.pagination}>
-          {onboardingData.map((item: any, i: number) => {
+          {onboardingData.map((_item: any, i: number) => {
             const isActive = i === currentIndex;
             return (
-              <Animated.View
+              <View
                 key={i}
                 style={[
                   styles.dot,
                   {
                     backgroundColor: isActive
-                      ? colors.PRIMARY_COLOR
-                      : colors.GRAY_COLOR,
-                    width: isActive ? resp.dx(16) : resp.dx(8),
-                    height: resp.dy(8),
+                      ? (AUTH_GLASS.primary as string)
+                      : 'rgba(117, 72, 245, 0.22)',
+                    width: isActive ? resp.dx(18) : resp.dx(8),
                   },
                 ]}
               />
             );
           })}
         </View>
-        <CustomButton
+
+        <GlassPrimaryButton
           title={
             currentIndex === onboardingData.length - 1 ? 'Get Started' : 'Next'
           }
-          backgroundColor={colors.PRIMARY_COLOR}
-          textColor={colors.WHITE_COLOR}
-          textStyle={styles.buttonText}
           onPress={() => {
             if (currentIndex === onboardingData.length - 1) {
               handleComplete();
@@ -104,6 +99,6 @@ export default function OnboardingScreens({
           }}
         />
       </View>
-    </SafeAreaView>
+    </AuthGlassBackground>
   );
 }

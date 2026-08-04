@@ -4,6 +4,7 @@ import React from 'react';
 import {View, Text, StyleSheet, Pressable} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import useColors from '../../../hooks/ui/useColors';
+import { GLASS } from '../../../theme/glass';
 
 interface UploadBoxProps {
   label: string;
@@ -28,7 +29,7 @@ const UploadBox: React.FC<UploadBoxProps> = ({
         styles.uploadBox,
         {
           borderColor: uploaded ? '#22C55E' : colors.PRIMARY_COLOR,
-          backgroundColor: uploaded ? '#F0FDF4' : '#fff',
+          backgroundColor: uploaded ? '#F0FDF4' : GLASS.cardBg,
           borderStyle: 'dashed',
         },
       ]}

@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import useUi from '../../../../../hooks/ui/useUi';
+import { GlassScreen, GlassHeader } from '../../../../../components/Glass';
+import { GLASS } from '../../../../../theme/glass';
 import { AppNotification } from '../../../../../types/notification.types';
 import {
   clearNotificationInbox,
@@ -56,7 +57,7 @@ const formatTime = (iso: string) => {
 
 const StudentNotificationInboxScreen = ({ navigation }: any) => {
   const { colors } = useUi();
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(), []);
 
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,29 +151,27 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
           icon="delete-outline"
           size={18}
           onPress={() => onDeleteItem(item)}
-          iconColor="#94A3B8"
+          iconColor={GLASS.textMuted}
         />
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <IconButton
-          icon="arrow-left"
-          size={22}
-          onPress={() => navigation.goBack()}
-          iconColor={colors.BLACK_COLOR as string}
-        />
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <IconButton
-          icon="refresh"
-          size={22}
-          onPress={() => void onRefresh()}
-          iconColor={colors.PRIMARY_COLOR as string}
-        />
-      </View>
+    <GlassScreen scroll={false} contentStyle={styles.screen}>
+      <GlassHeader
+        title="Notifications"
+        onBack={() => navigation.goBack()}
+        right={
+          <IconButton
+            icon="refresh"
+            size={20}
+            onPress={() => void onRefresh()}
+            iconColor={GLASS.primary}
+            style={{ margin: 0 }}
+          />
+        }
+      />
 
       <View style={styles.toolbar}>
         <TouchableOpacity onPress={onMarkAllRead}>
@@ -198,11 +197,15 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={GLASS.primary}
+            />
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Icon source="bell-off-outline" size={40} color="#94A3B8" />
+              <Icon source="bell-off-outline" size={40} color={GLASS.textMuted} />
               <Text style={styles.emptyTitle}>No notifications yet</Text>
               <Text style={styles.emptyBody}>
                 Push notifications from chat, bookings, and payments will appear
@@ -212,66 +215,54 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
           }
         />
       )}
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default StudentNotificationInboxScreen;
 
-const createStyles = (colors: Record<string, unknown>) =>
+const createStyles = () =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: '#FFFFFF',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 4,
-      backgroundColor: '#fff',
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: '#E2E8F0',
-    },
-    headerTitle: {
-      flex: 1,
-      textAlign: 'center',
-      fontSize: 17,
-      fontWeight: '700',
-      color: colors.BLACK_COLOR as string,
+      paddingHorizontal: 0,
     },
     toolbar: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      backgroundColor: '#fff',
+      paddingHorizontal: GLASS.space.lg,
+      paddingVertical: GLASS.space.md,
+      backgroundColor: GLASS.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: GLASS.cardBorder,
     },
     toolbarAction: {
       fontSize: 13,
       fontWeight: '600',
-      color: colors.PRIMARY_COLOR as string,
+      color: GLASS.primary,
     },
     toolbarDanger: {
-      color: '#EF4444',
+      color: GLASS.error,
     },
     list: {
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 32,
+      paddingHorizontal: GLASS.space.lg,
+      paddingTop: GLASS.space.md,
+      paddingBottom: GLASS.space.xxxl,
       flexGrow: 1,
     },
     card: {
-      backgroundColor: '#fff',
-      borderRadius: 14,
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.lg,
       paddingVertical: 6,
       paddingLeft: 10,
       marginBottom: 10,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
     cardUnread: {
-      borderColor: '#C4B5FD',
-      backgroundColor: '#F5F3FF',
+      borderColor: GLASS.cardBorderStrong,
+      backgroundColor: GLASS.cardBgStrong,
     },
     cardTop: {
       flexDirection: 'row',
@@ -281,7 +272,7 @@ const createStyles = (colors: Record<string, unknown>) =>
       width: 8,
       height: 8,
       borderRadius: 4,
-      backgroundColor: colors.PRIMARY_COLOR as string,
+      backgroundColor: GLASS.primary,
       marginTop: 14,
       marginRight: 8,
     },
@@ -303,14 +294,14 @@ const createStyles = (colors: Record<string, unknown>) =>
       flex: 1,
       fontSize: 15,
       fontWeight: '700',
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
     badge: {
       fontSize: 10,
       fontWeight: '700',
-      color: '#6366F1',
+      color: GLASS.primary,
       textTransform: 'uppercase',
-      backgroundColor: '#EEF2FF',
+      backgroundColor: GLASS.primarySoft,
       paddingHorizontal: 8,
       paddingVertical: 3,
       borderRadius: 999,
@@ -320,12 +311,12 @@ const createStyles = (colors: Record<string, unknown>) =>
       marginTop: 4,
       fontSize: 13,
       lineHeight: 19,
-      color: '#475569',
+      color: GLASS.textSecondary,
     },
     meta: {
       marginTop: 6,
       fontSize: 11,
-      color: '#94A3B8',
+      color: GLASS.textMuted,
     },
     empty: {
       alignItems: 'center',
@@ -336,13 +327,13 @@ const createStyles = (colors: Record<string, unknown>) =>
       marginTop: 12,
       fontSize: 16,
       fontWeight: '700',
-      color: '#334155',
+      color: GLASS.textPrimary,
     },
     emptyBody: {
       marginTop: 8,
       textAlign: 'center',
       fontSize: 13,
       lineHeight: 20,
-      color: '#64748B',
+      color: GLASS.textSecondary,
     },
   });

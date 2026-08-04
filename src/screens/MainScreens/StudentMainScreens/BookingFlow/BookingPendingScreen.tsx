@@ -8,10 +8,11 @@ import {
   Alert,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
+import { GlassScreen, GlassCard } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
 import { BookingFlowItem } from '../../../../types/bookingFlow.types';
 
@@ -22,38 +23,38 @@ const STATUS_COPY: Record<
   pending: {
     title: 'Booking Pending',
     subtitle: 'Waiting for tutor response',
-    color: '#B45309',
-    bg: '#FEF3C7',
+    color: GLASS.warning,
+    bg: 'rgba(245, 158, 11, 0.15)',
   },
   accepted: {
     title: 'Booking Accepted',
     subtitle: 'Your session is confirmed',
-    color: '#047857',
-    bg: '#D1FAE5',
+    color: GLASS.success,
+    bg: 'rgba(34, 197, 94, 0.15)',
   },
   rejected: {
     title: 'Booking Rejected',
     subtitle: 'Tutor declined this request',
-    color: '#B91C1C',
-    bg: '#FEE2E2',
+    color: GLASS.error,
+    bg: 'rgba(239, 68, 68, 0.12)',
   },
   cancelled: {
     title: 'Booking Cancelled',
     subtitle: 'This request was cancelled',
-    color: '#475569',
-    bg: '#E2E8F0',
+    color: GLASS.textSecondary,
+    bg: GLASS.cardBg,
   },
   completed: {
     title: 'Session Completed',
     subtitle: 'Thanks for learning with TutorLink',
-    color: '#5B21B6',
-    bg: '#EDE9FE',
+    color: GLASS.primaryDeep,
+    bg: GLASS.primarySoft,
   },
   unavailable: {
     title: 'Tutor Unavailable',
     subtitle: 'Please pick another time slot',
-    color: '#B45309',
-    bg: '#FFEDD5',
+    color: GLASS.warning,
+    bg: 'rgba(245, 158, 11, 0.12)',
   },
 };
 
@@ -85,9 +86,12 @@ const BookingPendingScreen = () => {
 
   if (loading || !booking) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <ActivityIndicator style={{ marginTop: 40 }} color="#7548F5" />
-      </SafeAreaView>
+      <GlassScreen
+        scroll={false}
+        contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+      >
+        <ActivityIndicator color={GLASS.primary} />
+      </GlassScreen>
     );
   }
 
@@ -108,8 +112,8 @@ const BookingPendingScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
-      <LinearGradient colors={['#EEF2FF', '#F8FAFC']} style={styles.hero}>
+    <GlassScreen scroll={false} contentStyle={styles.screen}>
+      <LinearGradient colors={[...GLASS.screenGradient]} style={styles.hero}>
         <View style={[styles.badge, { backgroundColor: copy.bg }]}>
           <Text style={[styles.badgeText, { color: copy.color }]}>{copy.title}</Text>
         </View>
@@ -121,7 +125,7 @@ const BookingPendingScreen = () => {
         ) : null}
       </LinearGradient>
 
-      <View style={styles.card}>
+      <GlassCard style={styles.card}>
         <Image source={{ uri: booking.tutor.avatarUrl }} style={styles.avatar} />
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{booking.tutor.name}</Text>
@@ -133,9 +137,9 @@ const BookingPendingScreen = () => {
             {booking.totalCost.toLocaleString()}
           </Text>
         </View>
-      </View>
+      </GlassCard>
 
-      <View style={styles.timeline}>
+      <GlassCard style={styles.timeline}>
         {[
           'Request sent',
           'Waiting for tutor',
@@ -161,15 +165,15 @@ const BookingPendingScreen = () => {
             <Text style={styles.timelineText}>{step}</Text>
           </View>
         ))}
-      </View>
+      </GlassCard>
 
       <View style={styles.actions}>
         {booking.status === 'pending' ? (
           <CustomButton
             title="Cancel request"
             onPress={cancel}
-            backgroundColor="#FEE2E2"
-            textColor="#B91C1C"
+            backgroundColor="rgba(239, 68, 68, 0.12)"
+            textColor={GLASS.error}
           />
         ) : null}
         {booking.status === 'completed' ? (
@@ -191,11 +195,11 @@ const BookingPendingScreen = () => {
         <CustomButton
           title="Back to Home"
           onPress={() => navigation.navigate('MyTabs', { screen: 'Home' })}
-          backgroundColor="#EDE9FE"
-          textColor="#7548F5"
+          backgroundColor={GLASS.primarySoft}
+          textColor={GLASS.primary}
         />
       </View>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
@@ -203,40 +207,46 @@ export default BookingPendingScreen;
 
 const createStyles = (_colors: Record<string, unknown>) =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
-    hero: { padding: 24, paddingTop: 40, alignItems: 'center' },
+    screen: { flex: 1 },
+    hero: {
+      padding: GLASS.space.xxl,
+      paddingTop: GLASS.space.xxxl,
+      alignItems: 'center',
+      borderRadius: GLASS.radius.xl,
+      marginBottom: GLASS.space.md,
+    },
     badge: {
       paddingHorizontal: 14,
       paddingVertical: 8,
-      borderRadius: 999,
-      marginBottom: 12,
+      borderRadius: GLASS.radius.full,
+      marginBottom: GLASS.space.md,
     },
     badgeText: { fontWeight: '800', fontSize: 14 },
-    subtitle: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-    eta: { marginTop: 8, color: '#64748B', fontSize: 13 },
+    subtitle: { fontSize: 16, fontWeight: '700', color: GLASS.textPrimary },
+    eta: { marginTop: 8, color: GLASS.textSecondary, fontSize: 13 },
     card: {
-      marginHorizontal: 16,
-      backgroundColor: '#fff',
-      borderRadius: 18,
-      padding: 14,
       flexDirection: 'row',
-      gap: 12,
-      borderWidth: 1,
-      borderColor: '#E2E8F0',
+      gap: GLASS.space.md,
       alignItems: 'center',
+      marginBottom: GLASS.space.md,
     },
-    avatar: { width: 56, height: 56, borderRadius: 16 },
-    name: { fontWeight: '800', fontSize: 16, color: '#0F172A' },
-    meta: { color: '#64748B', fontSize: 12, marginTop: 2 },
-    timeline: { margin: 16, backgroundColor: '#fff', borderRadius: 18, padding: 16 },
-    timelineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    avatar: { width: 56, height: 56, borderRadius: GLASS.radius.lg },
+    name: { fontWeight: '800', fontSize: 16, color: GLASS.textPrimary },
+    meta: { color: GLASS.textSecondary, fontSize: 12, marginTop: 2 },
+    timeline: { marginBottom: GLASS.space.md },
+    timelineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: GLASS.space.md,
+    },
     dot: {
       width: 10,
       height: 10,
       borderRadius: 5,
-      backgroundColor: '#E2E8F0',
+      backgroundColor: GLASS.inputBorder,
     },
-    dotActive: { backgroundColor: '#7548F5' },
-    timelineText: { color: '#334155', fontWeight: '600' },
-    actions: { padding: 16, gap: 10 },
+    dotActive: { backgroundColor: GLASS.primary },
+    timelineText: { color: GLASS.textPrimary, fontWeight: '600' },
+    actions: { gap: 10 },
   });

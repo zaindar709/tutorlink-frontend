@@ -1,10 +1,10 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet } from 'react-native';
 
 export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
     },
 
     contentContainer: {
@@ -22,13 +22,13 @@ export const createStyles = (colors: any, resp: any) =>
     stepText: {
       fontSize: resp.df(14),
       fontWeight: '600',
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.TEXT_PRIMARY || colors.BLACK_COLOR,
       paddingHorizontal: resp.dx(10),
     },
 
     stepLabel: {
       fontSize: resp.df(12),
-      color: '#6B7280',
+      color: colors.AUTH_SUBTEXT || colors.TEXT_SECONDARY,
       paddingRight: resp.dx(10),
     },
 
@@ -45,12 +45,12 @@ export const createStyles = (colors: any, resp: any) =>
     progressFill: {
       width: '33%',
       height: '95%',
-      backgroundColor: '#1E4ED8',
+      backgroundColor: colors.PRIMARY_COLOR,
     },
     formWrapper: {
       width: '95%',
       alignSelf: 'center',
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
       borderRadius: resp.dxy(24),
       padding: resp.dx(20),
       marginBottom: resp.dy(24),
@@ -76,7 +76,7 @@ export const createStyles = (colors: any, resp: any) =>
       fontSize: resp.df(14),
       fontWeight: '600',
       marginBottom: resp.dy(1.5),
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.BLACK_COLOR,
     },
 
     classCard: {
@@ -89,12 +89,12 @@ export const createStyles = (colors: any, resp: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       marginBottom: resp.dy(1.5),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
     },
 
     selectedClassCard: {
-      borderColor: '#1E4ED8',
-      backgroundColor: '#EEF4FF',
+      borderColor: colors.PRIMARY_COLOR,
+      backgroundColor: colors.LIGHT_PRIMARY || '#EDE9FE',
     },
 
     checkbox: {
@@ -108,26 +108,26 @@ export const createStyles = (colors: any, resp: any) =>
     },
 
     checkboxSelected: {
-      backgroundColor: '#1E4ED8',
-      borderColor: '#1E4ED8',
+      backgroundColor: colors.PRIMARY_COLOR,
+      borderColor: colors.PRIMARY_COLOR,
     },
 
     checkboxDot: {
       width: resp.dx(4),
       height: resp.dy(4),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
       borderRadius: resp.dx(10),
     },
 
     classText: {
       fontSize: resp.df(14),
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.BLACK_COLOR,
       fontWeight: '500',
       paddingHorizontal: 5,
     },
 
     selectedClassText: {
-      color: '#1E4ED8',
+      color: colors.PRIMARY_COLOR,
       fontWeight: '700',
     },
 
@@ -148,13 +148,13 @@ export const createStyles = (colors: any, resp: any) =>
     },
 
     footerText: {
-      fontSize: resp.df(12),
-      color: '#6B7280',
+      fontSize: resp.df(13),
+      color: colors.AUTH_FOOTER || colors.TEXT_SECONDARY,
     },
 
     loginText: {
-      fontSize: resp.df(12),
+      fontSize: resp.df(13),
       fontWeight: '700',
-      color: '#1E4ED8',
+      color: colors.PRIMARY_COLOR,
     },
   });

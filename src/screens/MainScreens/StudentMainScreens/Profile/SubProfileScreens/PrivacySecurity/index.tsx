@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
   ProfileSectionCard,
@@ -31,19 +31,20 @@ export default function StudentPrivacySecurityScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={[
+      <GlassScreen
+        scroll={false}
+        contentStyle={[
           styles.container,
           { justifyContent: 'center', alignItems: 'center' },
         ]}
       >
         <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </SafeAreaView>
+      </GlassScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={{ flex: 1 }}>
       <ProfileSubHeader navigation={navigation} title="Privacy & Security" />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heroCard}>
@@ -125,6 +126,6 @@ export default function StudentPrivacySecurityScreen({ navigation }: any) {
           />
         </ProfileSectionCard>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 }

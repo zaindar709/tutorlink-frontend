@@ -1,4 +1,4 @@
-import {StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
@@ -33,16 +33,16 @@ export const createStyles = (colors: any, resp: any) =>
     title: {
       fontSize: resp.df(24),
       fontWeight: '700',
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.TEXT_PRIMARY || colors.BLACK_COLOR,
       marginBottom: resp.dy(8),
     },
     subtitle: {
       fontSize: resp.df(15),
       lineHeight: resp.dy(22),
-      color: colors.GRAY_COLOR,
+      color: colors.AUTH_SUBTEXT || colors.TEXT_SECONDARY,
     },
     formCard: {
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
       borderRadius: resp.dxy(24),
       padding: resp.dx(20),
       marginBottom: resp.dy(24),
@@ -66,7 +66,7 @@ export const createStyles = (colors: any, resp: any) =>
       marginTop: resp.dy(16),
     },
     footerText: {
-      color: '#a09e9e',
+      color: colors.AUTH_FOOTER || colors.TEXT_SECONDARY,
       fontSize: resp.df(13),
     },
     footerLink: {
@@ -80,10 +80,9 @@ export const createStyles = (colors: any, resp: any) =>
       marginLeft: -15,
       marginTop: resp.dy(20),
     },
-
     backText: {
       fontSize: resp.df(14),
-      color: colors.BLACK_COLOR as string,
+      color: colors.AUTH_HEADING || colors.BLACK_COLOR,
       marginLeft: -8,
       fontWeight: '500',
     },

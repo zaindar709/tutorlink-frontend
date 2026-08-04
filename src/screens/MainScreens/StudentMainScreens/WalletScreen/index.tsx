@@ -9,7 +9,12 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
+import { ProfileSubHeader } from '../../../../components/Profile';
 import WalletCard from '../../../../components/WalletCard';
 import EscrowCard from '../../../../components/EscrowCard';
 import TransactionCard from '../../../../components/TransactionCard/TransactionCard';
@@ -20,6 +25,7 @@ import { formatTransactionForCard } from '../../../../utils/api/bookingHelpers';
 
 export default function WalletScreen() {
   const { colors, resp } = useUi();
+  const navigation = useNavigation<any>();
   const styles = createStyles({ colors, resp });
   const { balance, transactions, loading, depositing, error, deposit, refresh } =
     useWallet();
@@ -43,7 +49,10 @@ export default function WalletScreen() {
     }
 
     if (!/^\d{11}$/.test(phoneNumber)) {
-      Alert.alert('Invalid phone number', 'Phone number must be exactly 11 digits.');
+      Alert.alert(
+        'Invalid phone number',
+        'Phone number must be exactly 11 digits.'
+      );
       return;
     }
 
@@ -65,16 +74,23 @@ export default function WalletScreen() {
 
   if (loading && !balance) {
     return (
-      <View style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.WHITE_COLOR} />
-      </View>
+      <GlassScreen
+        scroll={false}
+        contentStyle={[styles.container, styles.centered]}
+      >
+        <ActivityIndicator size="large" color={GLASS.primary} />
+      </GlassScreen>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <GlassScreen scroll={false} contentStyle={styles.container}>
+      <ProfileSubHeader navigation={navigation} title="Wallet" />
+
       <View style={styles.topSection}>
-        <Text style={styles.heading}>Wallet</Text>
+        <Text style={styles.subtitle}>
+          Manage deposits, escrow holds, and recent activity
+        </Text>
 
         <WalletCard
           balance={balance?.totalBalance ?? 0}
@@ -83,17 +99,29 @@ export default function WalletScreen() {
 
         <EscrowCard
           amount={balance?.escrowBalance ?? 0}
-          description="Funds are held securely until session completion"
+          description="Funds stay locked safely until your session is completed."
         />
       </View>
 
       <View style={styles.sheet}>
-        <View style={styles.handle} />
-
         <View style={styles.transactionHeader}>
-          <Text style={styles.transactionTitle}>Recent Transactions</Text>
+          <View>
+            <Text style={styles.transactionTitle}>Recent Transactions</Text>
+            <Text style={styles.transactionHint}>
+              {transactionItems.length} recorded
+            </Text>
+          </View>
 
-          <TouchableOpacity onPress={refresh}>
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={refresh}
+            activeOpacity={0.85}
+          >
+            <MaterialCommunityIcons
+              name="refresh"
+              size={16}
+              color={GLASS.primary}
+            />
             <Text style={styles.viewAll}>Refresh</Text>
           </TouchableOpacity>
         </View>
@@ -104,7 +132,19 @@ export default function WalletScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <Text style={styles.emptyText}>No transactions yet.</Text>
+            <View style={styles.emptyWrap}>
+              <View style={styles.emptyIcon}>
+                <MaterialCommunityIcons
+                  name="receipt-text-outline"
+                  size={28}
+                  color={GLASS.primary}
+                />
+              </View>
+              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={styles.emptySub}>
+                Deposits and session payments will show up here.
+              </Text>
+            </View>
           }
           renderItem={({ item }) => <TransactionCard item={item} />}
         />
@@ -113,7 +153,11 @@ export default function WalletScreen() {
       <Modal visible={depositVisible} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
+            <View style={styles.sheetHandle} />
             <Text style={styles.modalTitle}>Deposit Money</Text>
+            <Text style={styles.modalSub}>
+              Add funds using JazzCash or Easypaisa
+            </Text>
 
             <CustomInput
               label="Amount (PKR)"
@@ -147,7 +191,7 @@ export default function WalletScreen() {
                       paymentMethod === method && styles.methodTextActive,
                     ]}
                   >
-                    {method}
+                    {method === 'jazzcash' ? 'JazzCash' : 'Easypaisa'}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -168,7 +212,7 @@ export default function WalletScreen() {
           </View>
         </View>
       </Modal>
-    </View>
+    </GlassScreen>
   );
 }
 
@@ -176,7 +220,7 @@ const createStyles = ({ colors, resp }: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: '#243867',
+      backgroundColor: 'transparent',
     },
     centered: {
       justifyContent: 'center',
@@ -184,35 +228,26 @@ const createStyles = ({ colors, resp }: any) =>
     },
     topSection: {
       paddingHorizontal: resp.dx(16),
-      paddingTop: resp.dy(10),
+      paddingTop: resp.dy(4),
     },
-    heading: {
-      color: colors.white,
-      fontSize: resp.df(24),
-      fontWeight: '700',
-      marginBottom: resp.dy(16),
+    subtitle: {
+      color: GLASS.textSecondary,
+      fontSize: resp.df(13),
+      marginBottom: resp.dy(14),
+      lineHeight: 18,
     },
     sheet: {
       flex: 1,
+      marginTop: resp.dy(18),
+      marginHorizontal: resp.dx(16),
+      marginBottom: resp.dy(12),
       backgroundColor: '#FFFFFF',
-      marginTop: resp.dy(20),
-      borderTopLeftRadius: resp.dx(28),
-      borderTopRightRadius: resp.dx(28),
-      paddingHorizontal: resp.dx(16),
-      paddingTop: resp.dy(10),
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: -6 },
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 10,
-    },
-    handle: {
-      width: resp.dx(40),
-      height: resp.dy(4),
-      backgroundColor: '#CBD5E1',
-      borderRadius: resp.dx(20),
-      alignSelf: 'center',
-      marginBottom: resp.dy(10),
+      borderRadius: GLASS.radius.xxl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      paddingHorizontal: resp.dx(14),
+      paddingTop: resp.dy(14),
+      ...GLASS.shadow.soft,
     },
     transactionHeader: {
       marginBottom: resp.dy(12),
@@ -221,39 +256,89 @@ const createStyles = ({ colors, resp }: any) =>
       alignItems: 'center',
     },
     transactionTitle: {
-      color: '#0F172A',
+      color: GLASS.textPrimary,
       fontSize: resp.df(16),
-      fontWeight: '700',
+      fontWeight: '800',
+    },
+    transactionHint: {
+      color: GLASS.textMuted,
+      fontSize: resp.df(11),
+      marginTop: 2,
+    },
+    refreshBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: GLASS.primarySoft,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
     },
     viewAll: {
-      color: '#4D6FFF',
-      fontSize: resp.df(13),
-      fontWeight: '600',
+      color: GLASS.primary,
+      fontSize: resp.df(12),
+      fontWeight: '700',
     },
     listContent: {
       paddingBottom: resp.dy(20),
+      flexGrow: 1,
+    },
+    emptyWrap: {
+      alignItems: 'center',
+      paddingVertical: resp.dy(36),
+      paddingHorizontal: 20,
+    },
+    emptyIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 18,
+      backgroundColor: GLASS.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
     },
     emptyText: {
       textAlign: 'center',
-      color: '#94A3B8',
-      marginTop: resp.dy(20),
+      color: GLASS.textPrimary,
+      fontWeight: '700',
+      fontSize: resp.df(15),
+    },
+    emptySub: {
+      textAlign: 'center',
+      color: GLASS.textMuted,
+      fontSize: resp.df(12),
+      marginTop: 6,
+      lineHeight: 18,
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.45)',
+      backgroundColor: 'rgba(15,23,42,0.45)',
       justifyContent: 'flex-end',
     },
     modalCard: {
-      backgroundColor: '#fff',
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      backgroundColor: '#FFFFFF',
+      borderTopLeftRadius: GLASS.radius.xxl,
+      borderTopRightRadius: GLASS.radius.xxl,
       padding: 20,
       gap: 12,
     },
+    sheetHandle: {
+      alignSelf: 'center',
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: GLASS.inputBorder,
+      marginBottom: 4,
+    },
     modalTitle: {
       fontSize: 18,
-      fontWeight: '700',
-      marginBottom: 8,
+      fontWeight: '800',
+      color: GLASS.textPrimary,
+    },
+    modalSub: {
+      color: GLASS.textSecondary,
+      fontSize: 13,
+      marginBottom: 4,
     },
     methodRow: {
       flexDirection: 'row',
@@ -261,28 +346,31 @@ const createStyles = ({ colors, resp }: any) =>
       marginBottom: 8,
     },
     methodChip: {
-      paddingHorizontal: 14,
-      paddingVertical: 8,
-      borderRadius: 20,
-      backgroundColor: '#F1F5F9',
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: GLASS.radius.md,
+      backgroundColor: GLASS.primarySoft,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      alignItems: 'center',
     },
     methodChipActive: {
-      backgroundColor: '#DBEAFE',
+      backgroundColor: GLASS.primary,
+      borderColor: GLASS.primary,
     },
     methodText: {
-      textTransform: 'capitalize',
-      color: '#64748B',
-      fontWeight: '600',
+      color: GLASS.textSecondary,
+      fontWeight: '700',
     },
     methodTextActive: {
-      color: '#1D4ED8',
+      color: '#FFFFFF',
     },
     cancelBtn: {
       alignItems: 'center',
       paddingVertical: 10,
     },
     cancelText: {
-      color: '#64748B',
+      color: GLASS.textSecondary,
       fontWeight: '600',
     },
   });

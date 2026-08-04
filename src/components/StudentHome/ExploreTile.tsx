@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 type ExploreTileProps = {
   icon: string;
@@ -43,18 +44,16 @@ export default ExploreTile;
 const createStyles = (colors: any, resp: any, color: string) =>
   StyleSheet.create({
     tile: {
-      backgroundColor: colors.WHITE_COLOR,
-      borderRadius: resp.dx(24),
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.xl,
       padding: resp.dx(16),
       minWidth: resp.dx(150),
       flex: 1,
       marginBottom: resp.dy(14),
       marginRight: resp.dx(16),
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.06,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 3,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
     iconWrapper: {
       width: resp.dx(44),
@@ -66,7 +65,7 @@ const createStyles = (colors: any, resp: any, color: string) =>
       marginBottom: resp.dy(12),
     },
     title: {
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
       fontSize: resp.df(15),
       fontWeight: '700',
       marginBottom: resp.dy(4),

@@ -10,7 +10,8 @@ import {
   TextInput,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
@@ -60,16 +61,16 @@ const TutorBookingRequestDetailsScreen = () => {
 
   if (loading || !booking) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <ActivityIndicator style={{ marginTop: 40 }} color="#7548F5" />
-      </SafeAreaView>
+      <GlassScreen scroll={false}>
+        <ActivityIndicator style={{ marginTop: 40 }} color={GLASS.primary} />
+      </GlassScreen>
     );
   }
 
   const student = booking.student;
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Booking request</Text>
@@ -157,7 +158,7 @@ const TutorBookingRequestDetailsScreen = () => {
           />
         )}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
@@ -174,30 +175,36 @@ export default TutorBookingRequestDetailsScreen;
 
 const createStyles = (_colors: Record<string, unknown>) =>
   StyleSheet.create({
-    screen: { flex: 1, backgroundColor: '#F8FAFC' },
-    header: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff' },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: GLASS.headerBg,
+      borderBottomWidth: 1,
+      borderBottomColor: GLASS.cardBorder,
+    },
     title: {
       flex: 1,
       textAlign: 'center',
       fontWeight: '800',
       fontSize: 17,
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
-    content: { padding: 16, paddingBottom: 40 },
+    content: { padding: GLASS.space.lg, paddingBottom: 40 },
     card: {
-      backgroundColor: '#fff',
-      borderRadius: 18,
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xl,
       padding: 14,
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
       flexDirection: 'row',
       gap: 12,
       flexWrap: 'wrap',
+      ...GLASS.shadow.soft,
     },
-    avatar: { width: 64, height: 64, borderRadius: 18 },
-    name: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
-    meta: { color: '#64748B', marginTop: 2 },
+    avatar: { width: 64, height: 64, borderRadius: GLASS.radius.lg },
+    name: { fontSize: 17, fontWeight: '800', color: GLASS.textPrimary },
+    meta: { color: GLASS.textSecondary, marginTop: 2 },
     statusPill: {
       alignSelf: 'flex-start',
       marginTop: 8,
@@ -207,15 +214,21 @@ const createStyles = (_colors: Record<string, unknown>) =>
       borderRadius: 999,
     },
     statusText: { color: '#B45309', fontWeight: '800', fontSize: 11 },
-    section: { width: '100%', fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+    section: {
+      width: '100%',
+      fontWeight: '800',
+      color: GLASS.textPrimary,
+      marginBottom: 8,
+    },
     input: {
       width: '100%',
       borderWidth: 1,
-      borderColor: '#E2E8F0',
-      borderRadius: 12,
+      borderColor: GLASS.inputBorder,
+      backgroundColor: GLASS.inputBg,
+      borderRadius: GLASS.radius.sm,
       padding: 12,
       marginBottom: 10,
-      color: '#0F172A',
+      color: GLASS.textPrimary,
     },
     actions: { gap: 10, marginTop: 4 },
   });

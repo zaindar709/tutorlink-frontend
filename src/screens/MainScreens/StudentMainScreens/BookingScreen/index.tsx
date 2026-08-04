@@ -10,10 +10,11 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import SessionCard from '../../../../components/SessionCard';
 import { useBookings } from '../../../../hooks/api/useBookings';
 import { formatDisplayDate } from '../../../../utils/api/userId';
@@ -74,7 +75,7 @@ const BookingScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <GlassScreen scroll={false} contentStyle={styles.screen}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Bookings</Text>
@@ -243,7 +244,7 @@ const BookingScreen = () => {
             </View>
           ))}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
@@ -251,9 +252,8 @@ export default BookingScreen;
 
 const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
-    safeArea: {
+    screen: {
       flex: 1,
-      backgroundColor: '#F7F7FB',
     },
     container: {
       flex: 1,
@@ -265,7 +265,7 @@ const createStyles = (colors: any, resp: any) =>
     headerTitle: {
       fontSize: resp.df(24),
       fontWeight: '800',
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
     },
     calendarContainer: {
       flexDirection: 'row',
@@ -278,47 +278,54 @@ const createStyles = (colors: any, resp: any) =>
       width: resp.dx(34),
       height: resp.dx(34),
       borderRadius: resp.dx(17),
-      backgroundColor: '#F0F0F3',
+      backgroundColor: GLASS.cardBg,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
     dateCard: {
       width: resp.dx(44),
       height: resp.dy(78),
-      borderRadius: resp.dx(18),
-      backgroundColor: '#F0F0F3',
+      borderRadius: GLASS.radius.lg,
+      backgroundColor: GLASS.cardBg,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       alignItems: 'center',
       justifyContent: 'center',
     },
     activeDateCard: {
-      backgroundColor: '#2F6BFF',
+      backgroundColor: GLASS.primary,
+      borderColor: GLASS.primaryDeep,
     },
     dayText: {
       fontSize: resp.df(11),
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       marginBottom: resp.dy(6),
       fontWeight: '600',
     },
     dateText: {
       fontSize: resp.df(18),
       fontWeight: '800',
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
     },
     activeText: {
-      color: '#fff',
+      color: GLASS.textOnPrimary,
     },
     activeDot: {
       width: resp.dx(5),
       height: resp.dx(5),
       borderRadius: resp.dx(2.5),
-      backgroundColor: '#fff',
+      backgroundColor: GLASS.textOnPrimary,
       marginTop: resp.dy(6),
     },
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: '#ECECEF',
+      backgroundColor: GLASS.cardBg,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       marginHorizontal: resp.dx(20),
-      borderRadius: resp.dx(18),
+      borderRadius: GLASS.radius.lg,
       padding: resp.dx(4),
       marginTop: resp.dy(24),
     },
@@ -327,23 +334,24 @@ const createStyles = (colors: any, resp: any) =>
       height: resp.dy(42),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: resp.dx(14),
+      borderRadius: GLASS.radius.md,
     },
     activeTabButton: {
-      backgroundColor: '#fff',
+      backgroundColor: GLASS.cardBgStrong,
+      ...GLASS.shadow.soft,
     },
     tabText: {
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       fontWeight: '600',
       fontSize: resp.df(14),
     },
     activeTabText: {
-      color: '#2F6BFF',
+      color: GLASS.primary,
       fontWeight: '700',
     },
     emptyText: {
       textAlign: 'center',
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       marginTop: resp.dy(24),
       marginHorizontal: resp.dx(20),
     },
@@ -360,11 +368,11 @@ const createStyles = (colors: any, resp: any) =>
     timelineTime: {
       fontWeight: '800',
       fontSize: resp.df(15),
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
     },
     timelineDuration: {
       marginTop: resp.dy(8),
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
       fontSize: resp.df(12),
       textTransform: 'capitalize',
     },
@@ -373,14 +381,17 @@ const createStyles = (colors: any, resp: any) =>
       flex: 1,
       borderStyle: 'dashed',
       borderWidth: 1,
-      borderColor: '#D8D8D8',
+      borderColor: GLASS.inputBorder,
       marginTop: resp.dy(10),
     },
     timelineCard: {
       flex: 1,
-      backgroundColor: '#fff',
-      borderRadius: resp.dx(22),
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
       padding: resp.dx(16),
+      ...GLASS.shadow.soft,
     },
     profileRow: {
       flexDirection: 'row',
@@ -389,7 +400,7 @@ const createStyles = (colors: any, resp: any) =>
     imageWrapper: {
       width: resp.dx(64),
       height: resp.dx(64),
-      borderRadius: resp.dx(18),
+      borderRadius: GLASS.radius.lg,
       overflow: 'hidden',
       marginRight: resp.dx(14),
     },
@@ -404,9 +415,9 @@ const createStyles = (colors: any, resp: any) =>
       width: resp.dx(14),
       height: resp.dx(14),
       borderRadius: resp.dx(7),
-      backgroundColor: '#20D67B',
+      backgroundColor: GLASS.success,
       borderWidth: 2,
-      borderColor: '#fff',
+      borderColor: GLASS.cardBgStrong,
     },
     profileInfo: {
       flex: 1,
@@ -414,25 +425,25 @@ const createStyles = (colors: any, resp: any) =>
     tutorName: {
       fontSize: resp.df(18),
       fontWeight: '800',
-      color: colors.BLACK_COLOR,
+      color: GLASS.textPrimary,
     },
     subjectText: {
       marginTop: resp.dy(5),
       fontSize: resp.df(14),
-      color: colors.SPACES_COLOR,
+      color: GLASS.textSecondary,
     },
     smallJoinButton: {
       marginTop: resp.dy(18),
       width: resp.dx(110),
       height: resp.dy(42),
-      borderRadius: resp.dx(14),
-      backgroundColor: '#2F6BFF',
+      borderRadius: GLASS.radius.md,
+      backgroundColor: GLASS.primary,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
     },
     smallJoinText: {
-      color: '#fff',
+      color: GLASS.textOnPrimary,
       marginLeft: resp.dx(6),
       fontWeight: '700',
     },
@@ -441,7 +452,7 @@ const createStyles = (colors: any, resp: any) =>
       alignSelf: 'flex-start',
     },
     cancelText: {
-      color: '#EF4444',
+      color: GLASS.error,
       fontWeight: '600',
     },
   });

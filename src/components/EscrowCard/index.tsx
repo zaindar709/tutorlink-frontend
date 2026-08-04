@@ -1,71 +1,78 @@
-// components/EscrowCard.js
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Icon } from 'react-native-paper';
-
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../hooks/ui/useUi';
-import { LinearGradient } from 'react-native-linear-gradient';
+import { GLASS } from '../../theme/glass';
 
 export default function EscrowCard({ amount, description }: any) {
   const { colors, resp } = useUi();
   const styles = createStyles({ colors, resp });
 
   return (
-    <LinearGradient
-      colors={['#F6D365', '#FBB034', '#FCE38A']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.card}
-    >
+    <View style={styles.card}>
       <View style={styles.row}>
-        <Icon source="shield-lock-outline" size={18} color="#fff" />
-
-        <Text style={styles.lockedText}>Locked in Escrow</Text>
-
-        <Icon source="information-outline" size={16} color="#fff" />
+        <View style={styles.iconWrap}>
+          <MaterialCommunityIcons
+            name="shield-lock-outline"
+            size={20}
+            color="#D97706"
+          />
+        </View>
+        <View style={styles.textCol}>
+          <Text style={styles.lockedText}>Locked in Escrow</Text>
+          <Text style={styles.amount}>
+            Rs. {Number(amount || 0).toLocaleString()}
+          </Text>
+        </View>
       </View>
 
-      <Text style={styles.amount}>Rs. {amount.toLocaleString()}</Text>
-
-      <Text style={styles.description}>• {description}</Text>
-    </LinearGradient>
+      <Text style={styles.description}>{description}</Text>
+    </View>
   );
 }
 
 const createStyles = ({ colors, resp }: any) =>
   StyleSheet.create({
     card: {
-      marginTop: resp.dy(16),
-      backgroundColor: '#FF8A00',
-      borderRadius: resp.dx(22),
-      padding: resp.dx(18),
-      height: resp.dy(180),
+      marginTop: resp.dy(14),
+      backgroundColor: '#FFFFFF',
+      borderRadius: GLASS.radius.xl,
+      padding: resp.dx(16),
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.25)',
+      ...GLASS.shadow.soft,
     },
-
     row: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: 12,
     },
-
+    iconWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: '#FEF3C7',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    textCol: {
+      flex: 1,
+    },
     lockedText: {
-      color: colors.WHITE_COLOR,
-      fontSize: resp.df(13),
+      color: GLASS.textSecondary,
+      fontSize: resp.df(12),
       fontWeight: '600',
-      marginHorizontal: resp.dx(6),
+      marginBottom: 4,
     },
-
     amount: {
-      color: colors.WHITE_COLOR,
-      fontSize: resp.df(32),
-      fontWeight: '700',
-      marginTop: resp.dy(14),
+      color: GLASS.textPrimary,
+      fontSize: resp.df(22),
+      fontWeight: '800',
     },
-
     description: {
-      color: '#FFF3E0',
-      fontSize: resp.df(13),
-      lineHeight: resp.dy(20),
-      marginTop: resp.dy(16),
+      color: GLASS.textMuted,
+      fontSize: resp.df(12),
+      lineHeight: resp.dy(18),
+      marginTop: resp.dy(12),
     },
   });

@@ -1,27 +1,35 @@
-import {View, Text, StyleSheet} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import CustomButton from '../../../CustomButton';
 
-const BalanceCard = ({colors, resp, balance = 0}: any) => {
-  return (
-    <View style={styles(colors, resp).balanceCard}>
-      <View style={styles(colors, resp).balanceTopRow}>
-        <View>
-          <Text style={styles(colors, resp).balanceLabel}>
-            Available Balance
-          </Text>
+const BalanceCard = ({ colors, resp, balance = 0 }: any) => {
+  const s = styles(colors, resp);
 
-          <Text style={styles(colors, resp).balanceAmount}>
+  return (
+    <LinearGradient
+      colors={[
+        colors.PRIMARY_COLOR as string,
+        '#5B2FD6',
+        '#4C1D95',
+      ]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={s.balanceCard}
+    >
+      <View style={s.balanceTopRow}>
+        <View>
+          <Text style={s.balanceLabel}>Available Balance</Text>
+
+          <Text style={s.balanceAmount}>
             Rs. {balance.toLocaleString()}
           </Text>
 
-          <Text style={styles(colors, resp).balanceGrowth}>
-            +Rs. 3,500 this week
-          </Text>
+          <Text style={s.balanceGrowth}>+Rs. 3,500 this week</Text>
         </View>
 
-        <View style={styles(colors, resp).graphIconBox}>
+        <View style={s.graphIconBox}>
           <MaterialCommunityIcons
             name="trending-up"
             size={22}
@@ -38,9 +46,9 @@ const BalanceCard = ({colors, resp, balance = 0}: any) => {
           fontSize: 16,
         }}
         onPress={() => {}}
-        style={styles(colors, resp).withdrawBtn}
+        style={s.withdrawBtn}
       />
-    </View>
+    </LinearGradient>
   );
 };
 
@@ -49,10 +57,16 @@ export default BalanceCard;
 const styles = (colors: any, resp: any) =>
   StyleSheet.create({
     balanceCard: {
-      backgroundColor: colors.PRIMARY_COLOR,
-      borderRadius: resp.dx(20),
+      borderRadius: resp.dx(24),
       padding: resp.dy(18),
       marginTop: resp.dy(10),
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.28)',
+      shadowColor: '#7548F5',
+      shadowOpacity: 0.2,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 6,
     },
 
     balanceTopRow: {

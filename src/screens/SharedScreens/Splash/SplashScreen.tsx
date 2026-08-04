@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, StatusBar } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Images from '../../../assets/images';
 import useUi from '../../../hooks/ui/useUi';
 import { useSplash } from '../../../hooks/useSplash';
@@ -19,6 +20,7 @@ import {
   isTutorApproved,
 } from '../../../utils/tutor/tutorNavigation';
 import { setUser } from '../../../store/auth/authSlice';
+import { GLASS } from '../../../theme/glass';
 
 export default function SplashScreen() {
   type RootStackParamList = {
@@ -114,8 +116,18 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      {/* Dark purple — white logo needs contrast */}
+      <LinearGradient
+        colors={[...GLASS.buttonGradient]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
       <Animated.Image
         source={Images.Logo}
+        resizeMode="contain"
         style={[
           styles.logo,
           { transform: [{ scale: logoScale }], opacity: logoOpacity },
@@ -145,6 +157,7 @@ export default function SplashScreen() {
       >
         Learn with ease, connect with expertise
       </Animated.Text>
+
       <View style={styles.dotsContainer}>
         {loadingDots.map((dot, index) => (
           <Animated.View
@@ -156,34 +169,33 @@ export default function SplashScreen() {
     </View>
   );
 }
-export const createStyles = (colors: any, resp: any) =>
+
+export const createStyles = (_colors: any, resp: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: colors.PRIMARY_COLOR,
+      backgroundColor: GLASS.primaryDark,
     },
     logo: {
-      width: resp.dx(300),
-      height: resp.dy(300),
-      marginBottom: resp.dy(-80),
-    },
-    textContainer: {
-      alignItems: 'center',
+      width: resp.dx(280),
+      height: resp.dy(280),
+      marginBottom: resp.dy(-70),
     },
     title: {
       fontSize: resp.df(34),
       fontWeight: 'bold',
-      color: colors.WHITE_COLOR,
+      color: '#FFFFFF',
       textAlign: 'center',
       marginBottom: resp.dy(8),
     },
     slogan: {
       fontSize: resp.df(16),
-      color: colors.WHITE_COLOR,
+      color: 'rgba(255,255,255,0.9)',
       fontWeight: '500',
       textAlign: 'center',
+      paddingHorizontal: 24,
     },
     dotsContainer: {
       flexDirection: 'row',
@@ -193,7 +205,7 @@ export const createStyles = (colors: any, resp: any) =>
     dot: {
       width: resp.dx(8),
       height: resp.dy(8),
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: '#FFFFFF',
       borderRadius: 4,
     },
   });

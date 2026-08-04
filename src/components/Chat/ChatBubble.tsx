@@ -135,13 +135,16 @@ const ChatBubble = ({ message, onLongPress }: Props) => {
   }
 
   const mine = message.isMine;
+  // WhatsApp-style: sent = brand purple, received = solid white
   const bubbleBg = mine
     ? (colors.CHAT_BUBBLE_OUT as string)
-    : (colors.CHAT_BUBBLE_IN as string);
+    : '#FFFFFF';
   const textColor = mine
     ? (colors.WHITE_COLOR as string)
-    : (colors.TEXT_PRIMARY as string);
-  const muted = mine ? 'rgba(255,255,255,0.75)' : (colors.TEXT_SECONDARY as string);
+    : ((colors.TEXT_PRIMARY as string) || '#111827');
+  const muted = mine
+    ? 'rgba(255,255,255,0.75)'
+    : ((colors.TEXT_SECONDARY as string) || '#6B7280');
 
   return (
     <Animated.View
@@ -159,11 +162,12 @@ const ChatBubble = ({ message, onLongPress }: Props) => {
         delayLongPress={280}
         style={[
           styles.bubble,
+          mine ? styles.bubbleOut : styles.bubbleIn,
           {
             backgroundColor: bubbleBg,
             borderColor: mine
               ? 'transparent'
-              : (colors.CHAT_BUBBLE_IN_BORDER as string),
+              : ((colors.CHAT_BUBBLE_IN_BORDER as string) || '#E5E7EB'),
             borderBottomRightRadius: mine ? 6 : 18,
             borderBottomLeftRadius: mine ? 18 : 6,
           },
@@ -299,6 +303,18 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'visible',
+  },
+  bubbleOut: {
+    borderWidth: 0,
+  },
+  bubbleIn: {
+    borderWidth: StyleSheet.hairlineWidth,
+    // Soft elevation so white received bubbles read clearly (WhatsApp-like)
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
   },
   reply: {
     borderLeftWidth: 3,

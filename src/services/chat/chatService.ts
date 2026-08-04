@@ -17,8 +17,8 @@ import {
   MessageType,
   UploadChatMediaParams,
 } from '../../types/chat.types';
-import { getUserId } from '../../utils/api/userId';
-import { ApiUser } from '../../types/api.types';
+import { formatDateParam, getUserId } from '../../utils/api/userId';
+import { ApiUser, Booking } from '../../types/api.types';
 import { AxiosError } from 'axios';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
 import {
@@ -30,6 +30,10 @@ import {
   listInquiryMessages,
   updateInquiryMessage,
 } from './localInquiryChat';
+import {
+  createBooking,
+  fetchBookings,
+} from '../bookings/bookingsService';
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -156,14 +160,26 @@ export const mapMessage = (
   const id = pickId(raw);
   if (!id) return null;
 
-  const sender = asRecord(raw.sender || raw.senderId);
-  const senderId = String(
-    sender._id || sender.id || raw.senderId || raw.sender || ''
+  const sender = asRecord(
+    typeof raw.sender === 'object' ? raw.sender : undefined
   );
+  const senderId = String(
+    sender._id ||
+      sender.id ||
+      (typeof raw.senderId === 'string' || typeof raw.senderId === 'number'
+        ? raw.senderId
+        : '') ||
+      (typeof raw.sender === 'string' || typeof raw.sender === 'number'
+        ? raw.sender
+        : '') ||
+      ''
+  );
+  const me = currentUserId ? String(currentUserId) : '';
+  // WhatsApp-style: only mark mine when sender matches current user
   const isMine =
     typeof raw.isMine === 'boolean'
       ? raw.isMine
-      : Boolean(currentUserId && senderId && senderId === currentUserId);
+      : Boolean(me && senderId && senderId === me);
 
   const replyRaw = asRecord(raw.replyTo);
   const hasReply =
@@ -265,6 +281,71 @@ const createLocalInquiry = async (payload: CreateConversationPayload) => {
   });
 };
 
+const bookingTutorId = (booking: Booking): string => {
+  if (typeof booking.tutor === 'string') return booking.tutor;
+  return String(booking.tutor?._id || booking.tutor?.id || '');
+};
+
+/** Current backend requires bookingId — reuse or create a light inquiry booking. */
+const openConversationViaBookingBridge = async (
+  peerId: string,
+  subject: string | undefined,
+  currentUser?: ApiUser | null,
+  tutorProfileId?: string
+): Promise<ChatConversation | null> => {
+  const tutorIds = [peerId, tutorProfileId].filter(Boolean) as string[];
+  const today = formatDateParam(new Date());
+
+  let bookingId: string | null = null;
+
+  try {
+    for (const tab of ['pending', 'active'] as const) {
+      const bookings = await fetchBookings(today, tab);
+      const match = bookings.find(b => tutorIds.includes(bookingTutorId(b)));
+      if (match?._id) {
+        bookingId = match._id;
+        break;
+      }
+    }
+  } catch (error) {
+    console.warn('[Chat] Could not list bookings for chat bridge', error);
+  }
+
+  if (!bookingId) {
+    for (const tutor of tutorIds) {
+      try {
+        const booking = await createBooking({
+          tutor,
+          subject: subject || 'General',
+          date: today,
+          startTime: '10:00 AM',
+          endTime: '11:00 AM',
+        });
+        bookingId = booking._id;
+        break;
+      } catch (error) {
+        console.warn('[Chat] Inquiry booking bridge failed for', tutor, error);
+      }
+    }
+  }
+
+  if (!bookingId) return null;
+
+  try {
+    const response = await createConversationAPI({
+      bookingId,
+      subject: subject || 'General',
+    });
+    return mapConversation(
+      extractData(response.data),
+      getUserId(currentUser)
+    );
+  } catch (error) {
+    console.warn('[Chat] Conversation via booking bridge failed', error);
+    return null;
+  }
+};
+
 export const listConversations = async (
   currentUser?: ApiUser | null
 ): Promise<ChatConversation[]> => {
@@ -314,20 +395,51 @@ export const createConversation = async (
     return mapped;
   }
 
-  // Pre-booking: try participantId / tutorId variants the backend may accept
+  const peerId = String(payload.participantId || payload.tutorId || '');
+
+  // Reuse an existing SERVER conversation with this peer (ignore local inquiry)
+  try {
+    const response = await listConversationsAPI();
+    const me = getUserId(currentUser);
+    const existing = extractList(response.data)
+      .map(item => mapConversation(item, me))
+      .find(
+        (c): c is ChatConversation =>
+          Boolean(
+            c &&
+              !isInquiryConversationId(c.id) &&
+              (c.participant.id === peerId ||
+                c.participant.id === payload.tutorProfileId)
+          )
+      );
+    if (existing) return existing;
+  } catch {
+    // continue to create
+  }
+
+  // Pre-booking / inquiry: try participantId / tutorId variants the backend may accept
   const attempts: CreateConversationPayload[] = [
     {
-      participantId: payload.participantId,
+      participantId: payload.participantId || peerId,
       subject: payload.subject,
     },
     {
-      tutorId: payload.tutorId || payload.participantId,
+      tutorId: payload.tutorId || payload.participantId || peerId,
+      subject: payload.subject,
+    },
+    {
+      participantId: payload.participantId || peerId,
+      tutorId: payload.tutorId || payload.participantId || peerId,
       subject: payload.subject,
     },
   ];
   if (payload.tutorProfileId) {
     attempts.push({
       tutorId: payload.tutorProfileId,
+      subject: payload.subject,
+    });
+    attempts.push({
+      participantId: payload.tutorProfileId,
       subject: payload.subject,
     });
   }
@@ -341,19 +453,31 @@ export const createConversation = async (
         extractData(response.data),
         getUserId(currentUser)
       );
+      if (mapped && !isInquiryConversationId(mapped.id)) {
+        return mapped;
+      }
       if (mapped) return mapped;
     } catch (error) {
       lastError = error;
       if (!isBookingRequiredError(error)) {
-        // Unexpected error — still fall back so Ask UI is usable
-        break;
+        // Unexpected error — still try remaining shapes, then fall through
+        continue;
       }
     }
   }
 
-  // Backend still requires bookingId → local pre-booking chat for UI / demo
+  // Backend still requires bookingId → bridge via existing/new inquiry booking
+  // so the tutor actually receives messages (not device-local only).
+  const bridged = await openConversationViaBookingBridge(
+    peerId,
+    payload.subject,
+    currentUser,
+    payload.tutorProfileId
+  );
+  if (bridged) return bridged;
+
   console.warn(
-    '[Chat] Pre-booking API rejected; using local inquiry chat.',
+    '[Chat] Pre-booking API + booking bridge failed; local inquiry only.',
     getApiErrorMessage(lastError, '400')
   );
   return createLocalInquiry(payload);

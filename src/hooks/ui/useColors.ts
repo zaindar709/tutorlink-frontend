@@ -1,4 +1,4 @@
-﻿import { useColorScheme, ColorValue, ColorSchemeName } from "react-native";
+import { useColorScheme, ColorValue, ColorSchemeName } from "react-native";
 import { useCallback } from "react";
 
 export const useAppColorScheme = (): ColorSchemeName => {
@@ -32,7 +32,21 @@ const useColors = () => {
     PRIMARY_GRAY_COLO1: getColor("rgb(171, 171, 171)", "rgb(171, 171, 171)"),
     PRIMARY_GRAY_COLOR: getColor("rgb(241, 241, 241)", "rgb(241, 241, 241)"),
     BRIGHT_COLOR: getColor("#99F6FF10", "#99F6FF10"),
-    BACKGROUND: getColor("#f8fbff"),
+    BACKGROUND: getColor("#f6f7fc"),
+    TEXT_PRIMARY: getColor("#0F172A"),
+    TEXT_SECONDARY: getColor("#64748B"),
+    BORDER_COLOR: getColor("rgba(117, 72, 245, 0.12)"),
+    /** Auth screens — keep headings/subtext consistent across student + tutor */
+    AUTH_HEADING: getColor("#111827"),
+    AUTH_SUBTEXT: getColor("#64748B"),
+    AUTH_MUTED: getColor("#64748B"),
+    AUTH_FOOTER: getColor("#64748B"),
+    AUTH_LINK: getColor("rgba(117,72,245,1)"),
+    /** Main-app light glass aliases */
+    GLASS_CARD: getColor("rgba(255,255,255,0.78)"),
+    GLASS_BORDER: getColor("rgba(117,72,245,0.12)"),
+    GLASS_HEADER: getColor("rgba(255,255,255,0.72)"),
+    GLASS_TAB: getColor("rgba(255,255,255,0.88)"),
     ARSENIC_COLOR: getColor("#3d3e48", "#3d3e48"),
     LIGHT_GRAY_COLOR: getColor("#D9D9D9", "#D9D9D9"),
     HOME_BG_COLOR: getColor("#051615", "#051615"),
@@ -43,7 +57,7 @@ const useColors = () => {
     TAB_GRAY_COLOR: getColor("#8C8C8C", "#8C8C8C"),
     PRIMARY_COLOR: getColor("rgba(117,72,245,1)"),
     LIGHT_PRIMARY: getColor("#EDE9FE"),
-    CARD_COLOR: getColor("#FFFFFF"),
+    CARD_COLOR: getColor("rgba(255,255,255,0.92)"),
     WHITE_COLOR: getColor("#fff", "#fff"),
     TRANSPARENT: getColor("transparent", "transparent"),
     YELLOW_COLOR: getColor("#FFD400", "#FFD400"),
@@ -52,11 +66,13 @@ const useColors = () => {
     EMPTY_STARS_COLOR: getColor("#9B9B9B", "#9B9B9B"),
     CHAT_PRIMARY_COLOR: getColor("#7548F5"),
     CHAT_SECONDARY_COLOR: getColor("#EDE9FE"),
+    // Soft glass wallpaper for chat
+    CHAT_WALLPAPER: getColor("#f6f7fc"),
     CHAT_BUBBLE_OUT: getColor("#7548F5"),
-    CHAT_BUBBLE_IN: getColor("#FFFFFF"),
+    CHAT_BUBBLE_IN: getColor("rgba(255,255,255,0.92)"),
     CHAT_BUBBLE_IN_BORDER: getColor("rgba(117,72,245,0.12)"),
-    CHAT_INPUT_BG: getColor("#FFFFFF"),
-    CHAT_COMPOSER_BG: getColor("#F8FBFF"),
+    CHAT_INPUT_BG: getColor("rgba(255,255,255,0.88)"),
+    CHAT_COMPOSER_BG: getColor("rgba(245,243,255,0.95)"),
     CHAT_TICK: getColor("#C4B5FD"),
     CHAT_TICK_READ: getColor("#FFFFFF"),
     CHAT_UNREAD_BADGE: getColor("#7548F5"),

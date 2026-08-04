@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { Icon } from 'react-native-paper';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
 import useUi from '../../hooks/ui/useUi';
-import CustomButton from '../CustomButton';
+import { GLASS } from '../../theme/glass';
 
 type TopTutorCardProps = {
   image: any;
@@ -10,6 +11,8 @@ type TopTutorCardProps = {
   subject: string;
   rating: number;
   badge: string;
+  verified?: boolean;
+  university?: string;
   onHire: () => void;
 };
 
@@ -19,129 +22,239 @@ const TopTutorCard: React.FC<TopTutorCardProps> = ({
   subject,
   rating,
   badge,
+  verified = false,
+  university,
   onHire,
 }) => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
+  const detailLine = university || badge;
+  const primarySubject = subject.split(',')[0]?.trim() || subject;
 
   return (
     <View style={styles.card}>
-      <View style={styles.imageContainer}>
-        <Image source={image} style={styles.tutorImage} />
-      </View>
+      <LinearGradient
+        colors={['#EDE9FE', '#F5F3FF', '#EEF2FF']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.avatarHeader}
+      >
+        <View style={styles.orbA} pointerEvents="none" />
+        <View style={styles.orbB} pointerEvents="none" />
+
+        <View style={styles.ratingPill}>
+          <MaterialCommunityIcons name="star" size={resp.df(11)} color="#F59E0B" />
+          <Text style={styles.ratingPillText}>{rating.toFixed(1)}</Text>
+        </View>
+
+        <View style={styles.avatarRing}>
+          <Image source={image} style={styles.avatar} resizeMode="cover" />
+        </View>
+      </LinearGradient>
 
       <View style={styles.infoSection}>
-        <Text style={styles.tutorName}>{name}</Text>
-        <Text style={styles.subject}>{subject}</Text>
-
-        <View style={styles.ratingRow}>
-          {[...Array(5)].map((_, index) => (
-            <Icon
-              key={index}
-              source="star"
+        <View style={styles.nameRow}>
+          <Text style={styles.tutorName} numberOfLines={1}>
+            {name}
+          </Text>
+          {verified ? (
+            <MaterialCommunityIcons
+              name="check-decagram"
               size={resp.df(14)}
-              color={
-                index < Math.round(rating)
-                  ? colors.YELLOW_COLOR as string
-                  : colors.GRAY_COLOR as string
-              }
+              color={GLASS.primary}
             />
-          ))}
-          <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+          ) : null}
         </View>
 
-        <View style={styles.badgeRow}>
-          <Text style={styles.badgeText}>{badge}</Text>
+        <View style={styles.subjectChip}>
+          <MaterialCommunityIcons
+            name="book-open-page-variant-outline"
+            size={resp.df(11)}
+            color={GLASS.primary}
+          />
+          <Text style={styles.subjectChipText} numberOfLines={1}>
+            {primarySubject}
+          </Text>
+        </View>
+
+        <View style={styles.metaRow}>
+          <MaterialCommunityIcons
+            name="school-outline"
+            size={resp.df(12)}
+            color="#94A3B8"
+          />
+          <Text style={styles.metaText} numberOfLines={1}>
+            {detailLine}
+          </Text>
         </View>
       </View>
-      <CustomButton
-        title="Hire Tutor"
-        onPress={onHire}
-        style={{
-          width: '100%',
-          alignSelf: 'stretch',
-          height: 48,
-          borderRadius: 14,
-          elevation: 0,
-          paddingHorizontal: 12,
-        }}
-        textStyle={{ fontSize: 15 }}
-      />
+
+      <TouchableOpacity onPress={onHire} activeOpacity={0.88}>
+        <LinearGradient
+          colors={[...GLASS.buttonGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.hireBtn}
+        >
+          <Text style={styles.hireBtnText}>Hire Tutor</Text>
+          <MaterialCommunityIcons
+            name="arrow-right"
+            size={resp.df(13)}
+            color="#FFFFFF"
+          />
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 };
 
 export default TopTutorCard;
 
-const createStyles = (colors: any, resp: any) =>
+const createStyles = (_colors: any, resp: any) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.WHITE_COLOR,
-      borderRadius: resp.dx(24),
-      padding: resp.dx(18),
-      shadowColor: colors.BLACK_COLOR,
-      shadowOpacity: 0.08,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 8 },
-      elevation: 4,
-      marginTop: resp.dy(10),
-      marginBottom: resp.dy(20),
-    },
-    imageContainer: {
-      width: '100%',
-      height: resp.dy(180),
+      width: resp.dx(158),
+      backgroundColor: '#FFFFFF',
       borderRadius: resp.dx(20),
-      marginBottom: resp.dy(14),
-      overflow: 'hidden',
-      justifyContent: 'center',
-      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(117, 72, 245, 0.1)',
+      padding: resp.dx(8),
+      paddingBottom: resp.dx(10),
+      marginRight: resp.dx(12),
+      shadowColor: '#7548F5',
+      shadowOpacity: 0.12,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 4,
     },
-
-    tutorImage: {
+    avatarHeader: {
       width: '100%',
-      height: '100%',
-      objectFit: 'cover',
+      borderRadius: resp.dx(14),
+      paddingTop: resp.dy(12),
+      paddingBottom: resp.dy(18),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: resp.dy(8),
+      overflow: 'hidden',
+      minHeight: resp.dy(96),
     },
-    infoSection: {
-      marginBottom: resp.dy(16),
+    orbA: {
+      position: 'absolute',
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: 'rgba(117, 72, 245, 0.12)',
+      top: -12,
+      right: -10,
     },
-    tutorName: {
-      color: colors.BLACK_COLOR,
-      fontSize: resp.df(18),
-      fontWeight: '700',
-      marginBottom: resp.dy(4),
+    orbB: {
+      position: 'absolute',
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(91, 47, 214, 0.08)',
+      bottom: -8,
+      left: -6,
     },
-    subject: {
-      color: colors.SPACES_COLOR,
-      fontSize: resp.df(14),
-      marginBottom: resp.dy(12),
-    },
-    ratingRow: {
+    ratingPill: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
       flexDirection: 'row',
       alignItems: 'center',
-      gap: resp.dx(6),
+      gap: 3,
+      backgroundColor: 'rgba(255,255,255,0.95)',
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.25)',
+      zIndex: 2,
+    },
+    ratingPillText: {
+      color: '#0F172A',
+      fontSize: resp.df(10),
+      fontWeight: '800',
+    },
+    avatarRing: {
+      width: resp.dx(72),
+      height: resp.dx(72),
+      borderRadius: resp.dx(36),
+      padding: 3,
+      backgroundColor: '#FFFFFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#7548F5',
+      shadowOpacity: 0.16,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 3,
+    },
+    avatar: {
+      width: '100%',
+      height: '100%',
+      borderRadius: resp.dx(33),
+      backgroundColor: '#EDE9FE',
+    },
+    infoSection: {
       marginBottom: resp.dy(10),
+      paddingHorizontal: resp.dx(4),
     },
-    ratingText: {
-      color: colors.BLACK_COLOR,
-      fontSize: resp.df(14),
-      fontWeight: '600',
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: resp.dx(4),
+      marginBottom: resp.dy(7),
     },
-    badgeRow: {
-      backgroundColor: colors.BRIGHT_COLOR,
+    tutorName: {
+      flexShrink: 1,
+      color: '#0F172A',
+      fontSize: resp.df(13),
+      fontWeight: '800',
+      letterSpacing: 0.1,
+    },
+    subjectChip: {
       alignSelf: 'flex-start',
-      paddingVertical: resp.dy(6),
-      paddingHorizontal: resp.dx(10),
-      borderRadius: resp.dx(14),
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: GLASS.primarySoft,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
+      marginBottom: resp.dy(6),
+      maxWidth: '100%',
     },
-    badgeText: {
-      color: colors.Green_Color,
-      fontSize: resp.df(12),
-      fontWeight: '600',
-    },
-    actionText: {
-      color: colors.WHITE_COLOR,
-      fontSize: resp.df(15),
+    subjectChipText: {
+      color: GLASS.primaryDeep,
+      fontSize: resp.df(10),
       fontWeight: '700',
+      maxWidth: resp.dx(100),
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: resp.dx(5),
+    },
+    metaText: {
+      flex: 1,
+      color: '#94A3B8',
+      fontSize: resp.df(10),
+      fontWeight: '500',
+    },
+    hireBtn: {
+      alignSelf: 'stretch',
+      height: resp.dy(34),
+      borderRadius: resp.dx(11),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+    },
+    hireBtnText: {
+      color: '#FFFFFF',
+      fontSize: resp.df(12),
+      fontWeight: '700',
+      letterSpacing: 0.2,
     },
   });

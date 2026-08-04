@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import useUi from '../../../../../../hooks/ui/useUi';
 import EarningHeader from '../../../../../../components/EarningHeader';
 import CustomInput from '../../../../../../components/CustomInput/CustomInput';
@@ -55,7 +56,7 @@ const TransactionHistoryScreen = () => {
   const [activeFilter, setActiveFilter] = useState('All');
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <GlassScreen scroll={false}>
       <EarningHeader
         navigation={navigation}
         title="Transaction History"
@@ -83,7 +84,7 @@ const TransactionHistoryScreen = () => {
                     {
                       backgroundColor: isActive
                         ? colors.PRIMARY_COLOR
-                        : colors.WHITE_COLOR,
+                        : colors.GLASS_CARD,
                       borderColor: isActive
                         ? colors.PRIMARY_COLOR
                         : colors.GRAY_COLOR,
@@ -244,17 +245,13 @@ const TransactionHistoryScreen = () => {
           </TouchableOpacity>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TransactionHistoryScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 12,
@@ -269,8 +266,11 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: GLASS.radius.lg,
     padding: 14,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   summaryTitle: {
     fontSize: 13,
@@ -293,15 +293,18 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingVertical: 8,
     paddingHorizontal: 14,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.lg,
     borderWidth: 1,
   },
   transactionCard: {
     width: '100%',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: GLASS.radius.xl,
     padding: 14,
     marginTop: 12,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   transactionRow: {
     flexDirection: 'row',

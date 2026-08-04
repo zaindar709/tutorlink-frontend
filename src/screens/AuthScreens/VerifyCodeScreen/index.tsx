@@ -1,7 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React from 'react';
 import {
-  KeyboardAvoidingView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -10,21 +8,20 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
-import useUi from '../../../hooks/ui/useUi';
-import CustomButton from '../../../components/CustomButton';
-import BackButton from '../../../components/BackButton/BackButton';
 import { useVerifyCode } from '../../../hooks/auth/useVerifyCode';
-import { createStyles } from './styles';
-
-const PIN_LENGTH = 4;
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  GlassCard,
+  GlassPrimaryButton,
+  AUTH_GLASS,
+} from '../../../components/AuthGlass';
 
 const VerifyCodeScreen = () => {
-  const { colors, resp } = useUi();
-  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { email = '', role = 'student' } = route.params || {};
- const {
+  const {
     digits,
     timer,
     focusedIndex,
@@ -38,22 +35,14 @@ const VerifyCodeScreen = () => {
   } = useVerifyCode(email, role);
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding">
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.headerRow}>
-          <BackButton onPress={() => navigation.goBack()} />
-        </View>
+    <AuthGlassBackground>
+      <AuthGlassHeader
+        title="Enter Code"
+        subtitle={`We sent a 4-digit code to ${email || 'your email'}`}
+        onBack={() => navigation.goBack()}
+      />
 
-        <View style={styles.headerContent}>
-          <Text style={styles.title}>Enter Code</Text>
-          <Text style={styles.subtitle}>
-            We sent a 4-digit code to {email || 'your email'}
-          </Text>
-        </View>
-
+      <GlassCard>
         <Text style={styles.label}>Verification Code</Text>
 
         <View style={styles.codeRow}>
@@ -73,8 +62,9 @@ const VerifyCodeScreen = () => {
                 styles.codeInput,
                 focusedIndex === index && styles.codeInputFocused,
               ]}
-              placeholderTextColor={colors.PLACEHOLDER_TEXTCOLOR as string}
-              cursorColor="black"
+              placeholderTextColor={AUTH_GLASS.placeholder}
+              cursorColor={AUTH_GLASS.primary as string}
+              selectionColor={AUTH_GLASS.primary as string}
               textAlign="center"
             />
           ))}
@@ -89,17 +79,57 @@ const VerifyCodeScreen = () => {
             {timer > 0 ? `Resend code in ${timer}s` : 'Resend code'}
           </Text>
         </TouchableOpacity>
+      </GlassCard>
 
-        <CustomButton
+      <View style={{ marginTop: 20 }}>
+        <GlassPrimaryButton
           title="Verify Code"
           onPress={handleVerify}
           disabled={!isValid}
-          style={styles.verifyButton}
         />
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </AuthGlassBackground>
   );
 };
 
-export default VerifyCodeScreen;
+const styles = StyleSheet.create({
+  label: {
+    marginBottom: 16,
+    fontSize: 13,
+    fontWeight: '600',
+    color: AUTH_GLASS.label,
+  },
+  codeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  codeInput: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: AUTH_GLASS.inputBorder,
+    backgroundColor: AUTH_GLASS.inputBg,
+    fontSize: 22,
+    color: AUTH_GLASS.title,
+    fontWeight: '700',
+  },
+    codeInputFocused: {
+    borderColor: AUTH_GLASS.inputBorderFocus,
+    backgroundColor: AUTH_GLASS.inputBg,
+  },
+  resendRow: {
+    alignItems: 'center',
+  },
+  resendText: {
+    color: AUTH_GLASS.muted,
+    fontSize: 13,
+  },
+  resendActive: {
+    color: AUTH_GLASS.link,
+    fontWeight: '700',
+  },
+});
 
+export default VerifyCodeScreen;

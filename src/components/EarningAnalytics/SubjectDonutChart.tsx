@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 type SubjectItem = {
   label: string;
@@ -17,7 +18,7 @@ const SubjectDonutChart: React.FC<SubjectDonutChartProps> = ({ data, title }) =>
   const { colors, resp } = useUi();
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.WHITE_COLOR, shadowColor: colors.BLACK_COLOR }]}> 
+    <View style={[styles.card, { backgroundColor: GLASS.cardBg, borderColor: GLASS.cardBorder, shadowColor: colors.BLACK_COLOR }]}> 
       <Text style={[styles.title, { color: colors.BLACK_COLOR }]}>{title}</Text>
       <View style={styles.chartRow}>
         <View style={styles.donutWrapper}>
@@ -34,7 +35,7 @@ const SubjectDonutChart: React.FC<SubjectDonutChartProps> = ({ data, title }) =>
               ]}
             />
           ))}
-          <View style={[styles.donutCenter, { backgroundColor: colors.WHITE_COLOR }]} />
+          <View style={[styles.donutCenter, { backgroundColor: GLASS.cardBgStrong }]} />
         </View>
 
         <View style={styles.legendColumn}>
@@ -59,6 +60,7 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 24,
     padding: 18,
+    borderWidth: 1,
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 20,

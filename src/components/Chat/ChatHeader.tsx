@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 import OnlineIndicator from './OnlineIndicator';
 import VerifiedBadge from './VerifiedBadge';
 
@@ -46,9 +47,6 @@ const ChatHeader = ({
         styles.wrap,
         {
           paddingTop: insets.top + 8,
-          backgroundColor: colors.CARD_COLOR as string,
-          borderBottomColor: colors.BORDER_COLOR as string,
-          shadowColor: colors.PRIMARY_COLOR as string,
         },
       ]}
     >
@@ -91,12 +89,7 @@ const ChatHeader = ({
         >
           {subtitle}
         </Text>
-        <View
-          style={[
-            styles.subject,
-            { backgroundColor: colors.LIGHT_PRIMARY as string },
-          ]}
-        >
+        <View style={styles.subject}>
           <Text
             style={{
               color: colors.PRIMARY_COLOR as string,
@@ -137,6 +130,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: GLASS.headerBg,
+    borderBottomColor: GLASS.cardBorder,
+    shadowColor: GLASS.primary,
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -168,6 +164,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 1,
     borderRadius: 6,
+    backgroundColor: GLASS.primarySoft,
   },
   iconBtn: {
     padding: 8,

@@ -6,9 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import useUi from '../../../../../../hooks/ui/useUi';
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import EarningHeader from '../../../../../../components/EarningHeader';
 import AnalyticsStatCard from '../../../../../../components/EarningAnalytics/AnalyticsStatCard';
 import TrendChart from '../../../../../../components/EarningAnalytics/TrendChart';
@@ -83,7 +84,7 @@ const EarningAnalyticsScreen = () => {
   const navigation = useNavigation<any>();
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <GlassScreen scroll={false}>
       <EarningHeader
         navigation={navigation}
         title="Earnings Analytics"
@@ -106,7 +107,7 @@ const EarningAnalyticsScreen = () => {
                   {
                     backgroundColor: isActive
                       ? colors.PRIMARY_COLOR
-                      : colors.WHITE_COLOR,
+                      : colors.GLASS_CARD,
                     borderColor: isActive
                       ? colors.PRIMARY_COLOR
                       : colors.GRAY_COLOR,
@@ -150,17 +151,13 @@ const EarningAnalyticsScreen = () => {
           <PeakHoursChart data={peakHours} />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default EarningAnalyticsScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -176,7 +173,7 @@ const styles = StyleSheet.create({
   filterButton: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.lg,
     borderWidth: 1,
     alignItems: 'center',
   },

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
@@ -18,6 +17,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GLASS } from '../../theme/glass';
 
 type SearchBottomSheetProps = {
   expanded: boolean;
@@ -25,7 +25,7 @@ type SearchBottomSheetProps = {
   title: string;
   countLabel: string;
   loading: boolean;
-  onViewAll: () => void;
+  onViewAll?: () => void;
   isEmpty?: boolean;
   emptyText?: string;
   colors: Record<string, unknown>;
@@ -45,7 +45,6 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
   title,
   countLabel,
   loading,
-  onViewAll,
   isEmpty,
   emptyText = 'No tutors found nearby.',
   colors,
@@ -102,29 +101,14 @@ const SearchBottomSheet: React.FC<SearchBottomSheetProps> = ({
     height: sheetHeight.value,
   }));
 
-  const expandSheet = () => {
-    onExpandedChange(true);
-    onViewAll();
-  };
-
   return (
     <Animated.View style={[styles.bottomSheet, sheetAnimatedStyle]}>
       <GestureDetector gesture={panGesture}>
         <View style={styles.dragArea}>
           <View style={styles.sheetHandle} />
           <View style={styles.listHeader}>
-            <View style={styles.headerTextWrap}>
-              <Text style={styles.listTitle}>{title}</Text>
-              <Text style={styles.listCount}>{countLabel}</Text>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={expandSheet}
-              disabled={loading}
-            >
-              <Text style={styles.viewAllText}>View all</Text>
-            </TouchableOpacity>
+            <Text style={styles.listTitle}>{title}</Text>
+            <Text style={styles.listCount}>{countLabel}</Text>
           </View>
         </View>
       </GestureDetector>
@@ -162,19 +146,18 @@ const createStyles = (
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: '#F7F7F7',
-      borderTopLeftRadius: resp.dx(30),
-      borderTopRightRadius: resp.dx(30),
+      backgroundColor: '#FFFFFF',
+      borderTopLeftRadius: GLASS.radius.xxl,
+      borderTopRightRadius: GLASS.radius.xxl,
       paddingTop: resp.dy(10),
-      shadowColor: colors.BLACK_COLOR as string,
-      shadowOpacity: 0.12,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: -4 },
-      elevation: 12,
+      borderTopWidth: 1,
+      borderColor: '#E8E8EE',
+      ...GLASS.shadow.medium,
       overflow: 'hidden',
     },
     dragArea: {
       paddingBottom: resp.dy(4),
+      alignItems: 'center',
     },
     sheetHandle: {
       alignSelf: 'center',
@@ -185,30 +168,23 @@ const createStyles = (
       marginBottom: resp.dy(12),
     },
     listHeader: {
-      flexDirection: 'row',
+      width: '100%',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'center',
       paddingHorizontal: resp.dx(18),
       marginBottom: resp.dy(10),
-    },
-    headerTextWrap: {
-      flex: 1,
-      paddingRight: resp.dx(12),
     },
     listTitle: {
       fontSize: resp.df(18),
       fontWeight: '800',
       color: colors.BLACK_COLOR as string,
+      textAlign: 'center',
     },
     listCount: {
       marginTop: resp.dy(4),
       fontSize: resp.df(13),
       color: colors.SPACES_COLOR as string,
-    },
-    viewAllText: {
-      color: colors.PRIMARY_COLOR as string,
-      fontWeight: '700',
-      fontSize: resp.df(13),
+      textAlign: 'center',
     },
     listContainer: {
       flex: 1,
@@ -218,9 +194,11 @@ const createStyles = (
     listContent: {
       paddingHorizontal: resp.dx(16),
       width: '100%',
+      alignItems: 'center',
     },
     loader: {
       marginTop: resp.dy(20),
+      alignSelf: 'center',
     },
     emptyText: {
       textAlign: 'center',
@@ -228,5 +206,6 @@ const createStyles = (
       fontSize: resp.df(14),
       marginTop: resp.dy(24),
       marginBottom: resp.dy(24),
+      alignSelf: 'center',
     },
   });

@@ -33,7 +33,7 @@ const DocumentPickerField = ({
           styles.documentBox,
           {
             borderColor: uploaded ? '#22C55E' : '#c2c1c1',
-            backgroundColor: uploaded ? '#F0FDF4' : '#fff',
+            backgroundColor: uploaded ? '#F0FDF4' : colors.CARD_COLOR || '#EDE9FE',
             borderStyle: 'dashed',
           },
         ]}

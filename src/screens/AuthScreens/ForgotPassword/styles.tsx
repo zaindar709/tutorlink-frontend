@@ -4,7 +4,7 @@ export const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
     },
     container: {
       padding: resp.dx(20),
@@ -27,16 +27,16 @@ export const createStyles = (colors: any, resp: any) =>
     title: {
       fontSize: resp.df(26),
       fontWeight: '700',
-      color: colors.BLACK_COLOR,
+      color: colors.AUTH_HEADING || colors.TEXT_PRIMARY || colors.BLACK_COLOR,
       marginBottom: resp.dy(12),
     },
     subtitle: {
-      fontSize: resp.df(14),
-      color: colors.GRAY_COLOR,
+      fontSize: resp.df(15),
+      color: colors.AUTH_SUBTEXT || colors.TEXT_SECONDARY,
       lineHeight: resp.df(22),
     },
     formCard: {
-      backgroundColor: colors.WHITE_COLOR,
+      backgroundColor: colors.CARD_COLOR,
       borderRadius: 24,
       padding: resp.dx(20),
       shadowColor: '#000',
@@ -76,7 +76,7 @@ export const createStyles = (colors: any, resp: any) =>
     },
     roleText: {
       marginTop: resp.dy(24),
-      color: colors.GRAY_COLOR,
+      color: colors.AUTH_FOOTER || colors.TEXT_SECONDARY,
       fontSize: resp.df(13),
       textAlign: 'center',
     },

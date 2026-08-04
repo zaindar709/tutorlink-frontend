@@ -27,6 +27,7 @@ export default function AuthNavigator() {
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#f6f7fc' },
       }}
     >
       <Stack.Screen name="OnboardingScreens" component={OnboardingScreens} />

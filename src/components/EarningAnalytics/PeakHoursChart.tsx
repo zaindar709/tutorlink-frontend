@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GLASS } from '../../theme/glass';
 
 type PeakHourPoint = {
   label: string;
@@ -102,7 +103,7 @@ export default PeakHoursChart;
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBg,
     borderRadius: 20,
     padding: 16,
 

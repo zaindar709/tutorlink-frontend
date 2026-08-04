@@ -13,6 +13,7 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { GLASS } from '../../theme/glass';
 
 type PointTarget = 'card' | 'search';
 
@@ -24,14 +25,10 @@ type Props = {
   durationMs?: number;
 };
 
-const PRIMARY = '#7548F5';
-const PRIMARY_DARK = '#5B2FD6';
+const PRIMARY = GLASS.primary;
+const PRIMARY_DARK = GLASS.primaryDeep;
 const { width: SCREEN_W } = Dimensions.get('window');
 
-/**
- * Theme-aligned AI guide (TutorLink purple).
- * Transparent robot (no card chrome) + soft speech bubble + bounce point.
- */
 export default function AiTutorMascot({
   visible,
   message,
@@ -158,14 +155,14 @@ const styles = StyleSheet.create({
   },
   bubble: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: GLASS.radius.md,
     paddingHorizontal: 12,
     paddingVertical: 10,
     paddingLeft: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E9E3FF',
-    shadowColor: PRIMARY,
+    borderColor: GLASS.cardBorder,
+    shadowColor: GLASS.primary,
     shadowOpacity: 0.14,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -180,7 +177,7 @@ const styles = StyleSheet.create({
     width: 4,
   },
   bubbleText: {
-    color: '#1E293B',
+    color: GLASS.textPrimary,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '600',
@@ -192,10 +189,10 @@ const styles = StyleSheet.create({
     bottom: -6,
     width: 10,
     height: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRightWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#E9E3FF',
+    borderColor: GLASS.cardBorder,
     transform: [{ rotate: '45deg' }],
   },
   robot: {

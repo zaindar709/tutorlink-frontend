@@ -8,10 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import { GlassScreen } from '../../../../../../components/Glass';
+import { GLASS } from '../../../../../../theme/glass';
 import useUi from '../../../../../../hooks/ui/useUi';
 import CustomButton from '../../../../../../components/CustomButton';
 import CustomInput from '../../../../../../components/CustomInput/CustomInput';
@@ -82,7 +83,7 @@ const WithdrawMoneyScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <GlassScreen scroll={false}>
       <EarningHeader navigation={navigation} title="Withdraw Earnings" />
       <KeyboardAvoidingView
         style={styles.flex}
@@ -96,7 +97,8 @@ const WithdrawMoneyScreen = () => {
             style={[
               styles.balanceCard,
               {
-                backgroundColor: colors.WHITE_COLOR,
+                backgroundColor: GLASS.cardBg,
+                borderColor: GLASS.cardBorder,
                 shadowColor: colors.BLACK_COLOR,
               },
             ]}
@@ -135,11 +137,11 @@ const WithdrawMoneyScreen = () => {
                   styles.methodCard,
                   {
                     backgroundColor: isSelected
-                      ? '#F8F3FF'
-                      : colors.WHITE_COLOR,
+                      ? GLASS.primarySoft
+                      : GLASS.cardBg,
                     borderColor: isSelected
                       ? colors.PRIMARY_COLOR
-                      : colors.GRAY_COLOR,
+                      : GLASS.cardBorder,
                   },
                 ]}
                 onPress={() => handleSelectMethod(method.id)}
@@ -210,8 +212,8 @@ const WithdrawMoneyScreen = () => {
                         ? colors.PRIMARY_COLOR
                         : colors.GRAY_COLOR,
                       backgroundColor: isActive
-                        ? '#F5EEFF'
-                        : colors.WHITE_COLOR,
+                        ? GLASS.primarySoft
+                        : GLASS.cardBg,
                     },
                   ]}
                   onPress={() => handleQuickAmount(value)}
@@ -261,17 +263,13 @@ const WithdrawMoneyScreen = () => {
           />
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default WithdrawMoneyScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    flex: 1,
-  },
   flex: {
     flex: 1,
   },
@@ -282,15 +280,15 @@ const styles = StyleSheet.create({
     gap: 18,
   },
   balanceCard: {
-    borderRadius: 24,
+    borderRadius: GLASS.radius.xxl,
     padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 20,
-    elevation: 6,
+    backgroundColor: GLASS.cardBg,
+    borderWidth: 1,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   balanceIcon: {
     width: 56,
@@ -318,10 +316,13 @@ const styles = StyleSheet.create({
   methodCard: {
     width: '100%',
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: GLASS.radius.xl,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   methodIconWrapper: {
     width: 56,
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
     minWidth: 80,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 16,
+    borderRadius: GLASS.radius.md,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -378,8 +379,11 @@ const styles = StyleSheet.create({
   },
   infoBox: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   infoTitle: {
     fontSize: 16,

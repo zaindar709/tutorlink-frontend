@@ -1,23 +1,18 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import useUi from '../../../hooks/ui/useUi';
+
 import AuthCard from '../../../components/AuthCard/AuthCard';
-import { OrDivider } from '../../../components/OrDrivider/OrDivider';
 import Images from '../../../assets/images';
-import BackButton from '../../../components/BackButton/BackButton';
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  AuthGlassDivider,
+  GlassCard,
+  AUTH_GLASS,
+} from '../../../components/AuthGlass';
 
 export default function AuthSelectionScreen() {
-  const { colors, resp } = useUi();
-  const styles = createStyles(colors, resp);
-
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
 
@@ -83,19 +78,13 @@ export default function AuthSelectionScreen() {
   const trust = getTrustContent();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <BackButton onPress={() => navigation.goBack()} />
-        <Text style={styles.logo}>TutorLink</Text>
+    <AuthGlassBackground>
+      <AuthGlassHeader
+        title={`Welcome ${role === 'parent' ? 'Parent' : role || 'Student'}`}
+        subtitle="Login or signup to continue"
+        onBack={() => navigation.goBack()}
+      />
 
-        <Text style={styles.title}>
-          Welcome {role === 'parent' ? 'Parent' : role || 'Student'}
-        </Text>
-
-        <Text style={styles.subtitle}>Login or signup to continue</Text>
-      </View>
-
-      {/* BODY */}
       <View style={styles.body}>
         <AuthCard
           title={`Login as ${roleLabel}`}
@@ -104,7 +93,7 @@ export default function AuthSelectionScreen() {
           onPress={goLogin}
         />
 
-        <OrDivider />
+        <AuthGlassDivider label="or" />
 
         <AuthCard
           title={`Signup as ${roleLabel}`}
@@ -114,108 +103,58 @@ export default function AuthSelectionScreen() {
         />
       </View>
 
-      {/* TRUST SECTION */}
-      <View style={styles.trustCard}>
-        <View style={styles.iconBox}>
-          <Image
-            source={Images.VerifiedIcon}
-            style={styles.icon}
-            resizeMode="contain"
-          />
-        </View>
-
-        <View style={styles.textBox}>
+      <GlassCard style={styles.trustWrap}>
+        <View style={styles.trustRow}>
+          <View style={styles.iconBox}>
+            <Image
+              source={Images.VerifiedIcon}
+              style={styles.icon}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={styles.trustTitle}>
-            <Text style={{ fontWeight: '700' }}>{trust.title}</Text>{' '}
+            <Text style={{ fontWeight: '700', color: AUTH_GLASS.link }}>
+              {trust.title}
+            </Text>{' '}
             {trust.text}
           </Text>
         </View>
-      </View>
-    </View>
+      </GlassCard>
+    </AuthGlassBackground>
   );
 }
-const createStyles = (colors: any, resp: any) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.WHITE_COLOR,
-      padding: resp.dx(20),
-    },
 
-    header: {
-      marginTop: resp.dy(40),
-    },
-
-    logo: {
-      fontSize: resp.df(26),
-      color: colors.PRIMARY_COLOR,
-      fontWeight: '700',
-    },
-
-    title: {
-      fontSize: resp.df(20),
-      marginTop: resp.dy(40),
-      fontWeight: '600',
-    },
-
-    subtitle: {
-      marginTop: resp.dy(5),
-      color: colors.TEXT_SECONDARY || '#666',
-    },
-
-    body: {
-      gap: resp.dy(15),
-      marginTop: resp.dy(30),
-    },
-
-    backBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginLeft: -15,
-    },
-
-    backText: {
-      fontSize: resp.df(14),
-      color: colors.BLACK_COLOR as string,
-      marginLeft: -8,
-      fontWeight: '500',
-    },
-
-    trustCard: {
-      flexDirection: 'row',
-      marginTop: resp.dx(60),
-      padding: 14,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: '#E6EAF2',
-      elevation: 5,
-      backgroundColor: '#fff',
-      alignItems: 'flex-start',
-    },
-
-    iconBox: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      backgroundColor: '#EEF4FF',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 10,
-    },
-
-    icon: {
-      width: 20,
-      height: 20,
-      tintColor: '#3B82F6',
-    },
-
-    textBox: {
-      flex: 1,
-    },
-
-    trustTitle: {
-      fontSize: 13,
-      color: '#4B5563',
-      lineHeight: 18,
-    },
-  });
+const styles = StyleSheet.create({
+  body: {
+    marginTop: 8,
+  },
+  trustWrap: {
+    marginTop: 28,
+  },
+  trustRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: AUTH_GLASS.orbPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: AUTH_GLASS.cardBorder,
+  },
+  icon: {
+    width: 20,
+    height: 20,
+    tintColor: AUTH_GLASS.link,
+  },
+  trustTitle: {
+    flex: 1,
+    fontSize: 13,
+    color: AUTH_GLASS.subtitle,
+    lineHeight: 19,
+  },
+});

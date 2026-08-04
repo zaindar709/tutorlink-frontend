@@ -3,6 +3,7 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GLASS } from '../../../theme/glass';
 
 const points = [
   'Teaching methodology discussion',
@@ -52,12 +53,12 @@ const styles = StyleSheet.create({
   card: {
     width: '92%',
     alignSelf: 'center',
-    backgroundColor: '#F3F6FB',
+    backgroundColor: GLASS.cardBg,
     borderRadius: 18,
     marginTop: 28,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#D6E4FF',
+    borderColor: GLASS.cardBorder,
     elevation: 3,
   },
 
@@ -90,11 +91,11 @@ const styles = StyleSheet.create({
 
   expectationBox: {
     marginTop: 20,
-    backgroundColor: '#fff',
+    backgroundColor: GLASS.cardBgStrong,
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: GLASS.cardBorder,
   },
 
   expectHeader: {

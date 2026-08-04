@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 type AnalyticsStatCardProps = {
   icon: string;
@@ -21,13 +22,24 @@ const AnalyticsStatCard: React.FC<AnalyticsStatCardProps> = ({
   const { colors, resp } = useUi();
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.WHITE_COLOR, shadowColor: colors.BLACK_COLOR }]}> 
-      <View style={[styles.iconBox, { backgroundColor: accentColor }]}> 
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: GLASS.cardBg,
+          borderColor: GLASS.cardBorder,
+          shadowColor: colors.BLACK_COLOR,
+        },
+      ]}
+    >
+      <View style={[styles.iconBox, { backgroundColor: accentColor }]}>
         <MaterialCommunityIcons name={icon} size={resp.df(20)} color="#fff" />
       </View>
       <Text style={[styles.value, { color: colors.BLACK_COLOR }]}>{value}</Text>
       <Text style={[styles.label, { color: colors.SECONDARY_COLOR }]}>{label}</Text>
-      <Text style={[styles.trend, { color: trend.startsWith('+') ? '#16A34A' : '#DC2626' }]}>
+      <Text
+        style={[styles.trend, { color: trend.startsWith('+') ? '#16A34A' : '#DC2626' }]}
+      >
         {trend}
       </Text>
     </View>
@@ -42,6 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     padding: 18,
     minWidth: 150,
+    borderWidth: 1,
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 20,

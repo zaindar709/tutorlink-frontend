@@ -1,51 +1,46 @@
-// components/TransactionCard.js
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-
 import { Icon } from 'react-native-paper';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 
 export default function TransactionCard({ item }: any) {
   const { colors, resp } = useUi();
   const styles = createStyles({ colors, resp });
-
   const isDeposit = item.type === 'deposit';
 
   return (
     <View style={styles.card}>
-      {/* Left Icon */}
       <View
         style={[
           styles.iconWrapper,
-          {
-            backgroundColor: isDeposit ? '#EAFBF1' : '#FFF0F0',
-          },
+          { backgroundColor: isDeposit ? '#DCFCE7' : '#FEE2E2' },
         ]}
       >
         <Icon
           source={isDeposit ? 'arrow-bottom-left' : 'arrow-top-right'}
           size={18}
-          color={isDeposit ? '#22C55E' : '#EF4444'}
+          color={isDeposit ? '#16A34A' : '#EF4444'}
         />
       </View>
-      <View style={styles.center}>
-        <Text style={styles.title}>{item.title}</Text>
 
+      <View style={styles.center}>
+        <Text style={styles.title} numberOfLines={1}>
+          {item.title}
+        </Text>
         <View style={styles.bottomRow}>
           <Text style={styles.time}>{item.time}</Text>
-
           <Text style={styles.dot}>•</Text>
-
-          <Text style={styles.method}>{item.method}</Text>
+          <Text style={styles.method} numberOfLines={1}>
+            {item.method}
+          </Text>
         </View>
       </View>
+
       <Text
         style={[
           styles.amount,
-          {
-            color: isDeposit ? '#16A34A' : '#EF4444',
-          },
+          { color: isDeposit ? '#16A34A' : '#EF4444' },
         ]}
       >
         {item.amount}
@@ -57,23 +52,18 @@ export default function TransactionCard({ item }: any) {
 const createStyles = ({ colors, resp }: any) =>
   StyleSheet.create({
     card: {
-      width: '95%',
+      width: '100%',
       alignSelf: 'center',
       backgroundColor: '#FFFFFF',
-      borderRadius: resp.dx(18),
+      borderRadius: GLASS.radius.lg,
       padding: resp.dx(14),
-      marginBottom: resp.dy(12),
+      marginBottom: resp.dy(10),
       flexDirection: 'row',
-      alignItems: 'flex-start',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 6,
+      alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#F1F5F9',
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
     },
-
     iconWrapper: {
       width: resp.dx(42),
       height: resp.dx(42),
@@ -81,42 +71,37 @@ const createStyles = ({ colors, resp }: any) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-
     center: {
       flex: 1,
       marginLeft: resp.dx(12),
+      marginRight: resp.dx(8),
     },
-
     title: {
-      color: '#0F172A',
-      fontSize: resp.df(15),
+      color: GLASS.textPrimary,
+      fontSize: resp.df(14),
       fontWeight: '700',
-      lineHeight: resp.dy(22),
     },
-
     bottomRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: resp.dy(8),
+      marginTop: resp.dy(6),
     },
-
     time: {
-      color: '#64748B',
+      color: GLASS.textSecondary,
       fontSize: resp.df(12),
     },
-
     dot: {
       marginHorizontal: resp.dx(6),
-      color: '#94A3B8',
+      color: GLASS.textMuted,
     },
-
     method: {
-      color: '#64748B',
+      flexShrink: 1,
+      color: GLASS.textSecondary,
       fontSize: resp.df(12),
+      textTransform: 'capitalize',
     },
-
     amount: {
-      fontSize: resp.df(15),
-      fontWeight: '700',
+      fontSize: resp.df(14),
+      fontWeight: '800',
     },
   });

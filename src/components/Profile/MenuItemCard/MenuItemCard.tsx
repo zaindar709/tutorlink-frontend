@@ -1,93 +1,112 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Icon } from 'react-native-paper';
+import { GLASS, glassTypography } from '../../../theme/glass';
+
+type Props = {
+  title: string;
+  description?: string;
+  icon: string;
+  onPress: () => void;
+  iconColor?: string;
+  /** Row inside a section panel (no outer card). */
+  embedded?: boolean;
+  /** Hide bottom divider (last row in a section). */
+  isLast?: boolean;
+};
 
 export default function MenuItemCard({
   title,
   description,
   icon,
   onPress,
-  iconColor = '#000',
-}: any) {
+  iconColor = GLASS.primary,
+  embedded = false,
+  isLast = false,
+}: Props) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      
+    <TouchableOpacity
+      style={[
+        embedded ? styles.row : styles.card,
+        embedded && !isLast && styles.rowDivider,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.72}
+    >
       <View style={styles.left}>
-        
-        {/* ICON */}
-        <View
-          style={[
-            styles.iconBox,
-            {
-              backgroundColor: `${iconColor}20`,
-            },
-          ]}
-        >
+        <View style={[styles.iconBox, { backgroundColor: `${iconColor}16` }]}>
           <Icon source={icon} size={20} color={iconColor} />
         </View>
 
-        {/* TEXT CONTAINER */}
         <View style={styles.textContainer}>
           <Text style={styles.title}>{title}</Text>
-
-          <Text style={styles.description}>
-            {description}
-          </Text>
+          {description ? (
+            <Text style={styles.description} numberOfLines={1}>
+              {description}
+            </Text>
+          ) : null}
         </View>
       </View>
 
-      <Icon source="chevron-right" size={22} color="#94A3B8" />
+      <Icon source="chevron-right" size={20} color={GLASS.textMuted} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    width: '95%',
-    minHeight: 75,
+    width: '100%',
+    minHeight: 68,
     alignSelf: 'center',
-    backgroundColor: '#fff',
-    padding: 14,
-    borderRadius: 14,
+    backgroundColor: 'rgba(117, 72, 245, 0.05)',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: GLASS.radius.xl,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(117, 72, 245, 0.14)',
   },
-
+  row: {
+    minHeight: 66,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(117, 72, 245, 0.12)',
+  },
   left: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: 8,
   },
-
   iconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
-
   textContainer: {
     flex: 1,
   },
-
   title: {
-    color: '#0F172A',
-    fontSize: 14,
-    fontWeight: '600',
+    ...glassTypography.body,
+    fontWeight: '700',
+    color: GLASS.textPrimary,
   },
-
   description: {
-    color: '#64748B',
-    fontSize: 12,
+    ...glassTypography.caption,
     marginTop: 2,
+    color: GLASS.textSecondary,
   },
 });

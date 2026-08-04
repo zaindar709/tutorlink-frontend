@@ -9,6 +9,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import useUi from '../../../hooks/ui/useUi';
+import { AuthGlassBackground } from '../../../components/AuthGlass';
 import { createStyles } from './styles';
 
 const INITIAL_COUNTDOWN = 3;
@@ -129,8 +130,9 @@ const SuccessScreen = () => {
   });
 
   return (
-    <KeyboardAvoidingView style={styles.screen} behavior="padding">
-      <View style={styles.container}>
+    <AuthGlassBackground contentStyle={styles.screen}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+        <View style={styles.container}>
         {/* Timer Ring with Checkmark */}
         <Animated.View style={[styles.timerContainer, scaleStyle]}>
           {/* Progress Ring Background */}
@@ -169,8 +171,9 @@ const SuccessScreen = () => {
           Your security is our priority. You will be redirected to the login screen in{' '}
           <Text style={styles.boldText}>{counter} seconds</Text>...
         </Animated.Text>
-      </View>
-    </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
+    </AuthGlassBackground>
   );
 };
 

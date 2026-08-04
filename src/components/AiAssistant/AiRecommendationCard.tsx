@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Icon } from 'react-native-paper';
-import LinearGradient from 'react-native-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import useUi from '../../hooks/ui/useUi';
+import { GLASS } from '../../theme/glass';
 import { AiTutorRecommendation } from '../../types/aiRecommendation.types';
 import Images from '../../assets/images';
 
@@ -72,12 +72,7 @@ export default function AiRecommendationCard({
 
   return (
     <Animated.View entering={FadeInDown.duration(420)} style={styles.wrap}>
-      <LinearGradient
-        colors={['#F8F5FF', '#FFFFFF']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.card}
-      >
+      <View style={styles.card}>
         <View style={styles.topRow}>
           <View style={styles.badge}>
             <Icon source="robot-outline" size={13} color="#fff" />
@@ -160,7 +155,7 @@ export default function AiRecommendationCard({
         <TouchableOpacity onPress={onAnother} style={styles.anotherLink}>
           <Text style={styles.anotherText}>Recommend another</Text>
         </TouchableOpacity>
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 }
@@ -170,10 +165,12 @@ const createStyles = (colors: any, resp: any) =>
     wrap: { marginBottom: resp.dy(16), width: '100%' },
     card: {
       width: '100%',
-      borderRadius: 20,
-      padding: 14,
+      borderRadius: GLASS.radius.xl,
+      padding: GLASS.space.md,
       borderWidth: 1,
-      borderColor: '#E9E3FF',
+      borderColor: GLASS.cardBorder,
+      backgroundColor: '#FFFFFF',
+      ...GLASS.shadow.soft,
     },
     topRow: {
       flexDirection: 'row',
@@ -185,7 +182,7 @@ const createStyles = (colors: any, resp: any) =>
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: '#7548F5',
+      backgroundColor: GLASS.primary,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 999,
@@ -196,14 +193,14 @@ const createStyles = (colors: any, resp: any) =>
       width: 32,
       height: 32,
       borderRadius: 16,
-      backgroundColor: '#fff',
+      backgroundColor: 'transparent',
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: '#EDE9FE',
+      borderColor: GLASS.cardBorder,
     },
-    interestHint: { color: '#64748B', fontSize: 12, marginBottom: 10 },
-    interestStrong: { color: '#4C1D95', fontWeight: '700' },
+    interestHint: { color: GLASS.textSecondary, fontSize: 12, marginBottom: 10 },
+    interestStrong: { color: GLASS.primaryDark, fontWeight: '700' },
     tutorRow: { flexDirection: 'row', gap: 12, marginBottom: 10 },
     avatar: {
       width: 64,
@@ -239,24 +236,25 @@ const createStyles = (colors: any, resp: any) =>
     availOn: { color: '#166534', backgroundColor: '#DCFCE7' },
     availOff: { color: '#92400E', backgroundColor: '#FEF3C7' },
     explainBox: {
-      backgroundColor: '#fff',
-      borderRadius: 12,
+      backgroundColor: 'transparent',
+      borderRadius: GLASS.radius.sm,
       padding: 10,
-      borderWidth: 1,
-      borderColor: '#F1F5F9',
+      borderWidth: 0,
       marginBottom: 12,
     },
-    explainText: { color: '#475569', fontSize: 12.5, lineHeight: 18 },
+    explainText: { color: GLASS.textSecondary, fontSize: 12.5, lineHeight: 18 },
     ctaRow: { flexDirection: 'row', gap: 10 },
     secondaryBtn: {
       flex: 1,
       height: 44,
-      borderRadius: 12,
-      backgroundColor: '#EEF2FF',
+      borderRadius: GLASS.radius.sm,
+      backgroundColor: GLASS.primarySoft,
+      borderWidth: 0,
+      borderColor: GLASS.cardBorderStrong,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    secondaryBtnText: { color: '#4338CA', fontWeight: '700', fontSize: 14 },
+    secondaryBtnText: { color: GLASS.primaryDeep, fontWeight: '700', fontSize: 14 },
     primaryBtn: {
       flex: 1,
       height: 44,
@@ -273,25 +271,26 @@ const createStyles = (colors: any, resp: any) =>
       fontSize: 13,
     },
     loadingCard: {
-      borderRadius: 18,
+      borderRadius: GLASS.radius.lg,
       padding: 20,
       alignItems: 'center',
-      backgroundColor: '#F8FAFC',
+      backgroundColor: '#FFFFFF',
       borderWidth: 1,
-      borderColor: '#E2E8F0',
+      borderColor: GLASS.cardBorder,
       marginBottom: 16,
       gap: 8,
+      ...GLASS.shadow.soft,
     },
-    loadingText: { color: '#64748B', fontSize: 13, textAlign: 'center' },
+    loadingText: { color: GLASS.textSecondary, fontSize: 13, textAlign: 'center' },
     quietError: {
       marginBottom: 12,
       alignItems: 'center',
       gap: 6,
     },
     quietErrorText: {
-      color: '#94A3B8',
+      color: GLASS.textMuted,
       fontSize: 12,
       textAlign: 'center',
     },
-    retryLink: { color: '#7548F5', fontWeight: '700', fontSize: 13 },
+    retryLink: { color: GLASS.primary, fontWeight: '700', fontSize: 13 },
   });

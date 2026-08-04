@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { GlassScreen } from '../../../../components/Glass';
+import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
 import Header from '../../../../components/Tutor/DashBoard/DashBoardHeader';
 import BalanceCard from '../../../../components/Tutor/DashBoard/BalanceCard';
@@ -76,7 +78,7 @@ export default function DashboardScreen() {
   const screenStyles = styles(colors, resp);
 
   return (
-    <View style={screenStyles.container}>
+    <GlassScreen scroll={false} edges={['bottom']}>
       <Header />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -172,18 +174,14 @@ export default function DashboardScreen() {
           />
         )}
       </ScrollView>
-    </View>
+    </GlassScreen>
   );
 }
 
-const styles = (colors: any, resp: any) =>
+const styles = (_colors: any, resp: any) =>
   StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#F8FAFC',
-    },
     contentContainer: {
-      paddingHorizontal: resp.dx(16),
+      paddingHorizontal: resp.dx(GLASS.space.lg),
       paddingBottom: resp.dy(30),
     },
     sectionHeader: {
@@ -196,24 +194,24 @@ const styles = (colors: any, resp: any) =>
     sectionTitle: {
       fontSize: resp.df(20),
       fontWeight: '700',
-      color: '#111827',
+      color: GLASS.textPrimary,
     },
     badge: {
       minWidth: resp.dx(24),
       height: resp.dy(24),
       borderRadius: resp.dx(12),
-      backgroundColor: '#EF4444',
+      backgroundColor: GLASS.error,
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: resp.dx(6),
     },
     badgeText: {
-      color: '#fff',
+      color: GLASS.textOnPrimary,
       fontSize: resp.df(11),
       fontWeight: '700',
     },
     emptyText: {
-      color: '#6B7280',
+      color: GLASS.textSecondary,
       marginBottom: resp.dy(12),
     },
   });

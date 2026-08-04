@@ -129,8 +129,8 @@ const createStyles = (colors: any, resp: any) =>
     },
 
     subHeading: {
-      color: '#DCE6FF',
-      fontSize: resp.df(13),
+      color: 'rgba(255,255,255,0.88)',
+      fontSize: resp.df(14),
       lineHeight: resp.dy(20),
     },
   });

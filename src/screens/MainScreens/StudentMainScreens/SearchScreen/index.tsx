@@ -13,7 +13,7 @@ import TutorMapMarker, {
   getTutorCoordinate,
 } from '../../../../components/SearchMap/TutorMapMarker';
 import useUi from '../../../../hooks/ui/useUi';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../components/Glass';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { useTutorSearch } from '../../../../hooks/api/useTutorSearch';
@@ -145,8 +145,7 @@ const SearchScreen = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.screen}>
+    <GlassScreen scroll={false} edges={['top']} contentStyle={styles.screen}>
         <View style={styles.mapWrapper}>
           <MapLibreGL.Map
             style={styles.map}
@@ -227,7 +226,6 @@ const SearchScreen = () => {
               : `${filteredTutors.length} tutors available`
           }
           loading={loading}
-          onViewAll={handleViewAll}
           isEmpty={!loading && filteredTutors.length === 0}
           colors={colors}
           resp={resp}
@@ -265,8 +263,7 @@ const SearchScreen = () => {
             />
           ))}
         </SearchBottomSheet>
-      </View>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 

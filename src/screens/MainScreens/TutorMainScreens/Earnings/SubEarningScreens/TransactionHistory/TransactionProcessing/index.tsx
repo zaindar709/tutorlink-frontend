@@ -10,7 +10,8 @@ import {
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../../../../hooks/ui/useUi';
 import EarningHeader from '../../../../../../../components/EarningHeader';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { GlassScreen } from '../../../../../../../components/Glass';
+import { GLASS } from '../../../../../../../theme/glass';
 import { useNavigation } from '@react-navigation/native';
 
 const TransactionProcessing = () => {
@@ -33,7 +34,7 @@ const TransactionProcessing = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container]}>
+    <GlassScreen scroll={false}>
       <EarningHeader
         navigation={navigation}
         title="Transaction Details"
@@ -224,17 +225,13 @@ const TransactionProcessing = () => {
           Transaction ID:TXN0000000002
         </Text>
       </ScrollView>
-    </SafeAreaView>
+    </GlassScreen>
   );
 };
 
 export default TransactionProcessing;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   content: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -243,9 +240,11 @@ const styles = StyleSheet.create({
   },
   topCard: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
-    backgroundColor: '#F8FBFF',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   headerRow: {
     flexDirection: 'row',
@@ -277,7 +276,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: '#DBEAFE',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBgStrong,
   },
   statusText: {
     fontSize: 12,
@@ -286,9 +285,11 @@ const styles = StyleSheet.create({
   infoCard: {
     marginTop: 16,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   sectionTitle: {
     fontSize: 14,
@@ -316,9 +317,11 @@ const styles = StyleSheet.create({
   breakdownCard: {
     marginTop: 16,
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: GLASS.radius.xl,
     padding: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
+    ...GLASS.shadow.soft,
   },
   amountRow: {
     flexDirection: 'row',
@@ -357,13 +360,14 @@ const styles = StyleSheet.create({
   secondaryButton: {
     flex: 1,
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: GLASS.radius.md,
     paddingVertical: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: GLASS.cardBg,
+    borderColor: GLASS.cardBorder,
   },
   secondaryButtonText: {
     fontSize: 14,
