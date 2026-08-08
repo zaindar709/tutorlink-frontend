@@ -9,30 +9,60 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Alert,
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
-import {
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
 import { GlassScreen } from '../../../../components/Glass';
 import { GLASS } from '../../../../theme/glass';
-import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
+import { enrichTutorFromSearch } from '../../../../constants/bookingFlowMockData';
 import {
   TeachingMode,
   TimeSlot,
   TutorBookingProfile,
 } from '../../../../types/bookingFlow.types';
-import { MOCK_PAYMENT_METHODS } from '../../../../constants/bookingFlowMockData';
 import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
+import { useAppDispatch, useAppSelector } from '../../../../store/hooks';
+import { createBookingThunk } from '../../../../store/booking/bookingSlice';
+import { resolveTutorUserId } from '../../../../utils/bookings/bookingMappers';
+import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
+import {
+  filterFutureSlots,
+  getSessionDurationHours,
+  pickFirstFutureSlot,
+} from '../../../../utils/bookings/bookingStatus';
+import { formatDateParam, getUserId } from '../../../../utils/api/userId';
+import { fetchTutorById } from '../../../../services/tutors/tutorsService';
+import AppToast from '../../../../components/AppToast/AppToast';
+import {
+  invalidateStudentTutorRelationsCache,
+  useStudentTutorRelations,
+} from '../../../../hooks/api/useStudentTutorRelations';
+import { MOCK_WALLET_DEPOSITS } from '../../../../config/features';
+import { getAvailableWalletBalance } from '../../../../services/wallet/mockWallet';
+import { ApiUser } from '../../../../types/api.types';
 
-const tomorrowIso = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+const DATE_OPTIONS_COUNT = 8;
+
+const buildDateOptions = () => {
+  const today = new Date();
+  return Array.from({ length: DATE_OPTIONS_COUNT }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() + index);
+    const iso = formatDateParam(date);
+    let label = date.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+    if (index === 0) label = 'Today';
+    if (index === 1) label = 'Tomorrow';
+    return { iso, label };
+  });
 };
 
 const TutorBookingDetailsScreen = () => {
@@ -41,40 +71,90 @@ const TutorBookingDetailsScreen = () => {
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const dispatch = useAppDispatch();
+  const authUser = useAppSelector(state => state.auth.user as ApiUser | null);
+  const { getRelation, refresh: refreshRelations } = useStudentTutorRelations();
 
   const tutorId = route.params?.tutorId as string | undefined;
   const seedTutor = route.params?.tutor as TutorBookingProfile | undefined;
   const ctaLabel: 'Hire Tutor' | 'Book Now' =
     route.params?.ctaLabel === 'Book Now' ? 'Book Now' : 'Hire Tutor';
 
+  const dateOptions = useMemo(() => buildDateOptions(), []);
+
   const [tutor, setTutor] = useState<TutorBookingProfile | null>(
     seedTutor || null
   );
   const [similar, setSimilar] = useState<TutorBookingProfile[]>([]);
   const [loading, setLoading] = useState(!seedTutor);
+  const [refreshingRate, setRefreshingRate] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(dateOptions[0]?.iso || '');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [subject, setSubject] = useState('');
   const [mode, setMode] = useState<TeachingMode>('online');
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [paymentId, setPaymentId] = useState(MOCK_PAYMENT_METHODS[0].id);
   const [submitting, setSubmitting] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const profile =
-          seedTutor || (await bookingFlowService.getTutorDetails(tutorId));
-        if (!mounted) return;
+        let profile =
+          seedTutor ||
+          (tutorId ? enrichTutorFromSearch({ _id: tutorId }) : null);
+
+        // Refresh hourlyRate from server — search often omits it; local tutor UI is AsyncStorage-only.
+        const idsToTry = Array.from(
+          new Set(
+            [seedTutor?.userId, seedTutor?.id, tutorId].filter(Boolean) as string[]
+          )
+        );
+        setRefreshingRate(true);
+        for (const id of idsToTry) {
+          const live = await fetchTutorById(id);
+          if (!live || !mounted) continue;
+          const enrichedLive = enrichTutorFromSearch(live);
+          profile = {
+            ...(profile || enrichedLive),
+            ...enrichedLive,
+            name: enrichedLive.name || profile?.name || 'Tutor',
+            avatarUrl: enrichedLive.avatarUrl || profile?.avatarUrl || '',
+            userId: enrichedLive.userId || profile?.userId,
+            hourlyRate:
+              enrichedLive.hourlyRate > 0
+                ? enrichedLive.hourlyRate
+                : profile?.hourlyRate || 0,
+            timeSlots:
+              profile?.timeSlots?.length
+                ? profile.timeSlots
+                : enrichedLive.timeSlots,
+          };
+          console.log('[Booking] live tutor rate', {
+            id,
+            rate: enrichedLive.hourlyRate,
+            userId: enrichedLive.userId,
+          });
+          if (enrichedLive.hourlyRate > 0) break;
+        }
+
+        if (!mounted || !profile) return;
         setTutor(profile);
         setSubject(profile.subjects[0] || 'General');
         setMode(profile.teachingMode === 'physical' ? 'physical' : 'online');
-        const firstFree = profile.timeSlots.find((s: TimeSlot) => s.available);
-        setSelectedSlot(firstFree || null);
-        const sims = await bookingFlowService.listSimilarTutors(profile.id);
-        if (mounted) setSimilar(sims);
+        const initialDate = dateOptions[0]?.iso || formatDateParam(new Date());
+        setSelectedDate(initialDate);
+        setSelectedSlot(
+          pickFirstFutureSlot(profile.timeSlots, initialDate) ||
+            profile.timeSlots[0] ||
+            null
+        );
+        if (mounted) setSimilar([]);
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setLoading(false);
+          setRefreshingRate(false);
+        }
       }
     })();
     return () => {
@@ -96,49 +176,174 @@ const TutorBookingDetailsScreen = () => {
         scroll={false}
         contentStyle={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
       >
-        <ActivityIndicator
-          color={colors.PRIMARY_COLOR as string}
-        />
+        <ActivityIndicator color={colors.PRIMARY_COLOR as string} />
       </GlassScreen>
     );
   }
 
-  const durationHours = 1;
-  const totalCost = Math.round(tutor.hourlyRate * durationHours);
-  const payment = MOCK_PAYMENT_METHODS.find(p => p.id === paymentId);
+  const durationHours = selectedSlot
+    ? getSessionDurationHours(selectedSlot.startTime, selectedSlot.endTime)
+    : 1;
+  const totalCost = Math.round(Math.max(0, tutor.hourlyRate) * durationHours);
   const footerBottomPad = Math.max(insets.bottom, 10);
+  const selectedDateLabel =
+    dateOptions.find(d => d.iso === selectedDate)?.label || selectedDate;
+  const relation = getRelation([tutor.id, tutor.userId, tutorId]);
+  const footerCtaLabel = relation.canBook ? ctaLabel : relation.label;
+  const bookableSlots = useMemo(
+    () => filterFutureSlots(tutor.timeSlots, selectedDate),
+    [tutor.timeSlots, selectedDate]
+  );
+
+  React.useEffect(() => {
+    const stillValid =
+      selectedSlot &&
+      bookableSlots.some(
+        s =>
+          s.id === selectedSlot.id ||
+          (s.startTime === selectedSlot.startTime &&
+            s.endTime === selectedSlot.endTime)
+      );
+    if (!stillValid) {
+      setSelectedSlot(bookableSlots[0] || null);
+    }
+    // Only re-pick when date/slots change — not when selectedSlot itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, bookableSlots]);
 
   const openConfirm = () => {
-    if (!selectedSlot) return;
+    const currentRelation = getRelation([
+      tutor.id,
+      tutor.userId,
+      tutorId,
+    ]);
+    if (!currentRelation.canBook) {
+      if (currentRelation.state === 'request_sent' && currentRelation.booking) {
+        navigation.replace('BookingPendingScreen', {
+          bookingId: currentRelation.booking._id,
+        });
+        return;
+      }
+      leaveHomeStackToTabs('Bookings');
+      return;
+    }
+    if (!selectedSlot) {
+      Alert.alert(
+        'Choose a time',
+        bookableSlots.length === 0
+          ? 'No future times left for this day. Pick another date.'
+          : 'Pick a preferred class time for your request.'
+      );
+      return;
+    }
+    if (!selectedDate) {
+      Alert.alert('Choose a date', 'Pick a preferred class date.');
+      return;
+    }
+    if (!subject.trim()) {
+      Alert.alert('Subject required', 'Please choose a subject.');
+      return;
+    }
+    if (!tutor.userId) {
+      Alert.alert(
+        'Cannot book',
+        'Tutor account id is missing from search. Please go back and open this tutor again from Search.'
+      );
+      return;
+    }
+    if (!(tutor.hourlyRate > 0)) {
+      Alert.alert(
+        'Tutor fee missing on server',
+        'Student APIs still return hourlyRate = 0 for this tutor.\n\nFee on the tutor phone is often only saved in local storage — not on the backend.\n\nTutor: Profile → Edit Profile → set fee → Save until sync succeeds. Backend must store hourlyRate on TutorProfile and return it from /api/tutors/search.'
+      );
+      return;
+    }
     setConfirmOpen(true);
   };
 
   const confirmBooking = async () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || submitting) return;
+
+    const relation = getRelation([tutor.id, tutor.userId, tutorId]);
+    if (!relation.canBook) {
+      setConfirmOpen(false);
+      Alert.alert(
+        relation.state === 'request_sent'
+          ? 'Request already sent'
+          : 'Already booked',
+        relation.state === 'request_sent'
+          ? 'You already have a pending request with this tutor.'
+          : 'You already have an active booking with this tutor.'
+      );
+      return;
+    }
+
+    const tutorUserId = resolveTutorUserId({
+      _id: tutor.id,
+      userId: tutor.userId,
+      user: tutor.userId ? { _id: tutor.userId } : undefined,
+    });
+
+    if (!tutorUserId) {
+      Alert.alert(
+        'Cannot book',
+        'Tutor account id is missing (need User id, not profile id). Please go back to Search and open this tutor again.'
+      );
+      return;
+    }
+
+    const payload = {
+      tutor: tutorUserId,
+      tutorId: tutorUserId,
+      subject: subject.trim(),
+      date: selectedDate,
+      startTime: selectedSlot.startTime,
+      endTime: selectedSlot.endTime,
+    };
+
+    console.log('[Booking] POST /api/bookings', payload);
+
     setSubmitting(true);
     try {
-      const booking = await bookingFlowService.createBookingRequest({
-        tutorId: tutor.id,
-        tutor,
-        subject,
-        date: tomorrowIso(),
-        slotId: selectedSlot.id,
-        startTime: selectedSlot.startTime,
-        endTime: selectedSlot.endTime,
-        durationHours,
-        teachingMode: mode,
-        ctaLabel,
-        notes: `Requested via ${ctaLabel}`,
-      });
+      if (MOCK_WALLET_DEPOSITS) {
+        const available = await getAvailableWalletBalance(getUserId(authUser));
+        if (available < totalCost) {
+          setSubmitting(false);
+          setConfirmOpen(false);
+          Alert.alert(
+            'Add mock funds first',
+            `This session needs about PKR ${totalCost.toLocaleString()}.\n\nWallet available: PKR ${available.toLocaleString()}.\n\nOpen Wallet → Add Mock Funds, then book again.`,
+            [
+              {
+                text: 'Open Wallet',
+                onPress: () => navigation.navigate('WalletScreen'),
+              },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+          return;
+        }
+      }
+
+      const booking = await dispatch(createBookingThunk(payload)).unwrap();
       setConfirmOpen(false);
-      navigation.replace('BookingPendingScreen', { bookingId: booking.id });
+      setToastMsg('Request sent to tutor');
+      invalidateStudentTutorRelationsCache();
+      void refreshRelations();
+      navigation.replace('BookingPendingScreen', { bookingId: booking._id });
+    } catch (err) {
+      Alert.alert('Booking failed', getBookingErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <GlassScreen scroll={false} edges={['top', 'left', 'right']} contentStyle={styles.screen}>
+    <GlassScreen
+      scroll={false}
+      edges={['top', 'left', 'right']}
+      contentStyle={styles.screen}
+    >
       <ScrollView
         contentContainerStyle={[
           styles.content,
@@ -182,8 +387,15 @@ const TutorBookingDetailsScreen = () => {
               </Text>
             </View>
             <Text style={styles.price}>
-              PKR {tutor.hourlyRate.toLocaleString()}/hr
+              {refreshingRate
+                ? 'Loading rate…'
+                : `PKR ${tutor.hourlyRate.toLocaleString()}/hr`}
             </Text>
+            {!(tutor.hourlyRate > 0) && !refreshingRate ? (
+              <Text style={{ color: '#FECACA', fontSize: 11, marginTop: 4 }}>
+                Server rate missing — booking blocked
+              </Text>
+            ) : null}
           </View>
         </LinearGradient>
 
@@ -201,54 +413,64 @@ const TutorBookingDetailsScreen = () => {
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Availability</Text>
-          <View style={styles.chipRow}>
-            <View
-              style={[
-                styles.statusPill,
-                tutor.availabilityStatus === 'available'
-                  ? styles.statusAvailable
-                  : styles.statusBusy,
-              ]}
-            >
-              <Text style={styles.statusText}>
-                {tutor.availabilityStatus === 'available'
-                  ? 'Available now'
-                  : 'Limited slots'}
-              </Text>
-            </View>
-            <Text style={styles.muted}>{tutor.responseTime}</Text>
-          </View>
-          <Text style={[styles.sectionTitle, { marginTop: 14 }]}>
-            Time slots · Tomorrow
+          <Text style={styles.sectionTitle}>Preferred class time</Text>
+          <Text style={styles.hint}>
+            Pick any date/time and send a request. It appears on the tutor’s
+            Requests. After they accept, class starts at this time.
           </Text>
+
+          <Text style={[styles.subLabel, { marginTop: 12 }]}>Date</Text>
           <View style={styles.chipRow}>
-            {tutor.timeSlots.map(slot => {
-              const selected = selectedSlot?.id === slot.id;
+            {dateOptions.map(option => {
+              const selected = selectedDate === option.iso;
               return (
                 <TouchableOpacity
-                  key={slot.id}
-                  disabled={!slot.available}
-                  onPress={() => setSelectedSlot(slot)}
-                  style={[
-                    styles.slot,
-                    !slot.available && styles.slotDisabled,
-                    selected && styles.slotSelected,
-                  ]}
+                  key={option.iso}
+                  onPress={() => setSelectedDate(option.iso)}
+                  style={[styles.slot, selected && styles.slotSelected]}
                 >
                   <Text
                     style={[
                       styles.slotText,
                       selected && styles.slotTextSelected,
-                      !slot.available && styles.slotTextDisabled,
                     ]}
                   >
-                    {slot.label}
+                    {option.label}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+
+          <Text style={[styles.subLabel, { marginTop: 14 }]}>Start time</Text>
+          {bookableSlots.length === 0 ? (
+            <Text style={styles.hint}>
+              No future slots left for this day. Choose tomorrow or another
+              date.
+            </Text>
+          ) : (
+            <View style={styles.chipRow}>
+              {bookableSlots.map(slot => {
+                const selected = selectedSlot?.id === slot.id;
+                return (
+                  <TouchableOpacity
+                    key={slot.id}
+                    onPress={() => setSelectedSlot(slot)}
+                    style={[styles.slot, selected && styles.slotSelected]}
+                  >
+                    <Text
+                      style={[
+                        styles.slotText,
+                        selected && styles.slotTextSelected,
+                      ]}
+                    >
+                      {slot.startTime}–{slot.endTime}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -297,14 +519,18 @@ const TutorBookingDetailsScreen = () => {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.body}>{tutor.bio}</Text>
+          <Text style={styles.body}>{tutor.bio || 'No bio added yet.'}</Text>
           <Text style={[styles.muted, { marginTop: 10 }]}>
             {tutor.location} · {tutor.languages.join(', ')}
           </Text>
-          <Text style={[styles.muted, { marginTop: 4 }]}>
-            Member since {tutor.accountSummary.memberSince} ·{' '}
-            {tutor.accountSummary.teachingStyle}
-          </Text>
+          {tutor.accountSummary.memberSince ? (
+            <Text style={[styles.muted, { marginTop: 4 }]}>
+              Member since {tutor.accountSummary.memberSince}
+              {tutor.accountSummary.teachingStyle
+                ? ` · ${tutor.accountSummary.teachingStyle}`
+                : ''}
+            </Text>
+          ) : null}
         </View>
 
         {tutor.certificates.length > 0 ? (
@@ -380,14 +606,15 @@ const TutorBookingDetailsScreen = () => {
 
       <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
         <View style={styles.footerPriceBlock}>
-          <Text style={styles.footerLabel}>Total (1 hr)</Text>
+          <Text style={styles.footerLabel}>Est. ({durationHours} hr)</Text>
           <Text style={styles.footerPrice}>
             PKR {totalCost.toLocaleString()}
           </Text>
         </View>
         <CustomButton
-          title={ctaLabel}
+          title={footerCtaLabel}
           onPress={openConfirm}
+          disabled={!relation.canBook}
           style={styles.footerCta}
           textStyle={styles.footerCtaText}
         />
@@ -411,47 +638,38 @@ const TutorBookingDetailsScreen = () => {
             ]}
           >
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Confirm booking</Text>
+            <Text style={styles.sheetTitle}>Send booking request</Text>
             <Text style={styles.body}>
               {tutor.name} · {subject}
             </Text>
             <Text style={styles.muted}>
-              Tomorrow · {selectedSlot?.label} (
-              {selectedSlot?.startTime}–{selectedSlot?.endTime})
+              {selectedDateLabel} · {selectedSlot?.startTime}–
+              {selectedSlot?.endTime}
             </Text>
             <Text style={styles.muted}>
               {durationHours} hr · {mode === 'online' ? 'Online' : 'Physical'}
+            </Text>
+            <Text style={[styles.hint, { marginTop: 10 }]}>
+              Tutor sees this on Requests. After accept, class uses this time.
             </Text>
             <Text style={[styles.priceDark, { marginTop: 10 }]}>
               PKR {totalCost.toLocaleString()}
             </Text>
 
-            <Text style={[styles.sectionTitle, { marginTop: 16 }]}>
-              Payment method
-            </Text>
-            {MOCK_PAYMENT_METHODS.map(method => {
-              const active = paymentId === method.id;
-              return (
-                <TouchableOpacity
-                  key={method.id}
-                  style={[styles.payRow, active && styles.payRowActive]}
-                  onPress={() => setPaymentId(method.id)}
-                >
-                  <View style={{ flex: 1, paddingRight: 8 }}>
-                    <Text style={styles.certTitle}>{method.label}</Text>
-                    <Text style={styles.muted}>{method.detail}</Text>
-                  </View>
-                  <Icon
-                    source={active ? 'radiobox-marked' : 'radiobox-blank'}
-                    size={22}
-                    color="#7548F5"
-                  />
-                </TouchableOpacity>
-              );
-            })}
+            <View
+              style={[styles.payRow, styles.payRowActive, { marginTop: 16 }]}
+            >
+              <View style={{ flex: 1, paddingRight: 8 }}>
+                <Text style={styles.certTitle}>TutorLink Wallet</Text>
+                <Text style={styles.muted}>
+                  No charge yet. Escrow is held when the tutor accepts.
+                </Text>
+              </View>
+              <Icon source="wallet-outline" size={22} color="#7548F5" />
+            </View>
 
             <CustomButton
-              title={submitting ? 'Confirming…' : 'Confirm Booking'}
+              title={submitting ? 'Sending…' : 'Send request'}
               onPress={() => void confirmBooking()}
               disabled={submitting}
               loading={submitting}
@@ -459,11 +677,17 @@ const TutorBookingDetailsScreen = () => {
               textStyle={styles.footerCtaText}
             />
             <Text style={[styles.muted, { textAlign: 'center', marginTop: 8 }]}>
-              Paying with {payment?.label}
+              You can cancel while the request is pending.
             </Text>
           </View>
         </View>
       </Modal>
+
+      <AppToast
+        visible={Boolean(toastMsg)}
+        message={toastMsg}
+        onHide={() => setToastMsg('')}
+      />
     </GlassScreen>
   );
 };
@@ -520,8 +744,17 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       gap: 4,
       marginTop: 8,
     },
-    heroMetaText: { color: GLASS.textOnPrimary, fontSize: 13, fontWeight: '600' },
-    price: { color: GLASS.accent, fontWeight: '800', fontSize: 16, marginTop: 8 },
+    heroMetaText: {
+      color: GLASS.textOnPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    price: {
+      color: GLASS.accent,
+      fontWeight: '800',
+      fontSize: 16,
+      marginTop: 8,
+    },
     priceDark: { color: GLASS.primary, fontWeight: '800', fontSize: 20 },
     statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
     statCard: {
@@ -552,6 +785,18 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       color: GLASS.textPrimary,
       marginBottom: 10,
     },
+    subLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: GLASS.textSecondary,
+      marginBottom: 8,
+    },
+    hint: {
+      color: GLASS.textSecondary,
+      fontSize: 12,
+      lineHeight: 18,
+      marginBottom: 4,
+    },
     body: { color: GLASS.textSecondary, fontSize: 13, lineHeight: 20 },
     muted: { color: GLASS.textMuted, fontSize: 12 },
     chipRow: {
@@ -560,14 +805,6 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       gap: 8,
       alignItems: 'center',
     },
-    statusPill: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: GLASS.radius.full,
-    },
-    statusAvailable: { backgroundColor: 'rgba(34, 197, 94, 0.15)' },
-    statusBusy: { backgroundColor: 'rgba(245, 158, 11, 0.15)' },
-    statusText: { fontSize: 12, fontWeight: '700', color: GLASS.success },
     slot: {
       paddingHorizontal: 14,
       paddingVertical: 10,
@@ -575,10 +812,8 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       backgroundColor: GLASS.primarySoft,
     },
     slotSelected: { backgroundColor: GLASS.primary },
-    slotDisabled: { backgroundColor: '#F1F5F9' },
     slotText: { color: GLASS.primaryDeep, fontWeight: '700', fontSize: 13 },
     slotTextSelected: { color: GLASS.textOnPrimary },
-    slotTextDisabled: { color: GLASS.textMuted },
     chip: {
       paddingHorizontal: 12,
       paddingVertical: 8,
@@ -612,7 +847,12 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       padding: 10,
       alignItems: 'center',
     },
-    similarAvatar: { width: 56, height: 56, borderRadius: GLASS.radius.lg, marginBottom: 8 },
+    similarAvatar: {
+      width: 56,
+      height: 56,
+      borderRadius: GLASS.radius.lg,
+      marginBottom: 8,
+    },
     similarName: { fontWeight: '700', fontSize: 12, color: GLASS.textPrimary },
     footer: {
       position: 'absolute',
@@ -692,5 +932,8 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       marginBottom: 8,
       backgroundColor: GLASS.primarySoft,
     },
-    payRowActive: { borderColor: GLASS.cardBorderStrong, backgroundColor: GLASS.primarySoft },
+    payRowActive: {
+      borderColor: GLASS.cardBorderStrong,
+      backgroundColor: GLASS.primarySoft,
+    },
   });

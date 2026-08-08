@@ -5,7 +5,19 @@ import LinearGradient from 'react-native-linear-gradient';
 import useUi from '../../hooks/ui/useUi';
 import { GLASS } from '../../theme/glass';
 
-export default function WalletCard({ balance, onDeposit }: any) {
+type WalletCardProps = {
+  balance: number;
+  onDeposit: () => void;
+  depositLabel?: string;
+  mockBadge?: boolean;
+};
+
+export default function WalletCard({
+  balance,
+  onDeposit,
+  depositLabel = 'Deposit Money',
+  mockBadge = false,
+}: WalletCardProps) {
   const { colors, resp } = useUi();
   const styles = createStyles({ colors, resp });
 
@@ -18,11 +30,22 @@ export default function WalletCard({ balance, onDeposit }: any) {
     >
       <View style={styles.topRow}>
         <View style={styles.balanceBlock}>
-          <Text style={styles.label}>Available Balance</Text>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>Available Balance</Text>
+            {mockBadge ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>MOCK</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.balance}>
             Rs. {Number(balance || 0).toLocaleString()}
           </Text>
-          <Text style={styles.hint}>Ready to book sessions</Text>
+          <Text style={styles.hint}>
+            {mockBadge
+              ? 'Demo funds — ready for booking escrow'
+              : 'Ready to book sessions'}
+          </Text>
         </View>
 
         <View style={styles.iconContainer}>
@@ -36,7 +59,7 @@ export default function WalletCard({ balance, onDeposit }: any) {
         onPress={onDeposit}
       >
         <Icon source="plus-circle-outline" size={20} color={GLASS.primary} />
-        <Text style={styles.depositText}>Deposit Money</Text>
+        <Text style={styles.depositText}>{depositLabel}</Text>
       </TouchableOpacity>
     </LinearGradient>
   );
@@ -60,11 +83,30 @@ const createStyles = ({ colors, resp }: any) =>
       flex: 1,
       paddingRight: 12,
     },
+    labelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: resp.dy(6),
+    },
     label: {
       color: 'rgba(255,255,255,0.85)',
       fontSize: resp.df(13),
       fontWeight: '600',
-      marginBottom: resp.dy(6),
+    },
+    badge: {
+      backgroundColor: 'rgba(255,255,255,0.22)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.35)',
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 999,
+    },
+    badgeText: {
+      color: '#fff',
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.6,
     },
     balance: {
       color: colors.WHITE_COLOR,

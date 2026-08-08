@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
 import * as MapLibreGL from '@maplibre/maplibre-react-native';
 import { Icon } from 'react-native-paper';
 import {
@@ -17,9 +17,13 @@ import { GlassScreen } from '../../../../components/Glass';
 import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { useTutorSearch } from '../../../../hooks/api/useTutorSearch';
+import { useStudentTutorRelations } from '../../../../hooks/api/useStudentTutorRelations';
 import { TutorProfile } from '../../../../types/api.types';
 import { enrichTutorFromSearch } from '../../../../constants/bookingFlowMockData';
-import { navigateHomeStack } from '../../../../navigation/navigationRef';
+import {
+  leaveHomeStackToTabs,
+  navigateHomeStack,
+} from '../../../../navigation/navigationRef';
 
 const LAHORE = { lat: 31.5204, lng: 74.3587 };
 
@@ -69,6 +73,7 @@ const SearchScreen = () => {
     DEFAULT_SEARCH_FILTERS,
     { autoLoad: false }
   );
+  const { getRelation } = useStudentTutorRelations();
 
   const handleViewAll = useCallback(() => {
     setExpandedSheet(true);
@@ -230,38 +235,56 @@ const SearchScreen = () => {
           colors={colors}
           resp={resp}
         >
-          {filteredTutors.map(tutor => (
-            <TutorNearbyCard
-              key={tutor._id}
-              name={tutor.user?.name || 'Tutor'}
-              subject={(tutor.subjects || []).join(', ') || 'General'}
-              distance={
-                tutor.distanceKm
-                  ? `${tutor.distanceKm.toFixed(1)} km away`
-                  : 'Nearby'
-              }
-              rating={tutor.rating ?? 4}
-              avatarUrl={tutor.user?.avatarUrl}
-              isSelected={tutor._id === selectedTutor?._id}
-              onPress={() => {
-                setSelectedTutorId(tutor._id);
-                try {
-                  const enriched = enrichTutorFromSearch(tutor);
-                  navigateHomeStack('TutorBookingDetailsScreen', {
-                    tutorId: enriched.id,
-                    tutor: enriched,
-                    ctaLabel: 'Book Now',
-                  });
-                } catch (error) {
-                  console.warn('[Search] book navigate failed', error);
-                  navigateHomeStack('TutorBookingDetailsScreen', {
-                    tutorId: 'tutor-sara-ahmed',
-                    ctaLabel: 'Book Now',
-                  });
+          {filteredTutors.map(tutor => {
+            const relation = getRelation(
+              [tutor._id, tutor.user?._id, tutor.user?.id],
+              tutor.relation
+            );
+            return (
+              <TutorNearbyCard
+                key={tutor._id}
+                name={tutor.user?.name || 'Tutor'}
+                subject={(tutor.subjects || []).join(', ') || 'General'}
+                distance={
+                  tutor.distanceKm
+                    ? `${tutor.distanceKm.toFixed(1)} km away`
+                    : 'Nearby'
                 }
-              }}
-            />
-          ))}
+                rating={tutor.rating ?? 4}
+                avatarUrl={tutor.user?.avatarUrl}
+                isSelected={tutor._id === selectedTutor?._id}
+                actionLabel={relation.label}
+                actionDisabled={!relation.canBook}
+                onPress={() => {
+                  setSelectedTutorId(tutor._id);
+                  if (!relation.canBook) {
+                    if (relation.state === 'request_sent' && relation.booking) {
+                      navigateHomeStack('BookingPendingScreen', {
+                        bookingId: relation.booking._id,
+                      });
+                      return;
+                    }
+                    leaveHomeStackToTabs('Bookings');
+                    return;
+                  }
+                  try {
+                    const enriched = enrichTutorFromSearch(tutor);
+                    navigateHomeStack('TutorBookingDetailsScreen', {
+                      tutorId: enriched.id,
+                      tutor: enriched,
+                      ctaLabel: 'Book Now',
+                    });
+                  } catch (error) {
+                    console.warn('[Search] book navigate failed', error);
+                    Alert.alert(
+                      'Unable to open tutor',
+                      'Please try selecting this tutor again.'
+                    );
+                  }
+                }}
+              />
+            );
+          })}
         </SearchBottomSheet>
     </GlassScreen>
   );

@@ -1,13 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useCallback, useEffect, useRef } from 'react';
 import {
-  deleteMessage,
-  listMessages,
+  isInquiryConversationId,
   mapMessage,
   reactToMessage,
-  sendMediaMessage,
-  sendTextMessage,
-  isInquiryConversationId,
 } from '../../services/chat/chatService';
 import {
   connectChatSocket,
@@ -20,51 +15,84 @@ import {
   releaseChatSocket,
 } from '../../services/chat/chatSocket';
 import {
+  addOptimisticMessage,
+  deleteMessageThunk,
+  fetchMessagesThunk,
+  markConversationRead,
+  messageReceived,
+  messageStatusUpdated,
+  sendMediaMessageThunk,
+  sendTextMessageThunk,
+  setPeerTyping,
+} from '../../store/chat/chatSlice';
+import {
+  selectHasMoreMessages,
+  selectMessagesFor,
+  selectMessagesLoading,
+  selectPeerTyping,
+  selectSending,
+} from '../../store/chat/chatSelectors';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
   ChatMediaMessageType,
   ChatMessage,
   MessageStatus,
 } from '../../types/chat.types';
 import { ApiUser } from '../../types/api.types';
-import { getApiErrorMessage } from '../../utils/api/errorHandler';
 import { getUserId } from '../../utils/api/userId';
 
 export const useChatMessages = (conversationId: string) => {
-  const authUser = useSelector(
-    (state: any) => state.auth.user as ApiUser | null
-  );
+  const dispatch = useAppDispatch();
+  const authUser = useAppSelector(state => state.auth.user as ApiUser | null);
   const me = getUserId(authUser);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [peerTyping, setPeerTyping] = useState(false);
+  const messages = useAppSelector(selectMessagesFor(conversationId));
+  const loading = useAppSelector(selectMessagesLoading(conversationId));
+  const sending = useAppSelector(selectSending(conversationId));
+  const peerTyping = useAppSelector(selectPeerTyping(conversationId));
+  const hasMore = useAppSelector(selectHasMoreMessages(conversationId));
+  const error = useAppSelector(state => state.chat.error);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageRef = useRef(1);
 
   const load = useCallback(async () => {
     if (!conversationId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const items = await listMessages(conversationId, authUser);
-      setMessages(items);
+    pageRef.current = 1;
+    const items = await dispatch(
+      fetchMessagesThunk({
+        conversationId,
+        currentUser: authUser,
+        page: 1,
+        append: false,
+      })
+    ).unwrap();
 
-      const lastIncoming = [...items].reverse().find(m => !m.isMine);
-      if (lastIncoming) {
-        emitMessageDelivered(conversationId, lastIncoming.id);
-        emitMessageSeen(conversationId, lastIncoming.id);
-      }
-    } catch (err) {
-      setError(getApiErrorMessage(err, 'Could not load messages.'));
-    } finally {
-      setLoading(false);
+    dispatch(markConversationRead(conversationId));
+
+    const lastIncoming = [...items.messages].reverse().find(m => !m.isMine);
+    if (lastIncoming && !isInquiryConversationId(conversationId)) {
+      emitMessageDelivered(conversationId, lastIncoming.id);
+      emitMessageSeen(conversationId, lastIncoming.id);
     }
-  }, [authUser, conversationId]);
+  }, [authUser, conversationId, dispatch]);
+
+  const loadMore = useCallback(async () => {
+    if (!conversationId || !hasMore || loading) return;
+    const nextPage = pageRef.current + 1;
+    await dispatch(
+      fetchMessagesThunk({
+        conversationId,
+        currentUser: authUser,
+        page: nextPage,
+        append: true,
+      })
+    );
+    pageRef.current = nextPage;
+  }, [authUser, conversationId, dispatch, hasMore, loading]);
 
   useEffect(() => {
     if (!conversationId) return;
     void load();
 
-    // Local pre-booking chats don't use sockets
     if (isInquiryConversationId(conversationId)) {
       return;
     }
@@ -76,19 +104,12 @@ export const useChatMessages = (conversationId: string) => {
         const mapped = mapMessage(raw, me, conversationId);
         if (!mapped || mapped.chatId !== conversationId) return;
 
-        setMessages(prev => {
-          if (prev.some(m => m.id === mapped.id)) return prev;
-          const withoutOptimistic = prev.filter(
-            m =>
-              !(
-                m.id.startsWith('local-') &&
-                m.isMine &&
-                m.text &&
-                m.text === mapped.text
-              )
-          );
-          return [...withoutOptimistic, mapped];
-        });
+        dispatch(
+          messageReceived({
+            message: mapped,
+            incrementUnread: false,
+          })
+        );
 
         if (!mapped.isMine) {
           emitMessageDelivered(conversationId, mapped.id);
@@ -103,7 +124,7 @@ export const useChatMessages = (conversationId: string) => {
         userId: string;
       }) => {
         if (id === conversationId && userId !== me) {
-          setPeerTyping(true);
+          dispatch(setPeerTyping({ conversationId, typing: true }));
         }
       },
       onUserStopTyping: ({
@@ -114,7 +135,7 @@ export const useChatMessages = (conversationId: string) => {
         userId: string;
       }) => {
         if (id === conversationId && userId !== me) {
-          setPeerTyping(false);
+          dispatch(setPeerTyping({ conversationId, typing: false }));
         }
       },
       onMessageStatusUpdated: ({
@@ -124,12 +145,12 @@ export const useChatMessages = (conversationId: string) => {
         messageId: string;
         status: string;
       }) => {
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === messageId
-              ? { ...m, status: status as MessageStatus }
-              : m
-          )
+        dispatch(
+          messageStatusUpdated({
+            conversationId,
+            messageId,
+            status: status as MessageStatus,
+          })
         );
       },
     };
@@ -144,7 +165,7 @@ export const useChatMessages = (conversationId: string) => {
       releaseChatSocket(handlers);
       if (typingTimer.current) clearTimeout(typingTimer.current);
     };
-  }, [conversationId, load, me]);
+  }, [conversationId, dispatch, load, me]);
 
   const notifyTyping = useCallback(() => {
     if (!conversationId || isInquiryConversationId(conversationId)) return;
@@ -160,8 +181,9 @@ export const useChatMessages = (conversationId: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
+      const optimisticId = `local-${Date.now()}`;
       const optimistic: ChatMessage = {
-        id: `local-${Date.now()}`,
+        id: optimisticId,
         chatId: conversationId,
         type: 'text',
         text: trimmed,
@@ -170,32 +192,27 @@ export const useChatMessages = (conversationId: string) => {
         createdAt: new Date().toISOString(),
         status: 'sending',
       };
-      setMessages(prev => [...prev, optimistic]);
-      setSending(true);
+      dispatch(
+        addOptimisticMessage({ conversationId, message: optimistic })
+      );
 
       try {
-        const saved = await sendTextMessage(
-          conversationId,
-          trimmed,
-          authUser,
-          replyTo
-        );
-        setMessages(prev =>
-          prev.map(m => (m.id === optimistic.id ? saved : m))
-        );
-      } catch (err) {
-        setMessages(prev =>
-          prev.map(m =>
-            m.id === optimistic.id ? { ...m, status: 'failed' } : m
-          )
-        );
-        setError(getApiErrorMessage(err, 'Failed to send message.'));
+        await dispatch(
+          sendTextMessageThunk({
+            conversationId,
+            text: trimmed,
+            replyTo,
+            currentUser: authUser,
+            optimisticId,
+          })
+        ).unwrap();
+      } catch {
+        // failed status set in slice
       } finally {
-        setSending(false);
         emitStopTyping(conversationId);
       }
     },
-    [authUser, conversationId, me]
+    [authUser, conversationId, dispatch, me]
   );
 
   const sendMedia = useCallback(
@@ -207,80 +224,64 @@ export const useChatMessages = (conversationId: string) => {
       text?: string;
       duration?: number;
     }) => {
-      setSending(true);
       try {
-        const saved = await sendMediaMessage(
-          {
-            conversationId,
-            file: {
-              uri: params.uri,
-              type: params.type,
-              name: params.name,
+        await dispatch(
+          sendMediaMessageThunk({
+            params: {
+              conversationId,
+              file: {
+                uri: params.uri,
+                type: params.type,
+                name: params.name,
+              },
+              messageType: params.messageType,
+              text: params.text,
+              duration: params.duration,
             },
-            messageType: params.messageType,
-            text: params.text,
-            duration: params.duration,
-          },
-          authUser
-        );
-        setMessages(prev => [...prev, saved]);
-      } catch (err) {
-        setError(getApiErrorMessage(err, 'Failed to send attachment.'));
-      } finally {
-        setSending(false);
+            currentUser: authUser,
+          })
+        ).unwrap();
+      } catch {
+        // error in slice
       }
     },
-    [authUser, conversationId]
+    [authUser, conversationId, dispatch]
   );
 
   const remove = useCallback(
     async (messageId: string, deleteFor: 'me' | 'everyone' = 'me') => {
-      setMessages(prev => prev.filter(m => m.id !== messageId));
       try {
-        await deleteMessage(messageId, deleteFor, conversationId);
-      } catch (err) {
-        setError(getApiErrorMessage(err, 'Failed to delete message.'));
+        await dispatch(
+          deleteMessageThunk({ conversationId, messageId, deleteFor })
+        ).unwrap();
+      } catch {
         void load();
       }
     },
-    [conversationId, load]
+    [conversationId, dispatch, load]
   );
 
   const react = useCallback(
     async (messageId: string, emoji: string) => {
-      setMessages(prev =>
-        prev.map(m =>
-          m.id === messageId
-            ? { ...m, reaction: m.reaction === emoji ? undefined : emoji }
-            : m
-        )
-      );
       try {
-        const updated = await reactToMessage(
-          messageId,
-          emoji,
-          authUser,
-          conversationId
-        );
-        if (updated) {
-          setMessages(prev =>
-            prev.map(m => (m.id === messageId ? { ...m, ...updated } : m))
-          );
-        }
+        await reactToMessage(messageId, emoji, authUser, conversationId);
+        void load();
       } catch {
-        // keep optimistic UI
+        // keep UI
       }
     },
-    [authUser, conversationId]
+    [authUser, conversationId, load]
   );
 
   return {
     messages,
-    loading,
+    loading: loading && messages.length === 0,
     sending,
     error,
     peerTyping,
+    hasMore,
     refresh: load,
+    loadMore,
     sendText,
     sendMedia,
     react,

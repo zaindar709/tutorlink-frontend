@@ -1,291 +1,437 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+  Linking,
+  Alert,
+  Image,
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GlassScreen } from '../../../../components/Glass';
 import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
+import { useTutorSchedule } from '../../../../hooks/api/useTutorSchedule';
+import { useBookings } from '../../../../hooks/api/useBookings';
+import {
+  TutorScheduleBookedItem,
+  TutorScheduleFreeItem,
+  TutorScheduleItem,
+} from '../../../../types/api.types';
+import {
+  canCompleteSession,
+  canJoinMeeting,
+} from '../../../../utils/bookings/bookingStatus';
+import { navigateHomeStack } from '../../../../navigation/navigationRef';
+import { formatDisplayDate } from '../../../../utils/api/userId';
+import { getWorkWeekDates } from '../../../../utils/schedule/scheduleHelpers';
 
-const days = [
-  { id: '1', day: 'Sun', date: '12' },
-  { id: '2', day: 'Mon', date: '13' },
-  { id: '3', day: 'Tue', date: '14' },
-  { id: '4', day: 'Wed', date: '15', active: true },
-];
-
-const stats = [
-  {
-    id: '1',
-    title: "Today's Sessions",
-    value: '3',
-    bg: '#EEF4FF',
-    border: '#C4B5FD',
-  },
-  {
-    id: '2',
-    title: 'Total Hours',
-    value: '210 min',
-    bg: '#ECFDF3',
-    border: '#4ADE80',
-  },
-];
-
-const schedule = [
-  { time: '9:00 AM', free: true },
-  { time: '10:00 AM', free: true },
-  { time: '10:00 AM', free: true },
-  { time: '10:00 AM', free: true },
-  { time: '10:00 AM', free: true },
-  {
-    time: '2:00 PM',
-    free: false,
-    live: true,
-    student: 'Ahmed Raza',
-    subject: 'Mathematics',
-    topic: 'Calculus',
-    start: '2:00 PM',
-    end: '3:00 PM',
-    status: 'Online',
-    button: 'Join Classroom',
-    cardBg: '#ECFDF5',
-    border: '#4ADE80',
-  },
-
-  {
-    time: '4:00 PM',
-    free: false,
-    live: false,
-    student: 'Zainab Hassan',
-    subject: 'Physics',
-    topic: 'Mechanics',
-    start: '4:00 PM',
-    end: '5:30 PM',
-    status: 'Online',
-    button: 'View Details',
-    secondaryBtn: 'Reschedule',
-    cardBg: GLASS.cardBg,
-    border: '#BFDBFE',
-  },
-
-  { time: '5:00 PM', free: true },
-  { time: '5:00 PM', free: true },
-  { time: '5:00 PM', free: true },
-  {
-    time: '4:00 PM',
-    free: false,
-    live: false,
-    student: 'Zainab Hassan',
-    subject: 'Physics',
-    topic: 'Mechanics',
-    start: '4:00 PM',
-    end: '5:30 PM',
-    status: 'Online',
-    button: 'View Details',
-    secondaryBtn: 'Reschedule',
-    cardBg: GLASS.cardBg,
-    border: '#BFDBFE',
-  },
-];
+const statusTone = (status: string) => {
+  switch (status) {
+    case 'pending':
+      return { bg: '#FEF3C7', text: '#B45309' };
+    case 'accepted':
+      return { bg: '#EDE9FE', text: GLASS.primaryDeep };
+    case 'completed':
+      return { bg: '#DCFCE7', text: '#15803D' };
+    case 'cancelled':
+    case 'missed':
+      return { bg: '#FEE2E2', text: '#B91C1C' };
+    default:
+      return { bg: GLASS.primarySoft, text: GLASS.primary };
+  }
+};
 
 const TutorScheduleScreen = () => {
   const { colors, resp } = useUi();
-  const styles = createStyles(colors, resp);
-  return (
-    <GlassScreen scroll={false}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
-        <Text style={styles.heading}>My Schedule</Text>
-        <Text style={styles.subHeading}>
-          Manage your sessions and availability
+  const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
+  const {
+    selectedDate,
+    setSelectedDate,
+    dateParam,
+    items,
+    summary,
+    isWeekend,
+    loading,
+    refreshing,
+    error,
+    refresh,
+  } = useTutorSchedule();
+  const { completeBooking, actionLoading } = useBookings('active');
+
+  const weekDates = useMemo(() => getWorkWeekDates(new Date()), []);
+
+  const selectedLabel = useMemo(() => {
+    const today = new Date();
+    if (selectedDate.toDateString() === today.toDateString()) return 'Today';
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    if (selectedDate.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow';
+    }
+    return selectedDate.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    });
+  }, [selectedDate]);
+
+  const goToday = () => setSelectedDate(new Date());
+
+  const handleComplete = async (bookingId: string) => {
+    const result = await completeBooking(bookingId);
+    if (result) {
+      Alert.alert(
+        'Completed',
+        result.sessionAmount
+          ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
+          : 'Session completed.'
+      );
+      void refresh();
+    }
+  };
+
+  const openDetails = (bookingId: string) => {
+    navigateHomeStack('TutorBookingRequestDetailsScreen', { bookingId });
+  };
+
+  const openReschedule = (bookingId: string) => {
+    navigateHomeStack('TutorRescheduleScreen', { bookingId });
+  };
+
+  const renderBooked = (item: TutorScheduleBookedItem, index: number) => {
+    const tone = statusTone(item.status);
+    const proposalPending = item.rescheduleProposal?.status === 'pending';
+    const avatar =
+      item.student.avatarUrl ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(
+        item.student.name || 'S'
+      )}&background=7548F5&color=fff`;
+    const bookingLike = {
+      _id: item.bookingId,
+      status: item.status,
+      meetingLink: item.meetingLink,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      date: dateParam,
+      subject: item.subject,
+      student: item.student._id,
+      tutor: '',
+    } as const;
+
+    return (
+      <TouchableOpacity
+        key={`booked-${item.bookingId}`}
+        style={styles.card}
+        activeOpacity={0.9}
+        onPress={() => openDetails(item.bookingId)}
+      >
+        <View style={styles.timelineRail}>
+          <View style={styles.timelineDot} />
+          {index < items.length - 1 ? (
+            <View style={styles.timelineLine} />
+          ) : null}
+        </View>
+
+        <View style={styles.cardBody}>
+          <View style={styles.cardTop}>
+            <Text style={styles.time}>
+              {item.startTime} – {item.endTime}
+            </Text>
+            <View style={[styles.pill, { backgroundColor: tone.bg }]}>
+              <Text style={[styles.pillText, { color: tone.text }]}>
+                {proposalPending ? 'Reschedule pending' : item.status}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.personRow}>
+            <Image source={{ uri: avatar }} style={styles.avatar} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.name} numberOfLines={1}>
+                {item.student.name || 'Student'}
+              </Text>
+              <Text style={styles.subject} numberOfLines={1}>
+                {item.subject}
+                {item.mode ? ` · ${item.mode}` : ''}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.actions}>
+            {canJoinMeeting(bookingLike) ? (
+              <TouchableOpacity
+                style={styles.joinWrap}
+                onPress={() => void Linking.openURL(item.meetingLink!)}
+              >
+                <LinearGradient
+                  colors={[...GLASS.buttonGradient]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.joinBtn}
+                >
+                  <MaterialCommunityIcons
+                    name="video-outline"
+                    size={16}
+                    color="#fff"
+                  />
+                  <Text style={styles.joinText}>Join class</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={() => openDetails(item.bookingId)}
+            >
+              <Text style={styles.secondaryBtnText}>View details</Text>
+            </TouchableOpacity>
+
+            {item.canReschedule && !proposalPending ? (
+              <TouchableOpacity
+                style={styles.secondaryBtn}
+                onPress={() => openReschedule(item.bookingId)}
+              >
+                <Text style={styles.secondaryBtnText}>Reschedule</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {item.status === 'accepted' && !proposalPending ? (
+              <TouchableOpacity
+                style={[styles.secondaryBtn, actionLoading && styles.btnDisabled]}
+                disabled={actionLoading}
+                onPress={() => {
+                  if (!canCompleteSession(bookingLike)) {
+                    Alert.alert(
+                      'Too early',
+                      'You can complete the session only after the scheduled end time.'
+                    );
+                    return;
+                  }
+                  void handleComplete(item.bookingId);
+                }}
+              >
+                <Text style={styles.secondaryBtnText}>Complete</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFree = (item: TutorScheduleFreeItem, index: number) => (
+    <View key={`free-${item.startTime}-${item.endTime}`} style={styles.card}>
+      <View style={styles.timelineRail}>
+        <View style={[styles.timelineDot, styles.freeDot]} />
+        {index < items.length - 1 ? (
+          <View style={styles.timelineLine} />
+        ) : null}
+      </View>
+      <View style={styles.freeCard}>
+        <View style={styles.freeTop}>
+          <MaterialCommunityIcons
+            name="clock-outline"
+            size={16}
+            color={GLASS.primary}
+          />
+          <Text style={styles.freeLabel}>{item.label || 'Free Time'}</Text>
+        </View>
+        <Text style={styles.freeTime}>
+          {item.startTime} – {item.endTime}
         </Text>
+        <Text style={styles.freeHint}>
+          {item.durationMinutes} min open slot · students can book here
+        </Text>
+      </View>
+    </View>
+  );
 
-        {/* DAYS */}
-        {/* CALENDAR HEADER */}
-        <View style={styles.weekHeader}>
-          <Text style={styles.weekTitle}>This Week</Text>
+  const renderItem = (item: TutorScheduleItem, index: number) => {
+    if (item.kind === 'booked') return renderBooked(item, index);
+    return renderFree(item, index);
+  };
 
-          <View style={styles.weekBadge}>
-            <Text style={styles.weekBadgeText}>May</Text>
+  return (
+    <GlassScreen
+      scroll={false}
+      edges={['top', 'left', 'right']}
+      contentStyle={styles.screen}
+    >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={Boolean(refreshing)}
+            onRefresh={() => void refresh()}
+            tintColor={GLASS.primary}
+          />
+        }
+      >
+        <View style={styles.pageHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greeting}>My Schedule</Text>
+            <Text style={styles.subheading}>
+              Accepted sessions and free 90‑min slots for the day.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.todayChip} onPress={goToday}>
+            <MaterialCommunityIcons
+              name="calendar-today"
+              size={16}
+              color={GLASS.primary}
+            />
+            <Text style={styles.todayChipText}>Today</Text>
+          </TouchableOpacity>
+        </View>
+
+        <LinearGradient
+          colors={[...GLASS.buttonGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <View style={styles.heroOrb} />
+          <Text style={styles.heroLabel}>{selectedLabel}</Text>
+          <Text style={styles.heroTitle}>
+            {summary.sessionsCount === 0
+              ? 'No sessions yet'
+              : `${summary.sessionsCount} session${
+                  summary.sessionsCount === 1 ? '' : 's'
+                }`}
+          </Text>
+          <Text style={styles.heroSub}>
+            {summary.displayTotalHours}
+            {summary.freeSlotsCount > 0
+              ? ` · ${summary.freeSlotsCount} free slot${
+                  summary.freeSlotsCount === 1 ? '' : 's'
+                }`
+              : ''}
+            {isWeekend ? ' · Weekend (no free slots)' : ''}
+          </Text>
+        </LinearGradient>
+
+        <Text style={styles.weekTitle}>This week · Mon–Fri</Text>
+        <View style={styles.weekRow}>
+          {weekDates.map(date => {
+            const item = formatDisplayDate(date);
+            const active =
+              date.toDateString() === selectedDate.toDateString();
+            const isToday =
+              date.toDateString() === new Date().toDateString();
+            return (
+              <TouchableOpacity
+                key={date.toISOString()}
+                onPress={() => setSelectedDate(date)}
+                activeOpacity={0.85}
+              >
+                {active ? (
+                  <LinearGradient
+                    colors={[...GLASS.buttonGradient]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.dayCard, styles.dayCardActive]}
+                  >
+                    <Text style={[styles.dayLabel, styles.dayActiveText]}>
+                      {item.day}
+                    </Text>
+                    <Text style={[styles.dateLabel, styles.dayActiveText]}>
+                      {item.date}
+                    </Text>
+                  </LinearGradient>
+                ) : (
+                  <View
+                    style={[styles.dayCard, isToday && styles.dayCardToday]}
+                  >
+                    <Text style={styles.dayLabel}>{item.day}</Text>
+                    <Text style={styles.dateLabel}>{item.date}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#EEF2FF' }]}>
+              <MaterialCommunityIcons
+                name="calendar-check"
+                size={18}
+                color={GLASS.primary}
+              />
+            </View>
+            <Text style={styles.statValue}>{summary.sessionsCount}</Text>
+            <Text style={styles.statLabel}>Today's sessions</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#ECFDF3' }]}>
+              <MaterialCommunityIcons
+                name="clock-outline"
+                size={18}
+                color={GLASS.success}
+              />
+            </View>
+            <Text style={styles.statValue}>{summary.displayTotalHours}</Text>
+            <Text style={styles.statLabel}>Total hours</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
+              <MaterialCommunityIcons
+                name="calendar-blank-outline"
+                size={18}
+                color={GLASS.warning}
+              />
+            </View>
+            <Text style={styles.statValue}>{summary.freeSlotsCount}</Text>
+            <Text style={styles.statLabel}>Free time</Text>
           </View>
         </View>
 
-        {/* CALENDAR STRIP */}
-        <View style={styles.calendarContainer}>
-          <TouchableOpacity style={styles.navBtn}>
-            <Ionicons name="chevron-back" size={18} color="#475569" />
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Day timeline</Text>
+          <Text style={styles.sectionMeta}>{selectedLabel}</Text>
+        </View>
+
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 20 }} color={GLASS.primary} />
+        ) : null}
+
+        {error ? (
+          <TouchableOpacity
+            style={styles.errorCard}
+            onPress={() => void refresh()}
+          >
+            <Text style={styles.errorText}>{error}</Text>
+            <Text style={styles.retry}>Tap to retry</Text>
           </TouchableOpacity>
+        ) : null}
 
-          <FlatList
-            horizontal
-            data={days}
-            keyExtractor={item => item.id}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.calendarList}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.dayItem, item.active && styles.dayItemActive]}
-              >
-                <Text
-                  style={[styles.dayName, item.active && styles.dayActiveText]}
-                >
-                  {item.day}
-                </Text>
+        {!loading && !error && items.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons
+              name="calendar-blank-outline"
+              size={32}
+              color={GLASS.textMuted}
+            />
+            <Text style={styles.emptyTitle}>
+              {isWeekend ? 'Weekend' : 'Open day'}
+            </Text>
+            <Text style={styles.emptySub}>
+              {isWeekend
+                ? 'No free slots on weekends. Accepted sessions still show here if any.'
+                : 'No booked or free slots for this date. Set weekly hours in Profile → Availability.'}
+            </Text>
+          </View>
+        ) : null}
 
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    item.active && styles.dayActiveText,
-                  ]}
-                >
-                  {item.date}
-                </Text>
-
-                {item.active && <View style={styles.activeDot} />}
-              </TouchableOpacity>
-            )}
-          />
-
-          <TouchableOpacity style={styles.navBtn}>
-            <Ionicons name="chevron-forward" size={18} color="#475569" />
-          </TouchableOpacity>
-        </View>
-        {/* STATS */}
-        <View style={styles.statsRow}>
-          {stats.map(item => (
-            <View
-              key={item.id}
-              style={[
-                styles.statsCard,
-                { backgroundColor: item.bg, borderColor: item.border },
-              ]}
-            >
-              <Text style={styles.statsTitle}>{item.title}</Text>
-              <Text style={styles.statsValue}>{item.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* SCHEDULE */}
-        <View style={styles.scheduleWrapper}>
-          {schedule.map((item, index) => (
-            <View key={index} style={styles.scheduleRow}>
-              {/* TIME */}
-              <View style={styles.timeWrapper}>
-                <Text style={styles.timeText}>{item.time}</Text>
-
-                <View style={styles.lineWrapper}>
-                  <View
-                    style={[styles.circle, !item.free && styles.activeCircle]}
-                  />
-
-                  {index !== schedule.length - 1 && (
-                    <View style={styles.verticalLine} />
-                  )}
-                </View>
-              </View>
-
-              {/* SLOT */}
-              {/* SLOT */}
-              <View style={styles.slotContainer}>
-                {item.free ? (
-                  <View style={styles.freeCard}>
-                    <Text style={styles.freeText}>Free Time</Text>
-                  </View>
-                ) : (
-                  <View
-                    style={[
-                      styles.sessionCard,
-                      {
-                        backgroundColor: item.cardBg,
-                        borderColor: item.border,
-                      },
-                    ]}
-                  >
-                    {/* LIVE BADGE */}
-                    {item.live && (
-                      <View style={styles.liveBadge}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.liveText}>LIVE NOW</Text>
-                      </View>
-                    )}
-
-                    {/* TOP CONTENT */}
-                    <View style={styles.sessionTop}>
-                      <View style={styles.avatar} />
-
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.studentName}>{item.student}</Text>
-
-                        <Text style={styles.subjectText}>{item.subject} -</Text>
-
-                        <Text style={styles.topicText}>{item.topic}</Text>
-
-                        {/* TIME + STATUS */}
-                        <View style={styles.infoRow}>
-                          <View style={styles.timeInfo}>
-                            <Ionicons
-                              name="time-outline"
-                              size={13}
-                              color="#64748B"
-                            />
-
-                            <Text style={styles.infoText}>
-                              {item.start} - {item.end}
-                            </Text>
-                          </View>
-
-                          <View style={styles.statusRow}>
-                            <Ionicons
-                              name="videocam-outline"
-                              size={13}
-                              color="#64748B"
-                            />
-
-                            <Text style={styles.infoText}>{item.status}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* BUTTONS */}
-                    <View style={styles.btnRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.joinBtn,
-                          !item.live && styles.detailsBtn,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.joinBtnText,
-                            !item.live && styles.detailsBtnText,
-                          ]}
-                        >
-                          {item.button}
-                        </Text>
-                      </TouchableOpacity>
-
-                      {item.secondaryBtn && (
-                        <TouchableOpacity style={styles.secondaryBtn}>
-                          <Text style={styles.secondaryBtnText}>
-                            {item.secondaryBtn}
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-          ))}
-        </View>
+        {items.map((item, index) => renderItem(item, index))}
       </ScrollView>
     </GlassScreen>
   );
@@ -293,356 +439,328 @@ const TutorScheduleScreen = () => {
 
 export default TutorScheduleScreen;
 
-const createStyles = (colors: any, _resp: any) =>
+const createStyles = (_colors: any, resp: any) =>
   StyleSheet.create({
-    heading: {
-      fontSize: 26,
-      fontWeight: '800',
-      color: GLASS.textPrimary,
-      marginTop: 18,
-      marginHorizontal: 20,
+    screen: { flex: 1 },
+    content: {
+      paddingTop: resp.dy(12),
+      paddingHorizontal: resp.dx(20),
+      paddingBottom: resp.dy(40),
     },
-
-    subHeading: {
-      marginHorizontal: 20,
-      marginTop: 4,
-      color: GLASS.textSecondary,
-      fontSize: 13,
-    },
-
-    /* DAYS */
-    arrowBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 12,
-      backgroundColor: '#F1F5F9',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    weekHeader: {
+    pageHeader: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: 20,
-      marginTop: 20,
+      gap: 12,
+      marginBottom: resp.dy(16),
     },
-
-    weekTitle: {
-      fontSize: 20,
+    greeting: {
+      fontSize: resp.df(24),
       fontWeight: '800',
       color: GLASS.textPrimary,
+      marginBottom: 4,
     },
-
-    weekBadge: {
+    subheading: {
+      color: GLASS.textSecondary,
+      fontSize: resp.df(13),
+      lineHeight: 18,
+    },
+    todayChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
       backgroundColor: GLASS.primarySoft,
+      borderRadius: 999,
       paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: GLASS.radius.full,
+      paddingVertical: 8,
       borderWidth: 1,
       borderColor: GLASS.cardBorder,
     },
-
-    weekBadgeText: {
+    todayChipText: {
+      color: GLASS.primary,
+      fontWeight: '800',
+      fontSize: 12,
+    },
+    heroCard: {
+      borderRadius: GLASS.radius.xl,
+      padding: 18,
+      overflow: 'hidden',
+      marginBottom: 18,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.28)',
+      ...GLASS.shadow.medium,
+    },
+    heroOrb: {
+      position: 'absolute',
+      right: -24,
+      top: -36,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: 'rgba(255,255,255,0.12)',
+    },
+    heroLabel: {
+      color: 'rgba(255,255,255,0.8)',
       fontSize: 12,
       fontWeight: '700',
-      color: GLASS.primary,
+      marginBottom: 6,
     },
-
-    calendarContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: 14,
-      paddingHorizontal: 12,
-    },
-
-    calendarList: {
-      paddingHorizontal: 10,
-      gap: 10,
-    },
-
-    navBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: GLASS.radius.sm,
-      backgroundColor: GLASS.cardBg,
-      borderWidth: 1,
-      borderColor: GLASS.cardBorder,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-
-    dayItem: {
-      width: 64,
-      height: 80,
-      borderRadius: GLASS.radius.lg,
-      backgroundColor: GLASS.cardBg,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginHorizontal: 6,
-      borderWidth: 1,
-      borderColor: GLASS.cardBorder,
-      ...GLASS.shadow.soft,
-    },
-
-    dayItemActive: {
-      backgroundColor: colors.PRIMARY_COLOR,
-      borderColor: GLASS.primaryDeep,
-      shadowColor: GLASS.primary,
-      shadowOpacity: 0.25,
-      shadowRadius: 10,
-      elevation: 5,
-      transform: [{ scale: 1.08 }],
-    },
-
-    dayName: {
-      fontSize: 12,
-      color: GLASS.textSecondary,
-      fontWeight: '600',
-    },
-
-    dayNumber: {
+    heroTitle: {
+      color: '#fff',
       fontSize: 22,
       fontWeight: '800',
-      color: GLASS.textPrimary,
-      marginTop: 4,
     },
-
-    dayActiveText: {
-      color: '#FFFFFF',
-    },
-
-    activeDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: '#FFFFFF',
+    heroSub: {
+      color: 'rgba(255,255,255,0.78)',
+      fontSize: 12,
       marginTop: 6,
+      lineHeight: 17,
     },
-    /* STATS */
-    statsRow: {
+    weekTitle: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: GLASS.textSecondary,
+      marginBottom: 10,
+    },
+    weekRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      marginTop: 18,
+      marginBottom: 16,
     },
-
-    statsCard: {
+    dayCard: {
+      width: resp.dx(56),
+      paddingVertical: 10,
+      borderRadius: 16,
+      backgroundColor: GLASS.cardBgStrong,
       borderWidth: 1,
-      width: '48%',
-      borderRadius: GLASS.radius.lg,
-      padding: 16,
-      backgroundColor: GLASS.cardBg,
       borderColor: GLASS.cardBorder,
+      alignItems: 'center',
       ...GLASS.shadow.soft,
     },
-
-    statsTitle: {
-      fontSize: 12,
+    dayCardActive: {
+      borderColor: 'transparent',
+    },
+    dayCardToday: {
+      borderColor: GLASS.cardBorderStrong,
+    },
+    dayLabel: {
+      fontSize: 11,
       color: GLASS.textSecondary,
-    },
-
-    statsValue: {
-      fontSize: 26,
-      fontWeight: '800',
-      color: GLASS.textPrimary,
-      marginTop: 8,
-    },
-
-    /* SCHEDULE */
-    scheduleWrapper: {
-      marginTop: 22,
-      paddingBottom: 40,
-    },
-
-    scheduleRow: {
-      flexDirection: 'row',
-      paddingHorizontal: 20,
-      marginBottom: 18,
-    },
-
-    timeWrapper: {
-      width: 75,
-      alignItems: 'center',
-    },
-
-    timeText: {
-      fontSize: 12,
       fontWeight: '700',
-      color: '#475569',
     },
-
-    lineWrapper: {
-      alignItems: 'center',
-      flex: 1,
+    dateLabel: {
       marginTop: 4,
-    },
-
-    circle: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: '#CBD5E1',
-    },
-
-    activeCircle: {
-      backgroundColor: '#22C55E',
-    },
-
-    verticalLine: {
-      width: 2,
-      flex: 1,
-      backgroundColor: '#E2E8F0',
-      marginTop: 2,
-    },
-
-    slotContainer: {
-      flex: 1,
-      marginLeft: 10,
-    },
-    sessionCard: {
-      borderRadius: GLASS.radius.xl,
-      borderWidth: 1,
-      padding: 14,
-      ...GLASS.shadow.soft,
-    },
-
-    liveBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: '#22C55E',
-      alignSelf: 'flex-start',
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 20,
-      marginBottom: 14,
-    },
-
-    liveDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: '#fff',
-      marginRight: 6,
-    },
-
-    liveText: {
-      color: '#fff',
-      fontSize: 10,
-      fontWeight: '800',
-    },
-
-    sessionTop: {
-      flexDirection: 'row',
-    },
-
-    avatar: {
-      width: 54,
-      height: 54,
-      borderRadius: 27,
-      backgroundColor: '#D1D5DB',
-      marginRight: 12,
-    },
-
-    studentName: {
       fontSize: 16,
       fontWeight: '800',
       color: GLASS.textPrimary,
     },
-
-    subjectText: {
+    dayActiveText: { color: '#fff' },
+    statsRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+    statCard: {
+      flex: 1,
+      backgroundColor: GLASS.cardBgStrong,
+      borderRadius: GLASS.radius.lg,
+      paddingVertical: 12,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      ...GLASS.shadow.soft,
+    },
+    statIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 6,
+    },
+    statValue: {
       fontSize: 14,
-      color: GLASS.textSecondary,
+      fontWeight: '800',
+      color: GLASS.textPrimary,
+      textAlign: 'center',
+    },
+    statLabel: {
       marginTop: 2,
-    },
-
-    topicText: {
-      fontSize: 14,
       color: GLASS.textSecondary,
-      marginBottom: 10,
+      fontSize: 10,
+      textAlign: 'center',
     },
-
-    infoRow: {
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: 16,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: GLASS.textPrimary,
+    },
+    sectionMeta: {
+      color: GLASS.textMuted,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    errorCard: {
+      backgroundColor: '#FEF2F2',
+      borderRadius: 16,
+      padding: 14,
+      marginBottom: 12,
+    },
+    errorText: { color: '#B91C1C', fontWeight: '600' },
+    retry: { color: GLASS.primary, fontWeight: '700', marginTop: 6 },
+    emptyCard: {
+      backgroundColor: GLASS.cardBg,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      padding: 24,
+      alignItems: 'center',
+      gap: 6,
+    },
+    emptyTitle: {
+      fontWeight: '800',
+      fontSize: 16,
+      color: GLASS.textPrimary,
+      marginTop: 4,
+    },
+    emptySub: {
+      color: GLASS.textSecondary,
+      textAlign: 'center',
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    card: {
+      flexDirection: 'row',
+      marginBottom: 4,
+    },
+    timelineRail: {
+      width: 18,
+      alignItems: 'center',
+      paddingTop: 22,
+    },
+    timelineDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: GLASS.primary,
+      borderWidth: 2,
+      borderColor: GLASS.primarySoft,
+    },
+    freeDot: {
+      backgroundColor: '#94A3B8',
+      borderColor: 'rgba(148,163,184,0.35)',
+    },
+    timelineLine: {
+      flex: 1,
+      width: 2,
+      backgroundColor: GLASS.cardBorder,
+      marginTop: 4,
+      minHeight: 40,
+    },
+    cardBody: {
+      flex: 1,
+      backgroundColor: GLASS.cardBgStrong,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      padding: 14,
+      marginBottom: 12,
+      marginLeft: 6,
+      ...GLASS.shadow.soft,
+    },
+    freeCard: {
+      flex: 1,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1.5,
+      borderColor: GLASS.primary,
+      borderStyle: 'dashed',
+      backgroundColor: 'rgba(117, 72, 245, 0.04)',
+      padding: 14,
+      marginBottom: 12,
+      marginLeft: 6,
+    },
+    freeTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 6,
+    },
+    freeLabel: {
+      fontWeight: '800',
+      color: GLASS.primary,
+      fontSize: 13,
+    },
+    freeTime: {
+      fontWeight: '800',
+      color: GLASS.textPrimary,
+      fontSize: 15,
+    },
+    freeHint: {
+      marginTop: 4,
+      color: GLASS.textSecondary,
+      fontSize: 12,
+    },
+    cardTop: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-
-    timeInfo: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-
-    statusRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-
-    infoText: {
-      fontSize: 12,
-      color: GLASS.textSecondary,
-    },
-
-    btnRow: {
-      flexDirection: 'row',
-      marginTop: 14,
-      alignItems: 'center',
-    },
-
-    joinBtn: {
-      backgroundColor: '#22C55E',
-      paddingHorizontal: 18,
-      paddingVertical: 12,
-      borderRadius: 14,
-      flex: 1,
-      alignItems: 'center',
-    },
-
-    joinBtnText: {
-      color: '#fff',
-      fontSize: 13,
-      fontWeight: '700',
-    },
-
-    detailsBtn: {
-      backgroundColor: GLASS.primarySoft,
-    },
-
-    detailsBtnText: {
+    time: {
+      fontWeight: '800',
       color: GLASS.primary,
+      fontSize: 13,
     },
-
-    secondaryBtn: {
-      marginLeft: 10,
-      backgroundColor: GLASS.cardBg,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      borderRadius: GLASS.radius.md,
-      borderWidth: 1,
-      borderColor: GLASS.cardBorder,
+    pill: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 999,
     },
-
-    secondaryBtnText: {
+    pillText: { fontWeight: '800', fontSize: 10, textTransform: 'capitalize' },
+    personRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 12,
+    },
+    avatar: { width: 42, height: 42, borderRadius: 14 },
+    name: {
+      fontSize: 15,
+      fontWeight: '800',
       color: GLASS.textPrimary,
+    },
+    subject: {
+      marginTop: 2,
+      color: GLASS.textSecondary,
       fontSize: 12,
-      fontWeight: '600',
     },
-
-    freeCard: {
-      height: 80,
-      borderRadius: GLASS.radius.lg,
-      borderWidth: 1,
-      borderStyle: 'dashed',
-      borderColor: GLASS.cardBorderStrong,
-      backgroundColor: GLASS.cardBg,
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+    joinWrap: { minWidth: '46%', flexGrow: 1 },
+    joinBtn: {
+      height: 40,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 16,
+      gap: 6,
     },
-
-    freeText: {
-      color: GLASS.textMuted,
-      fontSize: 14,
-      fontWeight: '600',
+    joinText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+    secondaryBtn: {
+      minWidth: '30%',
+      flexGrow: 1,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: GLASS.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 10,
     },
+    secondaryBtnText: {
+      color: GLASS.primaryDeep,
+      fontWeight: '800',
+      fontSize: 12,
+    },
+    btnDisabled: { opacity: 0.5 },
   });

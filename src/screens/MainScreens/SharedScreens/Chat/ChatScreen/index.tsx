@@ -124,23 +124,17 @@ const ChatScreen = () => {
       return;
     }
 
-    if (!bookingId && !participantId) return;
+    if (!bookingId) {
+      Alert.alert(
+        'Chat unavailable',
+        'Messaging is available after a booking is created.'
+      );
+      return;
+    }
 
     let cancelled = false;
     setResolving(true);
-    createConversation(
-      bookingId
-        ? { bookingId }
-        : {
-            participantId: participantId!,
-            tutorId: participantId!,
-            subject: subjectParam,
-            peerName,
-            peerAvatar,
-            isVerified: isVerifiedParam,
-          },
-      authUser
-    )
+    createConversation({ bookingId, subject: subjectParam }, authUser)
       .then(created => {
         if (cancelled) return;
         setResolvedChatId(created.id);
@@ -168,7 +162,6 @@ const ChatScreen = () => {
     isOnlineParam,
     isVerifiedParam,
     lastSeenParam,
-    participantId,
     peerAvatar,
     peerId,
     peerName,

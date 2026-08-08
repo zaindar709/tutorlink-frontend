@@ -30,6 +30,14 @@ export const getTutorOnboardingStatus =
 export const submitTutorOnboardingStep1 = async (payload: {
   subject: string;
   grades: string[];
+  hourlyRate?: number;
+  availability?: boolean;
+  qualification?: string;
+  experience?: string;
+  experienceYears?: number;
+  bio?: string;
+  name?: string;
+  phoneNumber?: string;
 }): Promise<TutorOnboardingStatusData> => {
   console.log(LOG, 'PATCH /onboarding/step-1', payload);
   const response = await submitTutorOnboardingStep1API(payload);

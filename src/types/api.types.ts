@@ -108,6 +108,23 @@ export interface DashboardData {
   };
 }
 
+export type BookingStatus =
+  | 'pending'
+  | 'accepted'
+  | 'completed'
+  | 'cancelled'
+  | 'missed';
+
+export type RescheduleProposalStatus = 'pending' | 'accepted' | 'rejected' | 'cancelled';
+
+export interface RescheduleProposal {
+  date: string;
+  startTime: string;
+  endTime: string;
+  proposedBy: 'tutor' | 'student';
+  status: RescheduleProposalStatus;
+}
+
 export interface Booking {
   _id: string;
   student: ApiUser | string;
@@ -116,16 +133,116 @@ export interface Booking {
   date: string;
   startTime: string;
   endTime: string;
-  status: 'pending' | 'accepted' | 'completed' | 'cancelled';
+  status: BookingStatus;
   hourlyRateAtBooking?: number;
   meetingLink?: string;
+  mode?: string;
+  canReschedule?: boolean;
+  rescheduleProposal?: RescheduleProposal | null;
   isNextSession?: boolean;
+  studentRating?: number;
+  studentReview?: string;
+  ratedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
+export type WeekdayName =
+  | 'monday'
+  | 'tuesday'
+  | 'wednesday'
+  | 'thursday'
+  | 'friday'
+  | 'saturday'
+  | 'sunday';
+
+export interface ScheduleTimeWindow {
+  startTime: string;
+  endTime: string;
+}
+
+export interface TutorScheduleSummary {
+  sessionsCount: number;
+  totalMinutes: number;
+  displayTotalHours: string;
+  freeSlotsCount: number;
+}
+
+export interface TutorScheduleBookedItem {
+  kind: 'booked';
+  bookingId: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  student: {
+    _id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  subject: string;
+  mode?: string;
+  meetingLink?: string;
+  status: BookingStatus;
+  hourlyRateAtBooking?: number;
+  canReschedule?: boolean;
+  rescheduleProposal?: RescheduleProposal | null;
+}
+
+export interface TutorScheduleFreeItem {
+  kind: 'free';
+  label: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+}
+
+export type TutorScheduleItem =
+  | TutorScheduleBookedItem
+  | TutorScheduleFreeItem;
+
+export interface TutorDaySchedule {
+  date: string;
+  weekday: WeekdayName | string;
+  isWeekend: boolean;
+  lectureSlotMinutes: number;
+  summary: TutorScheduleSummary;
+  items: TutorScheduleItem[];
+}
+
+export interface TutorAvailabilityDay {
+  day: WeekdayName | string;
+  windows: ScheduleTimeWindow[];
+}
+
+export interface TutorAvailability {
+  lectureSlotMinutes: number;
+  allowedDays: Array<WeekdayName | string>;
+  usingDefault: boolean;
+  days: TutorAvailabilityDay[];
+}
+
+export interface UpdateTutorAvailabilityPayload {
+  days: TutorAvailabilityDay[];
+}
+
+export interface ProposeReschedulePayload {
+  date: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface RescheduleMutationResult {
+  booking: Booking;
+  message?: string;
+  rescheduleProposal?: RescheduleProposal | null;
+  escrowUnchanged?: boolean;
+}
+
 export interface CreateBookingPayload {
+  /** User _id of the tutor (not TutorProfile _id). */
   tutor: string;
+  /** Alias some backends expect instead of / alongside `tutor`. */
+  tutorId?: string;
   subject: string;
   date: string;
   startTime: string;
@@ -135,9 +252,24 @@ export interface CreateBookingPayload {
 
 export interface ConfirmBookingPayload {
   meetingLink?: string;
+  /** Development: ask backend to skip wallet escrow hold on confirm. */
+  skipEscrow?: boolean;
+  bypassPayment?: boolean;
+}
+
+export interface BookingMutationResult {
+  booking: Booking;
+  sessionAmount?: number;
+  escrowRefunded?: boolean;
+  message?: string;
 }
 
 export type BookingTab = 'active' | 'pending' | 'past';
+
+export interface RaiseDisputePayload {
+  transactionId: string;
+  reason: string;
+}
 
 export interface TutorSearchPayload {
   subject?: string;
@@ -153,6 +285,12 @@ export interface TutorSearchPayload {
   studentLat?: number;
   studentLng?: number;
   radiusInKm?: number;
+}
+
+export interface TutorBookingRelationFlags {
+  hasPending: boolean;
+  hasActive: boolean;
+  canRequest: boolean;
 }
 
 export interface TutorProfile {
@@ -172,6 +310,8 @@ export interface TutorProfile {
     coordinates: [number, number];
   };
   distanceKm?: number;
+  /** From POST /api/tutors/search when student is authenticated. */
+  relation?: TutorBookingRelationFlags;
 }
 
 export interface WalletBalance {
@@ -202,6 +342,9 @@ export interface WalletDepositPayload {
   amount: number;
   paymentMethod: 'jazzcash' | 'easypaisa';
   phoneNumber: string;
+  /** FYP / demo: mark deposit as mock so backend (or FE) can detect it. */
+  isMock?: boolean;
+  mock?: boolean;
 }
 
 export interface StudentProfile {
@@ -274,6 +417,13 @@ export interface UpdateProfilePayload {
   grade?: string;
   board?: string;
   bio?: string;
+  /** Tutor profile fields (PATCH /api/profile/me when role=tutor). */
+  hourlyRate?: number;
+  qualification?: string;
+  experience?: string;
+  experienceYears?: number;
+  availability?: boolean;
+  subjects?: string[];
 }
 
 export interface UpdateInterestsPayload {

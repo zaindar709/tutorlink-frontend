@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Icon, IconButton } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 
 import useUi from '../../../../../hooks/ui/useUi';
 import { GlassScreen, GlassHeader } from '../../../../../components/Glass';
@@ -28,11 +29,21 @@ import {
   handleNotificationNavigation,
   sendTestSystemNotification,
 } from '../../../../../services/notifications/pushNotificationService';
+import {
+  markAllServerNotificationsRead,
+  markServerNotificationRead,
+  syncServerNotifications,
+} from '../../../../../services/notifications/notificationSyncService';
+import { ApiUser } from '../../../../../types/api.types';
+import { getUserId } from '../../../../../utils/api/userId';
 
 const TYPE_LABEL: Record<string, string> = {
   chat: 'Chat',
   message: 'Message',
   booking: 'Booking',
+  booking_request: 'Request',
+  booking_accepted: 'Accepted',
+  booking_rejected: 'Rejected',
   session: 'Session',
   schedule: 'Schedule',
   payment: 'Payment',
@@ -58,15 +69,20 @@ const formatTime = (iso: string) => {
 const StudentNotificationInboxScreen = ({ navigation }: any) => {
   const { colors } = useUi();
   const styles = useMemo(() => createStyles(), []);
+  const authUser = useSelector(
+    (state: any) => state.auth.user as ApiUser | null
+  );
+  const userId = getUserId(authUser);
 
   const [items, setItems] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    const list = await getNotificationInbox();
+    await syncServerNotifications(userId);
+    const list = await getNotificationInbox(userId);
     setItems(list);
-  }, []);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -85,12 +101,15 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
 
   const onOpenItem = async (item: AppNotification) => {
     await markNotificationRead(item.id);
+    void markServerNotificationRead(item.id);
     handleNotificationNavigation({
       ...item.data,
-      type: String(item.type),
+      type: String(item.type || item.data?.type || ''),
       notificationId: item.id,
       title: item.title,
       body: item.body,
+      bookingId: item.data?.bookingId,
+      screen: item.data?.screen,
     });
   };
 
@@ -105,8 +124,9 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
     ]);
   };
 
-  const onMarkAllRead = () => {
-    void markAllNotificationsRead();
+  const onMarkAll = () => {
+    void markAllNotificationsRead(userId);
+    void markAllServerNotificationsRead();
   };
 
   const onClearAll = () => {
@@ -115,7 +135,7 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
       {
         text: 'Clear',
         style: 'destructive',
-        onPress: () => void clearNotificationInbox(),
+        onPress: () => void clearNotificationInbox(userId),
       },
     ]);
   };
@@ -174,7 +194,7 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
       />
 
       <View style={styles.toolbar}>
-        <TouchableOpacity onPress={onMarkAllRead}>
+        <TouchableOpacity onPress={onMarkAll}>
           <Text style={styles.toolbarAction}>Mark all read</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => void onSendTest()}>
@@ -208,8 +228,8 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
               <Icon source="bell-off-outline" size={40} color={GLASS.textMuted} />
               <Text style={styles.emptyTitle}>No notifications yet</Text>
               <Text style={styles.emptyBody}>
-                Push notifications from chat, bookings, and payments will appear
-                here after they show on your device.
+                Booking accept/reject, chat, and payment alerts appear here.
+                Pull to refresh if a push was missed.
               </Text>
             </View>
           }

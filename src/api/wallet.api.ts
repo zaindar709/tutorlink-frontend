@@ -26,8 +26,17 @@ export const getWalletTransactionsAPI = (
 };
 
 export const depositWalletAPI = (data: WalletDepositPayload) => {
+  const body: WalletDepositPayload = {
+    amount: data.amount,
+    paymentMethod: data.paymentMethod,
+    phoneNumber: data.phoneNumber,
+  };
+  if (data.isMock || data.mock) {
+    body.isMock = true;
+    body.mock = true;
+  }
   return api.post<ApiSuccessResponse<WalletTransaction>>(
     '/api/wallet/deposit',
-    data
+    body
   );
 };

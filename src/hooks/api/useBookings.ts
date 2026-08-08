@@ -1,59 +1,79 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
-  cancelBooking,
-  completeBooking,
-  confirmBooking,
-  createBooking,
-  fetchBookings,
-} from '../../services/bookings/bookingsService';
+  cancelBookingThunk,
+  completeBookingThunk,
+  confirmBookingThunk,
+  createBookingThunk,
+  fetchBookingsThunk,
+  rateBookingThunk,
+} from '../../store/booking/bookingSlice';
 import {
-  Booking,
+  selectBookingError,
+  selectBookingListMeta,
+  selectBookingMutating,
+  selectBookingsFor,
+  selectNextSession,
+} from '../../store/booking/bookingSelectors';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import {
   BookingTab,
   ConfirmBookingPayload,
   CreateBookingPayload,
 } from '../../types/api.types';
 import { formatDateParam } from '../../utils/api/userId';
-import { getApiErrorMessage } from '../../utils/api/errorHandler';
+import { invalidateStudentTutorRelationsCache } from './useStudentTutorRelations';
 
 export const useBookings = (initialTab: BookingTab = 'active') => {
+  const dispatch = useAppDispatch();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [tab, setTab] = useState<BookingTab>(initialTab);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const dateParam = formatDateParam(selectedDate);
+  const bookingsSelector = useMemo(
+    () => selectBookingsFor(dateParam, tab),
+    [dateParam, tab]
+  );
+  const nextSessionSelector = useMemo(
+    () => selectNextSession(dateParam),
+    [dateParam]
+  );
+  const listMetaSelector = useMemo(
+    () => selectBookingListMeta(dateParam, tab),
+    [dateParam, tab]
+  );
+
+  const bookings = useAppSelector(bookingsSelector);
+  const nextSession = useAppSelector(nextSessionSelector);
+  const listMeta = useAppSelector(listMetaSelector);
+  const mutating = useAppSelector(selectBookingMutating);
+  const lastError = useAppSelector(selectBookingError);
+  const lastSessionAmount = useAppSelector(
+    state => state.booking.lastSessionAmount
+  );
+
+  const loading =
+    !listMeta || listMeta.status === 'loading' || listMeta.status === 'idle';
+  const error = listMeta?.error || lastError;
 
   const loadBookings = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const results = await fetchBookings(dateParam, tab);
-      setBookings(results);
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-      setBookings([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [dateParam, tab]);
+    await dispatch(fetchBookingsThunk({ date: dateParam, tab }));
+  }, [dateParam, dispatch, tab]);
 
-  useEffect(() => {
-    loadBookings();
-  }, [loadBookings]);
-
+  // Focus covers tab mount. No interval polling — was flooding the API.
+  useFocusEffect(
+    useCallback(() => {
+      void loadBookings();
+    }, [loadBookings])
+  );
   const handleCreateBooking = async (payload: CreateBookingPayload) => {
-    setActionLoading(true);
     try {
-      await createBooking(payload);
+      const booking = await dispatch(createBookingThunk(payload)).unwrap();
+      invalidateStudentTutorRelationsCache();
       await loadBookings();
-      return true;
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-      return false;
-    } finally {
-      setActionLoading(false);
+      return booking;
+    } catch {
+      return null;
     }
   };
 
@@ -61,48 +81,59 @@ export const useBookings = (initialTab: BookingTab = 'active') => {
     id: string,
     payload?: ConfirmBookingPayload
   ) => {
-    setActionLoading(true);
     try {
-      await confirmBooking(id, payload);
+      const result = await dispatch(
+        confirmBookingThunk({ id, payload })
+      ).unwrap();
+      invalidateStudentTutorRelationsCache();
       await loadBookings();
-      return true;
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-      return false;
-    } finally {
-      setActionLoading(false);
+      return result;
+    } catch {
+      return null;
     }
   };
 
-  const handleCancelBooking = async (id: string) => {
-    setActionLoading(true);
+  const handleCancelBooking = async (
+    id: string,
+    actorRole?: 'student' | 'tutor' | 'parent'
+  ) => {
     try {
-      await cancelBooking(id);
+      const result = await dispatch(
+        cancelBookingThunk({ id, actorRole })
+      ).unwrap();
+      invalidateStudentTutorRelationsCache();
       await loadBookings();
-      return true;
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-      return false;
-    } finally {
-      setActionLoading(false);
+      return result;
+    } catch {
+      return null;
     }
   };
 
   const handleCompleteBooking = async (id: string) => {
-    setActionLoading(true);
     try {
-      await completeBooking(id);
+      const result = await dispatch(completeBookingThunk(id)).unwrap();
+      invalidateStudentTutorRelationsCache();
       await loadBookings();
-      return true;
-    } catch (err) {
-      setError(getApiErrorMessage(err));
-      return false;
-    } finally {
-      setActionLoading(false);
+      return result;
+    } catch {
+      return null;
     }
   };
 
-  const nextSession = bookings.find(booking => booking.isNextSession) ?? bookings[0];
+  const handleRateBooking = async (
+    bookingId: string,
+    rating: number,
+    review?: string
+  ) => {
+    try {
+      await dispatch(
+        rateBookingThunk({ bookingId, rating, review })
+      ).unwrap();
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   return {
     bookings,
@@ -110,14 +141,18 @@ export const useBookings = (initialTab: BookingTab = 'active') => {
     setTab,
     selectedDate,
     setSelectedDate,
-    loading,
-    actionLoading,
+    dateParam,
+    loading: Boolean(loading && bookings.length === 0),
+    refreshing: listMeta?.status === 'loading',
+    actionLoading: mutating,
     error,
     nextSession,
+    lastSessionAmount,
     refresh: loadBookings,
     createBooking: handleCreateBooking,
     confirmBooking: handleConfirmBooking,
     cancelBooking: handleCancelBooking,
     completeBooking: handleCompleteBooking,
+    rateBooking: handleRateBooking,
   };
 };

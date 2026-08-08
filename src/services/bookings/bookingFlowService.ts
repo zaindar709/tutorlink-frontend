@@ -5,10 +5,8 @@ import {
   TutorBookingProfile,
 } from '../../types/bookingFlow.types';
 import {
-  MOCK_BOOKING_REQUESTS,
   MOCK_TUTOR_PROFILES,
   enrichTutorFromSearch,
-  getMockBookingById,
   getMockTutorById,
 } from '../../constants/bookingFlowMockData';
 import { upsertNotification } from '../notifications/notificationInboxStore';
@@ -26,8 +24,8 @@ const notifyBooking = (notification: {
   void upsertNotification(notification);
 };
 
-/** In-memory store so UI can update status before APIs exist. */
-let bookingsStore: BookingFlowItem[] = [...MOCK_BOOKING_REQUESTS];
+/** In-memory store — empty by default; live bookings come from the API. */
+let bookingsStore: BookingFlowItem[] = [];
 
 const delay = (ms = 350) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -100,13 +98,14 @@ export const bookingFlowService = {
 
   async getBooking(bookingId: string) {
     await delay();
-    return bookingsStore.find(b => b.id === bookingId) || getMockBookingById(bookingId);
+    return bookingsStore.find(b => b.id === bookingId) || null;
   },
 
   async getTutorRequests(status?: BookingFlowStatus) {
     await delay();
-    if (!status) return bookingsStore;
-    return bookingsStore.filter(b => b.status === status);
+    // Never surface demo/mock pending requests to tutors.
+    if (!status) return [];
+    return [];
   },
 
   async updateBookingStatus(

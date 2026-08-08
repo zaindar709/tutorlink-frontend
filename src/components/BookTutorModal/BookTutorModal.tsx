@@ -57,7 +57,7 @@ const BookTutorModal: React.FC<BookTutorModalProps> = ({
     if (success) {
       Alert.alert(
         'Request Sent',
-        `Your booking request has been sent to ${tutorName}. They will accept or decline shortly.`
+        `Your request was saved for ${tutorName}. They can accept it from Requests — class will use ${startTime}–${endTime}.`
       );
       onSuccess?.();
       onClose();
@@ -76,7 +76,8 @@ const BookTutorModal: React.FC<BookTutorModalProps> = ({
           </View>
 
           <Text style={styles.subtitle}>
-            Send a booking request. The tutor will review it on their dashboard.
+            Choose any preferred time. The tutor gets this on Requests and can
+            accept — class then starts at that time.
           </Text>
 
           <CustomInput

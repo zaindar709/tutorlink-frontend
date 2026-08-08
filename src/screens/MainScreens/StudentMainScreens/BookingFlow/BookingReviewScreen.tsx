@@ -13,50 +13,68 @@ import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
 import { GlassScreen, GlassCard, GlassHeader } from '../../../../components/Glass';
 import { GLASS } from '../../../../theme/glass';
-import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
-import { BookingFlowItem } from '../../../../types/bookingFlow.types';
+import { useAppDispatch, useAppSelector } from '../../../../store/hooks';
+import {
+  fetchBookingByIdThunk,
+  rateBookingThunk,
+} from '../../../../store/booking/bookingSlice';
+import {
+  getBookingParticipantName,
+} from '../../../../utils/api/bookingHelpers';
+import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
+import { canRate } from '../../../../utils/bookings/bookingStatus';
+import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
 
 const BookingReviewScreen = () => {
   const { colors } = useUi();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const dispatch = useAppDispatch();
   const bookingId = route.params?.bookingId as string;
+  const booking = useAppSelector(state => state.booking.byId[bookingId]);
 
-  const [booking, setBooking] = useState<BookingFlowItem | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!booking);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
-        setBooking(await bookingFlowService.getBooking(bookingId));
+        await dispatch(fetchBookingByIdThunk(bookingId)).unwrap();
       } finally {
         setLoading(false);
       }
     })();
-  }, [bookingId]);
+  }, [bookingId, dispatch]);
 
   const submit = async () => {
-    if (!comment.trim()) {
-      Alert.alert('Add a short review', 'Tell others how the session went.');
+    if (!booking) return;
+    if (!canRate(booking)) {
+      Alert.alert(
+        'Rating unavailable',
+        'You can rate only after the session is completed.'
+      );
       return;
     }
     setSubmitting(true);
     try {
-      await bookingFlowService.submitReview({
-        bookingId,
-        rating,
-        comment: comment.trim(),
-      });
+      await dispatch(
+        rateBookingThunk({
+          bookingId,
+          rating,
+          review: comment.trim() || undefined,
+        })
+      ).unwrap();
       Alert.alert('Thanks!', 'Your review was submitted.', [
         {
           text: 'Done',
-          onPress: () => navigation.navigate('MyTabs', { screen: 'Home' }),
+          onPress: () => leaveHomeStackToTabs('Home'),
         },
       ]);
+    } catch (err) {
+      Alert.alert('Could not submit', getBookingErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -73,6 +91,8 @@ const BookingReviewScreen = () => {
     );
   }
 
+  const tutorName = getBookingParticipantName(booking, 'student');
+
   return (
     <GlassScreen scroll={false} contentStyle={styles.screen}>
       <GlassHeader
@@ -82,9 +102,9 @@ const BookingReviewScreen = () => {
       />
 
       <GlassCard style={styles.card}>
-        <Text style={styles.name}>{booking.tutor.name}</Text>
+        <Text style={styles.name}>{tutorName}</Text>
         <Text style={styles.meta}>
-          {booking.subject} · {booking.date}
+          {booking.subject} · {String(booking.date).slice(0, 10)}
         </Text>
 
         <View style={styles.stars}>
@@ -102,7 +122,7 @@ const BookingReviewScreen = () => {
         <TextInput
           style={styles.input}
           multiline
-          placeholder="Write your feedback…"
+          placeholder="Write your feedback… (optional)"
           placeholderTextColor={GLASS.placeholder}
           value={comment}
           onChangeText={setComment}

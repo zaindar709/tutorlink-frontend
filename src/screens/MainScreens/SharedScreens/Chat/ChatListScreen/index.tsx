@@ -22,12 +22,7 @@ import { GlassScreen, GlassSearchBar } from '../../../../../components/Glass';
 import { GLASS } from '../../../../../theme/glass';
 import { ChatCard } from '../../../../../components/Chat';
 import { useChatConversations } from '../../../../../hooks/api/useChatConversations';
-import { useTutorSearch } from '../../../../../hooks/api/useTutorSearch';
 import { ChatConversation } from '../../../../../types/chat.types';
-import { TutorProfile } from '../../../../../types/api.types';
-import { getApiErrorMessage } from '../../../../../utils/api/errorHandler';
-
-const FALLBACK_AVATAR = 'https://i.pravatar.cc/150?u=tutor';
 
 const ChatListScreen = () => {
   const { colors, resp } = useUi();
@@ -36,24 +31,15 @@ const ChatListScreen = () => {
   const role = useSelector((state: any) => state.auth.role as string | null);
   const isStudent = role === 'student';
   const [query, setQuery] = useState('');
-  const [startingTutorId, setStartingTutorId] = useState<string | null>(null);
-
   const {
     conversations,
     loading,
     refreshing,
     error,
     refresh,
-    startConversation,
     togglePinLocal,
     archiveLocal,
   } = useChatConversations();
-
-  const {
-    tutors,
-    loading: tutorsLoading,
-    search: searchTutors,
-  } = useTutorSearch({}, { autoLoad: true });
 
   const unreadTotal = useMemo(
     () =>
@@ -78,26 +64,6 @@ const ChatListScreen = () => {
     );
   }, [conversations, query]);
 
-  const existingPeerIds = useMemo(
-    () => new Set(conversations.map(c => c.participant.id).filter(Boolean)),
-    [conversations]
-  );
-
-  const availableTutors = useMemo(() => {
-    if (!isStudent) return [];
-    const q = query.trim().toLowerCase();
-    return tutors
-      .filter(tutor => {
-        const userId = String(tutor.user?._id || '');
-        if (!userId || existingPeerIds.has(userId)) return false;
-        if (!q) return true;
-        const name = String(tutor.user?.name || '').toLowerCase();
-        const subjects = (tutor.subjects || []).join(' ').toLowerCase();
-        return name.includes(q) || subjects.includes(q);
-      })
-      .slice(0, 20);
-  }, [existingPeerIds, isStudent, query, tutors]);
-
   const openChat = useCallback(
     (chat: ChatConversation) => {
       navigation.navigate('HomeNavigator', {
@@ -118,122 +84,20 @@ const ChatListScreen = () => {
     [navigation]
   );
 
-  const openTutorChat = useCallback(
-    async (tutor: TutorProfile) => {
-      const participantId = String(tutor.user?._id || '');
-      if (!participantId) {
-        Alert.alert('Unavailable', 'This tutor cannot be messaged yet.');
-        return;
-      }
-
-      const subject = tutor.subjects?.[0] || 'General';
-      const peerName = tutor.user?.name || 'Tutor';
-      const peerAvatar = tutor.user?.avatarUrl || FALLBACK_AVATAR;
-
-      setStartingTutorId(participantId);
-      try {
-        const conversation = await startConversation({
-          participantId,
-          tutorId: participantId,
-          tutorProfileId: tutor._id,
-          subject,
-          peerName,
-          peerAvatar,
-          isVerified: tutor.isVerified,
-        });
-        openChat({
-          ...conversation,
-          participant: {
-            ...conversation.participant,
-            name: conversation.participant.name || peerName,
-            avatar: conversation.participant.avatar || peerAvatar,
-            isVerified:
-              conversation.participant.isVerified ?? tutor.isVerified,
-          },
-          subject: conversation.subject || subject,
-        });
-      } catch (err) {
-        Alert.alert(
-          'Chat unavailable',
-          getApiErrorMessage(err, 'Could not start chat with this tutor.')
-        );
-      } finally {
-        setStartingTutorId(null);
-      }
-    },
-    [openChat, startConversation]
-  );
-
   const onRefresh = useCallback(async () => {
     await refresh();
-    if (isStudent) {
-      await searchTutors({}, { replace: true });
-    }
-  }, [isStudent, refresh, searchTutors]);
+  }, [refresh]);
 
   const listHeader = (
     <View style={styles.listTop}>
-      {isStudent && (availableTutors.length > 0 || tutorsLoading) ? (
+      {isStudent ? (
         <View style={styles.tutorStrip}>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Start a chat</Text>
-            <Text style={styles.sectionMeta}>Ask before you hire</Text>
+            <Text style={styles.sectionTitle}>Messages</Text>
+            <Text style={styles.sectionMeta}>
+              Chat unlocks after you book a tutor
+            </Text>
           </View>
-
-          {tutorsLoading && availableTutors.length === 0 ? (
-            <ActivityIndicator
-              color={colors.PRIMARY_COLOR as string}
-              style={{ marginVertical: 12 }}
-            />
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tutorScroll}
-            >
-              {availableTutors.map(tutor => {
-                const userId = String(tutor.user?._id || tutor._id);
-                const busy = startingTutorId === userId;
-                const subject = (tutor.subjects || [])[0] || 'General';
-                return (
-                  <Pressable
-                    key={userId}
-                    onPress={() => void openTutorChat(tutor)}
-                    disabled={!!startingTutorId}
-                    style={styles.tutorChip}
-                  >
-                    <View style={styles.tutorAvatarWrap}>
-                      <Image
-                        source={{
-                          uri: tutor.user?.avatarUrl || FALLBACK_AVATAR,
-                        }}
-                        style={styles.tutorAvatar}
-                      />
-                      {busy ? (
-                        <View style={styles.tutorBusy}>
-                          <ActivityIndicator size="small" color="#fff" />
-                        </View>
-                      ) : (
-                        <View style={styles.tutorMsgFab}>
-                          <MaterialCommunityIcons
-                            name="message-plus"
-                            size={12}
-                            color="#fff"
-                          />
-                        </View>
-                      )}
-                    </View>
-                    <Text numberOfLines={1} style={styles.tutorName}>
-                      {tutor.user?.name || 'Tutor'}
-                    </Text>
-                    <Text numberOfLines={1} style={styles.tutorSubject}>
-                      {subject}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
         </View>
       ) : null}
 
@@ -265,8 +129,7 @@ const ChatListScreen = () => {
         No chats yet
       </Text>
       <Text style={[styles.emptyBody, { fontSize: resp.df(13) }]}>
-        Pick a tutor above to ask about availability, or search by name and
-        subject.
+        Book a tutor from Search or Home, then message them from your booking.
       </Text>
     </Animated.View>
   );

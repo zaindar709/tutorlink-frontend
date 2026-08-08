@@ -23,7 +23,9 @@ export type AppNotification = {
   read: boolean;
   /** Related entity ids / deep-link fields (all stringified for FCM). */
   data: Record<string, string>;
-  source: 'push' | 'local' | 'test';
+  source: 'push' | 'local' | 'test' | 'server';
+  /** When set, inbox only shows this to the matching logged-in user. */
+  recipientUserId?: string;
 };
 
 export type PushNotificationData = Record<string, string | undefined>;

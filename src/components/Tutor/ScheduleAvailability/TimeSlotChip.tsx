@@ -1,47 +1,40 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Icon } from 'react-native-paper';
-import useUi from '../../../hooks/ui/useUi';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { GLASS } from '../../../theme/glass';
 
 type TimeSlotChipProps = {
   time: string;
   onRemove?: () => void;
-  isBooked?: boolean;
 };
 
-const TimeSlotChip: React.FC<TimeSlotChipProps> = ({ time, onRemove, isBooked = true }) => {
-  const { colors, resp } = useUi();
-  const activeColor = isBooked ? colors.PRIMARY_COLOR : colors.SECONDARY_COLOR;
-
+const TimeSlotChip: React.FC<TimeSlotChipProps> = ({ time, onRemove }) => {
   return (
-    <View
-      style={[
-        styles.wrapper,
-        {
-        //   backgroundColor: isBooked ? `${String(activeColor)}20` : colors.WHITE_COLOR,
-          borderColor: isBooked ? colors.PRIMARY_COLOR : colors.LIGHT_GRAY,
-        },
-      ]}
-    >
+    <View style={styles.wrapper}>
       <View style={styles.labelRow}>
-        <View style={[styles.badge, { backgroundColor: activeColor }]}> 
-          <Icon source="clock-outline" size={resp.df(14)} color={colors.WHITE_COLOR as string} />
+        <View style={styles.badge}>
+          <MaterialCommunityIcons
+            name="clock-outline"
+            size={14}
+            color={GLASS.primary}
+          />
         </View>
-        <Text
-          style={[
-            styles.timeText,
-            { color: isBooked ? String(colors.PRIMARY_COLOR) : String(colors.BLACK_COLOR) },
-          ]}
-        >
-          {time}
-        </Text>
+        <Text style={styles.timeText}>{time}</Text>
       </View>
 
-      {onRemove && (
-        <TouchableOpacity onPress={onRemove} style={styles.removeButton} activeOpacity={0.7}>
-          <Icon source="trash-can-outline" size={resp.df(18)} color={String(colors.RED)} />
+      {onRemove ? (
+        <TouchableOpacity
+          onPress={onRemove}
+          style={styles.removeButton}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="trash-can-outline"
+            size={16}
+            color="#DC2626"
+          />
         </TouchableOpacity>
-      )}
+      ) : null}
     </View>
   );
 };
@@ -53,34 +46,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderRadius: 18,
-    marginBottom: 12,
+    borderRadius: GLASS.radius.md,
+    marginBottom: 8,
+    backgroundColor: GLASS.primarySoft,
+    borderColor: GLASS.cardBorder,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
   },
   badge: {
-    width: 32,
-    height: 32,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
   timeText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: GLASS.primaryDeep,
   },
   removeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FCE6E7',
+    backgroundColor: 'rgba(254, 226, 226, 0.9)',
   },
 });

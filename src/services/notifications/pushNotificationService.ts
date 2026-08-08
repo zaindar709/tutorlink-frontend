@@ -19,6 +19,7 @@ import {
   PushNotificationData,
 } from '../../types/notification.types';
 import { upsertNotification } from './notificationInboxStore';
+import { getUserId } from '../../utils/api/userId';
 
 const LOG = '[Push]';
 const TOKEN_KEY = '@TutorLink:fcmDeviceToken';
@@ -41,7 +42,8 @@ export const parseRemoteToAppNotification = (
     data?: PushNotificationData | null;
     sentTime?: number;
   },
-  source: AppNotification['source'] = 'push'
+  source: AppNotification['source'] = 'push',
+  recipientUserId?: string | null
 ): AppNotification => {
   const data = (remote.data || {}) as Record<string, string>;
   const id =
@@ -49,6 +51,12 @@ export const parseRemoteToAppNotification = (
     data.id ||
     remote.messageId ||
     `push-${Date.now()}`;
+  const resolvedRecipient =
+    data.recipientUserId || data.userId || recipientUserId || undefined;
+
+  if (resolvedRecipient && !data.recipientUserId) {
+    data.recipientUserId = String(resolvedRecipient);
+  }
 
   return {
     id: String(id),
@@ -63,6 +71,7 @@ export const parseRemoteToAppNotification = (
     createdAt:
       data.createdAt || new Date(remote.sentTime || Date.now()).toISOString(),
     read: false,
+    recipientUserId: resolvedRecipient ? String(resolvedRecipient) : undefined,
     data: Object.fromEntries(
       Object.entries(data).map(([k, v]) => [k, v == null ? '' : String(v)])
     ),
@@ -232,8 +241,7 @@ export const handleNotificationNavigation = (
   const type = String(data.type || data.notificationType || '').toLowerCase();
   const screen = String(data.screen || '');
   const chatId = data.chatId || data.conversationId;
-  const relatedId =
-    data.relatedId || data.bookingId || data.paymentId || data.slotId;
+  const bookingId = data.bookingId || data.relatedId;
 
   try {
     if (
@@ -253,9 +261,64 @@ export const handleNotificationNavigation = (
       return;
     }
 
+    // Doc: booking_accepted → Bookings; booking_request → Request;
+    // booking_rejected → BookingPendingScreen (or Bookings).
+    if (
+      type === 'booking_accepted' ||
+      (type.includes('accept') && type.includes('booking'))
+    ) {
+      navigationRef.navigate('MyTabs' as never, {
+        screen: 'Bookings',
+      } as never);
+      return;
+    }
+
+    if (
+      type === 'booking_request' ||
+      screen === 'Request'
+    ) {
+      navigationRef.navigate('MyTabs' as never, {
+        screen: 'Request',
+      } as never);
+      return;
+    }
+
+    if (
+      type === 'booking_rejected' ||
+      screen === 'BookingPendingScreen'
+    ) {
+      if (bookingId) {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'BookingPendingScreen',
+          params: { bookingId },
+        } as never);
+      } else {
+        navigationRef.navigate('MyTabs' as never, {
+          screen: 'Bookings',
+        } as never);
+      }
+      return;
+    }
+
     if (screen === 'StudentNotificationInboxScreen' || type === 'general') {
       navigationRef.navigate('HomeNavigator' as never, {
         screen: 'StudentNotificationInboxScreen',
+      } as never);
+      return;
+    }
+
+    if (screen === 'BookingPendingScreen' && bookingId) {
+      navigationRef.navigate('HomeNavigator' as never, {
+        screen: 'BookingPendingScreen',
+        params: { bookingId },
+      } as never);
+      return;
+    }
+
+    if (screen === 'BookingReviewScreen' && bookingId) {
+      navigationRef.navigate('HomeNavigator' as never, {
+        screen: 'BookingReviewScreen',
+        params: { bookingId },
       } as never);
       return;
     }
@@ -277,7 +340,7 @@ export const handleNotificationNavigation = (
       }
       navigationRef.navigate('HomeNavigator' as never, {
         screen,
-        params: relatedId ? { id: relatedId } : undefined,
+        params: bookingId ? { bookingId, id: bookingId } : undefined,
       } as never);
       return;
     }
@@ -307,7 +370,6 @@ export const handleNotificationNavigation = (
         } as never);
         break;
       case 'verification':
-      case 'request':
         navigationRef.navigate('MyTabs' as never, {
           screen: 'Request',
         } as never);
@@ -331,7 +393,13 @@ export const handleNotificationNavigation = (
 const ingestRemoteMessage = async (
   remoteMessage: FirebaseMessagingTypes.RemoteMessage
 ) => {
-  const appNotification = parseRemoteToAppNotification(remoteMessage, 'push');
+  const session = await getAuthSession();
+  const recipientUserId = getUserId(session?.user as any);
+  const appNotification = parseRemoteToAppNotification(
+    remoteMessage,
+    'push',
+    recipientUserId
+  );
   await presentNotification(appNotification);
   return appNotification;
 };
@@ -339,6 +407,8 @@ const ingestRemoteMessage = async (
 /** Local inbox item for QA (no system tray — Notifee skipped). */
 export const sendTestSystemNotification = async () => {
   const now = new Date().toISOString();
+  const session = await getAuthSession();
+  const recipientUserId = getUserId(session?.user as any) || undefined;
   const samples = [
     {
       title: 'New booking request',
@@ -368,7 +438,12 @@ export const sendTestSystemNotification = async () => {
     type: sample.type,
     createdAt: now,
     read: false,
-    data: { ...sample.data, createdAt: now },
+    recipientUserId: recipientUserId ? String(recipientUserId) : undefined,
+    data: {
+      ...sample.data,
+      createdAt: now,
+      recipientUserId: recipientUserId ? String(recipientUserId) : '',
+    },
     source: 'test',
   });
 };

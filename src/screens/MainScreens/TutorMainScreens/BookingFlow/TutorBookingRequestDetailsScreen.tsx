@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  Linking,
 } from 'react-native';
 import { IconButton } from 'react-native-paper';
 import { GlassScreen } from '../../../../components/Glass';
@@ -15,29 +16,51 @@ import { GLASS } from '../../../../theme/glass';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
-import { bookingFlowService } from '../../../../services/bookings/bookingFlowService';
-import { BookingFlowItem } from '../../../../types/bookingFlow.types';
+import { useAppDispatch, useAppSelector } from '../../../../store/hooks';
+import {
+  cancelBookingThunk,
+  completeBookingThunk,
+  confirmBookingThunk,
+  fetchBookingByIdThunk,
+} from '../../../../store/booking/bookingSlice';
+import { createConversationThunk } from '../../../../store/chat/chatSlice';
+import { mapBookingToFlowItem } from '../../../../utils/bookings/bookingMappers';
+import { canCompleteSession, canJoinMeeting, canMessage, isValidHttpsMeetingLink } from '../../../../utils/bookings/bookingStatus';
+import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
+import { getConfirmBookingErrorMessage } from '../../../../utils/bookings/bookingResponse';
+import { getSessionAmount } from '../../../../utils/bookings/bookingStatus';
+import { ApiUser } from '../../../../types/api.types';
+import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
+import { DEV_SKIP_WALLET_ESCROW } from '../../../../config/features';
 
 const TutorBookingRequestDetailsScreen = () => {
   const { colors } = useUi();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const bookingId = (route.params?.bookingId as string) || 'bk-req-1001';
+  const dispatch = useAppDispatch();
+  const bookingId = route.params?.bookingId as string;
+  const authUser = useAppSelector(state => state.auth.user as ApiUser | null);
+  const apiBooking = useAppSelector(state =>
+    bookingId ? state.booking.byId[bookingId] : undefined
+  );
 
-  const [booking, setBooking] = useState<BookingFlowItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [suggestSlot, setSuggestSlot] = useState('');
+  const [meetingLink, setMeetingLink] = useState('');
 
   const load = useCallback(async () => {
+    if (!bookingId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      setBooking(await bookingFlowService.getBooking(bookingId));
+      await dispatch(fetchBookingByIdThunk(bookingId)).unwrap();
     } finally {
       setLoading(false);
     }
-  }, [bookingId]);
+  }, [bookingId, dispatch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -45,21 +68,13 @@ const TutorBookingRequestDetailsScreen = () => {
     }, [load])
   );
 
-  const act = async (
-    status: 'accepted' | 'rejected' | 'unavailable',
-    extra?: { suggestedSlot?: string }
-  ) => {
-    setBusy(true);
-    try {
-      await bookingFlowService.updateBookingStatus(bookingId, status, extra);
-      await load();
-      Alert.alert('Updated', `Request marked as ${status}.`);
-    } finally {
-      setBusy(false);
+  React.useEffect(() => {
+    if (apiBooking?.meetingLink) {
+      setMeetingLink(apiBooking.meetingLink);
     }
-  };
+  }, [apiBooking?.meetingLink]);
 
-  if (loading || !booking) {
+  if (loading || !apiBooking) {
     return (
       <GlassScreen scroll={false}>
         <ActivityIndicator style={{ marginTop: 40 }} color={GLASS.primary} />
@@ -67,7 +82,134 @@ const TutorBookingRequestDetailsScreen = () => {
     );
   }
 
+  const booking = mapBookingToFlowItem(apiBooking);
   const student = booking.student;
+  const completeEnabled = canCompleteSession(apiBooking);
+
+  const accept = async () => {
+    const link = meetingLink.trim();
+    if (link && !isValidHttpsMeetingLink(link)) {
+      Alert.alert(
+        'Invalid meeting link',
+        'Meeting link must be a valid HTTPS URL (max 500 characters).'
+      );
+      return;
+    }
+
+    // Soft gate: allow accept in skip-escrow mode even if rate was missing at book time.
+    if (!DEV_SKIP_WALLET_ESCROW) {
+      const sessionAmount = getSessionAmount(apiBooking);
+      if (sessionAmount <= 0) {
+        Alert.alert(
+          'Cannot accept yet',
+          'This booking has no session amount (hourly rate was missing when the student booked). Ask them to cancel and send a new request after your fee is saved on the server.'
+        );
+        return;
+      }
+    }
+
+    setBusy(true);
+    try {
+      const result = await dispatch(
+        confirmBookingThunk({
+          id: bookingId,
+          payload: {
+            ...(link ? { meetingLink: link } : {}),
+            ...(DEV_SKIP_WALLET_ESCROW
+              ? { skipEscrow: true, bypassPayment: true }
+              : {}),
+          },
+        })
+      ).unwrap();
+      Alert.alert(
+        'Accepted',
+        result.sessionAmount
+          ? `Booking confirmed. Escrow held: PKR ${result.sessionAmount.toLocaleString()}.`
+          : 'Booking confirmed successfully.'
+      );
+      await load();
+    } catch (err) {
+      Alert.alert('Could not accept', getConfirmBookingErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reject = () => {
+    Alert.alert('Reject booking?', 'The student will be notified.', [
+      { text: 'Keep', style: 'cancel' },
+      {
+        text: 'Reject',
+        style: 'destructive',
+        onPress: async () => {
+          setBusy(true);
+          try {
+            await dispatch(
+              cancelBookingThunk({ id: bookingId, actorRole: 'tutor' })
+            ).unwrap();
+            Alert.alert('Rejected', 'Booking was cancelled.');
+            await load();
+          } catch (err) {
+            Alert.alert('Could not reject', getBookingErrorMessage(err));
+          } finally {
+            setBusy(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const complete = async () => {
+    if (!completeEnabled) {
+      Alert.alert(
+        'Too early',
+        'You can complete the session only after the scheduled end time.'
+      );
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await dispatch(completeBookingThunk(bookingId)).unwrap();
+      Alert.alert(
+        'Completed',
+        result.sessionAmount
+          ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
+          : 'Session marked complete.'
+      );
+      await load();
+    } catch (err) {
+      Alert.alert('Could not complete', getBookingErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const openChat = async () => {
+    if (!canMessage(apiBooking)) return;
+    setBusy(true);
+    try {
+      const conversation = await dispatch(
+        createConversationThunk({
+          payload: {
+            bookingId: apiBooking._id,
+            subject: apiBooking.subject,
+          },
+          currentUser: authUser,
+        })
+      ).unwrap();
+      navigation.navigate('ChatScreen', {
+        chatId: conversation.id,
+        bookingId: apiBooking._id,
+        name: conversation.participant.name,
+        avatar: conversation.participant.avatar,
+        subject: conversation.subject,
+      });
+    } catch (err) {
+      Alert.alert('Chat unavailable', getBookingErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
@@ -82,12 +224,19 @@ const TutorBookingRequestDetailsScreen = () => {
           <Image source={{ uri: student.avatarUrl }} style={styles.avatar} />
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{student.name}</Text>
-            <Text style={styles.meta}>
-              {student.grade || 'Student'}
-              {student.rating ? ` · ${student.rating.toFixed(1)} ★` : ''}
-            </Text>
+              <Text style={styles.meta}>
+                {student.grade || 'Student'}
+                {student.subjects?.length
+                  ? ` · ${student.subjects.join(', ')}`
+                  : ''}
+              </Text>
+              <Text style={[styles.meta, { marginTop: 4 }]}>
+                Request from {student.name}
+              </Text>
             <View style={styles.statusPill}>
-              <Text style={styles.statusText}>{booking.status.toUpperCase()}</Text>
+              <Text style={styles.statusText}>
+                {apiBooking.status.toUpperCase()}
+              </Text>
             </View>
           </View>
         </View>
@@ -95,77 +244,149 @@ const TutorBookingRequestDetailsScreen = () => {
         <View style={styles.card}>
           <Row label="Subject" value={booking.subject} />
           <Row label="Date" value={booking.date} />
-          <Row label="Time" value={`${booking.startTime} – ${booking.endTime}`} />
+          <Row
+            label="Time"
+            value={`${booking.startTime} – ${booking.endTime}`}
+          />
           <Row label="Duration" value={`${booking.durationHours} hour`} />
           <Row
-            label="Mode"
-            value={booking.teachingMode === 'online' ? 'Online' : 'Physical'}
+            label="Amount"
+            value={`PKR ${booking.totalCost.toLocaleString()}`}
           />
-          <Row label="Location" value={booking.location} />
-          <Row label="Amount" value={`PKR ${booking.totalCost.toLocaleString()}`} />
-          <Row label="Payment" value={`${booking.paymentMethod} (${booking.paymentStatus})`} />
-          {booking.notes ? <Row label="Notes" value={booking.notes} /> : null}
+          <Row
+            label="Payment"
+            value={`${booking.paymentMethod} (${booking.paymentStatus})`}
+          />
+          {apiBooking.meetingLink ? (
+            <Row label="Meeting link" value={apiBooking.meetingLink} />
+          ) : null}
         </View>
 
-        {booking.status === 'pending' ? (
+        {apiBooking.status === 'pending' ? (
           <View style={styles.card}>
-            <Text style={styles.section}>Suggest another slot (UI)</Text>
+            <Text style={styles.section}>Meeting link (optional)</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Tomorrow 6:00 PM"
+              placeholder="https://meet.google.com/..."
               placeholderTextColor="#94A3B8"
-              value={suggestSlot}
-              onChangeText={setSuggestSlot}
+              autoCapitalize="none"
+              value={meetingLink}
+              onChangeText={setMeetingLink}
             />
-            <CustomButton
-              title="Suggest slot"
-              disabled={busy || !suggestSlot.trim()}
-              onPress={() =>
-                void act('unavailable', { suggestedSlot: suggestSlot.trim() })
-              }
-              backgroundColor="#EEF2FF"
-              textColor="#4338CA"
-            />
+            <Text style={styles.hint}>
+              HTTPS only. Escrow is held from the student wallet on accept
+              (mock funds work for FYP demos).
+            </Text>
           </View>
         ) : null}
 
-        {booking.status === 'pending' ? (
+        {apiBooking.status === 'pending' ? (
           <View style={styles.actions}>
             <CustomButton
               title={busy ? 'Please wait…' : 'Accept Booking'}
               disabled={busy}
-              onPress={() => void act('accepted')}
+              onPress={() => void accept()}
             />
             <CustomButton
               title="Reject Booking"
               disabled={busy}
-              onPress={() => void act('rejected')}
+              onPress={reject}
               backgroundColor="#FEE2E2"
               textColor="#B91C1C"
             />
+          </View>
+        ) : null}
+
+        {apiBooking.status === 'accepted' ? (
+          <View style={styles.actions}>
+            {canJoinMeeting(apiBooking) ? (
+              <CustomButton
+                title="Open meeting link"
+                onPress={() => void Linking.openURL(apiBooking.meetingLink!)}
+              />
+            ) : null}
+            {apiBooking.canReschedule &&
+            apiBooking.rescheduleProposal?.status !== 'pending' ? (
+              <CustomButton
+                title="Reschedule"
+                disabled={busy}
+                onPress={() =>
+                  navigation.navigate('TutorRescheduleScreen', {
+                    bookingId: apiBooking._id,
+                  })
+                }
+                backgroundColor={GLASS.primarySoft}
+                textColor={GLASS.primary}
+              />
+            ) : null}
+            {apiBooking.rescheduleProposal?.status === 'pending' ? (
+              <CustomButton
+                title="View reschedule proposal"
+                disabled={busy}
+                onPress={() =>
+                  navigation.navigate('TutorRescheduleScreen', {
+                    bookingId: apiBooking._id,
+                  })
+                }
+                backgroundColor="#FEF3C7"
+                textColor="#B45309"
+              />
+            ) : null}
             <CustomButton
-              title="Mark as Not Available"
+              title={
+                completeEnabled
+                  ? busy
+                    ? 'Completing…'
+                    : 'Complete session'
+                  : 'Complete (after session ends)'
+              }
+              disabled={busy || !completeEnabled}
+              onPress={() => void complete()}
+            />
+            <CustomButton
+              title="Cancel booking"
               disabled={busy}
-              onPress={() => void act('unavailable')}
-              backgroundColor="#FFEDD5"
-              textColor="#C2410C"
+              onPress={reject}
+              backgroundColor="#FEE2E2"
+              textColor="#B91C1C"
             />
           </View>
-        ) : (
+        ) : null}
+
+        {canMessage(apiBooking) ? (
           <CustomButton
-            title="Back to Requests"
-            onPress={() => navigation.navigate('MyTabs', { screen: 'Request' })}
+            title="Message student"
+            disabled={busy}
+            onPress={() => void openChat()}
+            backgroundColor={GLASS.primarySoft}
+            textColor={GLASS.primary}
           />
-        )}
+        ) : null}
+
+        <CustomButton
+          title="Back to Requests"
+          onPress={() => leaveHomeStackToTabs('Request')}
+          backgroundColor="#EEF2FF"
+          textColor="#4338CA"
+        />
       </ScrollView>
     </GlassScreen>
   );
 };
 
 const Row = ({ label, value }: { label: string; value: string }) => (
-  <View style={{ marginBottom: 10 }}>
-    <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '700' }}>{label}</Text>
-    <Text style={{ color: '#0F172A', fontSize: 14, fontWeight: '600', marginTop: 2 }}>
+  <View style={{ marginBottom: 10, width: '100%' }}>
+    <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '700' }}>
+      {label}
+    </Text>
+    <Text
+      style={{
+        color: '#0F172A',
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 2,
+      }}
+    >
       {value}
     </Text>
   </View>
@@ -220,6 +441,12 @@ const createStyles = (_colors: Record<string, unknown>) =>
       color: GLASS.textPrimary,
       marginBottom: 8,
     },
+    hint: {
+      width: '100%',
+      color: GLASS.textSecondary,
+      fontSize: 12,
+      marginTop: 4,
+    },
     input: {
       width: '100%',
       borderWidth: 1,
@@ -230,5 +457,5 @@ const createStyles = (_colors: Record<string, unknown>) =>
       marginBottom: 10,
       color: GLASS.textPrimary,
     },
-    actions: { gap: 10, marginTop: 4 },
+    actions: { gap: 10, marginTop: 4, width: '100%' },
   });

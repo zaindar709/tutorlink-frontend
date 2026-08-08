@@ -34,6 +34,8 @@ export type TutorCertificate = {
 
 export type TutorBookingProfile = {
   id: string;
+  /** User _id for POST /api/bookings (not tutor profile id). */
+  userId?: string;
   name: string;
   avatarUrl: string;
   rating: number;

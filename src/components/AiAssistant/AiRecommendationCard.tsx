@@ -23,6 +23,8 @@ type Props = {
   onBookNow: () => void;
   onRefresh: () => void;
   onAnother: () => void;
+  bookLabel?: string;
+  bookDisabled?: boolean;
 };
 
 export default function AiRecommendationCard({
@@ -34,6 +36,8 @@ export default function AiRecommendationCard({
   onBookNow,
   onRefresh,
   onAnother,
+  bookLabel = 'Book Now',
+  bookDisabled = false,
 }: Props) {
   const { colors, resp } = useUi();
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
@@ -136,19 +140,34 @@ export default function AiRecommendationCard({
         </View>
 
         <View style={styles.ctaRow}>
+          {!bookDisabled ? (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={onViewProfile}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.secondaryBtnText}>View Profile</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={onViewProfile}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.secondaryBtnText}>View Profile</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.primaryBtn}
+            style={[
+              styles.primaryBtn,
+              bookDisabled && styles.primaryBtnDisabled,
+              bookDisabled && { flex: 1 },
+            ]}
             onPress={onBookNow}
             activeOpacity={0.85}
+            disabled={bookDisabled}
           >
-            <Text style={styles.primaryBtnText}>Book Now</Text>
+            <Text
+              style={[
+                styles.primaryBtnText,
+                bookDisabled && styles.primaryBtnTextDisabled,
+              ]}
+              numberOfLines={1}
+            >
+              {bookLabel}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -264,6 +283,12 @@ const createStyles = (colors: any, resp: any) =>
       justifyContent: 'center',
     },
     primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    primaryBtnDisabled: {
+      backgroundColor: 'rgba(148, 163, 184, 0.28)',
+    },
+    primaryBtnTextDisabled: {
+      color: '#64748B',
+    },
     anotherLink: { alignSelf: 'center', marginTop: 10 },
     anotherText: {
       color: colors.PRIMARY_COLOR,

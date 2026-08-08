@@ -22,6 +22,12 @@ import CustomInput from '../../../../components/CustomInput/CustomInput';
 import CustomButton from '../../../../components/CustomButton';
 import { useWallet } from '../../../../hooks/api/useWallet';
 import { formatTransactionForCard } from '../../../../utils/api/bookingHelpers';
+import { MOCK_WALLET_DEPOSITS } from '../../../../config/features';
+import {
+  MOCK_WALLET_PHONE,
+  MOCK_WALLET_PRESETS,
+  buildMockDepositPayload,
+} from '../../../../services/wallet/mockWallet';
 
 export default function WalletScreen() {
   const { colors, resp } = useUi();
@@ -30,16 +36,25 @@ export default function WalletScreen() {
   const { balance, transactions, loading, depositing, error, deposit, refresh } =
     useWallet();
   const [depositVisible, setDepositVisible] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [amount, setAmount] = useState('5000');
+  const [phoneNumber, setPhoneNumber] = useState(MOCK_WALLET_PHONE);
   const [paymentMethod, setPaymentMethod] = useState<'jazzcash' | 'easypaisa'>(
     'jazzcash'
   );
+  const [mockMode, setMockMode] = useState(MOCK_WALLET_DEPOSITS);
 
   const transactionItems = useMemo(
     () => transactions.map(item => formatTransactionForCard(item)),
     [transactions]
   );
+
+  const openDeposit = () => {
+    setMockMode(MOCK_WALLET_DEPOSITS);
+    setAmount('5000');
+    setPhoneNumber(MOCK_WALLET_PHONE);
+    setPaymentMethod('jazzcash');
+    setDepositVisible(true);
+  };
 
   const handleDeposit = async () => {
     const parsedAmount = Number(amount);
@@ -48,7 +63,8 @@ export default function WalletScreen() {
       return;
     }
 
-    if (!/^\d{11}$/.test(phoneNumber)) {
+    const phone = phoneNumber.replace(/\D/g, '');
+    if (!/^\d{11}$/.test(phone)) {
       Alert.alert(
         'Invalid phone number',
         'Phone number must be exactly 11 digits.'
@@ -56,19 +72,33 @@ export default function WalletScreen() {
       return;
     }
 
-    const success = await deposit({
-      amount: parsedAmount,
-      paymentMethod,
-      phoneNumber,
-    });
+    let success = false;
+    if (mockMode && MOCK_WALLET_DEPOSITS) {
+      success = await deposit(
+        buildMockDepositPayload(parsedAmount, paymentMethod, phone)
+      );
+    } else {
+      success = await deposit({
+        amount: parsedAmount,
+        paymentMethod,
+        phoneNumber: phone,
+      });
+    }
 
     if (success) {
       setDepositVisible(false);
-      setAmount('');
-      setPhoneNumber('');
-      Alert.alert('Success', 'Deposit completed successfully.');
-    } else if (error) {
-      Alert.alert('Deposit failed', error);
+      Alert.alert(
+        mockMode ? 'Mock funds added' : 'Success',
+        mockMode
+          ? `PKR ${parsedAmount.toLocaleString()} mock balance credited.\n\nBook a tutor — when they accept, escrow will hold from this wallet.`
+          : 'Deposit completed successfully.'
+      );
+    } else {
+      Alert.alert(
+        'Deposit failed',
+        error ||
+          'Could not credit wallet. Check that /api/wallet/deposit is available.'
+      );
     }
   };
 
@@ -88,13 +118,31 @@ export default function WalletScreen() {
       <ProfileSubHeader navigation={navigation} title="Wallet" />
 
       <View style={styles.topSection}>
-        <Text style={styles.subtitle}>
-          Manage deposits, escrow holds, and recent activity
-        </Text>
+        {MOCK_WALLET_DEPOSITS ? (
+          <View style={styles.mockBanner}>
+            <MaterialCommunityIcons
+              name="flask-outline"
+              size={18}
+              color={GLASS.primary}
+            />
+            <Text style={styles.mockBannerText}>
+              FYP demo: use mock funds (no real payment). Escrow still runs on
+              tutor accept.
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.subtitle}>
+            Manage deposits, escrow holds, and recent activity
+          </Text>
+        )}
 
         <WalletCard
           balance={balance?.totalBalance ?? 0}
-          onDeposit={() => setDepositVisible(true)}
+          onDeposit={openDeposit}
+          depositLabel={
+            MOCK_WALLET_DEPOSITS ? 'Add Mock Funds' : 'Deposit Money'
+          }
+          mockBadge={MOCK_WALLET_DEPOSITS}
         />
 
         <EscrowCard
@@ -142,7 +190,9 @@ export default function WalletScreen() {
               </View>
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySub}>
-                Deposits and session payments will show up here.
+                {MOCK_WALLET_DEPOSITS
+                  ? 'Tap Add Mock Funds above to credit demo balance for booking escrow.'
+                  : 'Deposits and session payments will show up here.'}
               </Text>
             </View>
           }
@@ -154,25 +204,90 @@ export default function WalletScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.modalTitle}>Deposit Money</Text>
-            <Text style={styles.modalSub}>
-              Add funds using JazzCash or Easypaisa
+            <Text style={styles.modalTitle}>
+              {mockMode ? 'Add Mock Funds' : 'Deposit Money'}
             </Text>
+            <Text style={styles.modalSub}>
+              {mockMode
+                ? 'Demo credit only — detected as mock. Use this for FYP booking + escrow.'
+                : 'Add funds using JazzCash or Easypaisa'}
+            </Text>
+
+            {MOCK_WALLET_DEPOSITS ? (
+              <View style={styles.modeRow}>
+                <TouchableOpacity
+                  style={[styles.modeChip, mockMode && styles.modeChipActive]}
+                  onPress={() => {
+                    setMockMode(true);
+                    setPhoneNumber(MOCK_WALLET_PHONE);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.modeText,
+                      mockMode && styles.modeTextActive,
+                    ]}
+                  >
+                    Mock (FYP)
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeChip, !mockMode && styles.modeChipActive]}
+                  onPress={() => setMockMode(false)}
+                >
+                  <Text
+                    style={[
+                      styles.modeText,
+                      !mockMode && styles.modeTextActive,
+                    ]}
+                  >
+                    Live payment
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {mockMode ? (
+              <View style={styles.presetRow}>
+                {MOCK_WALLET_PRESETS.map(preset => {
+                  const selected = Number(amount) === preset;
+                  return (
+                    <TouchableOpacity
+                      key={preset}
+                      style={[
+                        styles.presetChip,
+                        selected && styles.presetChipActive,
+                      ]}
+                      onPress={() => setAmount(String(preset))}
+                    >
+                      <Text
+                        style={[
+                          styles.presetText,
+                          selected && styles.presetTextActive,
+                        ]}
+                      >
+                        {preset.toLocaleString()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            ) : null}
 
             <CustomInput
               label="Amount (PKR)"
               value={amount}
               onChangeText={setAmount}
               keyboardType="numeric"
-              placeholder="1000"
+              placeholder="5000"
             />
 
             <CustomInput
-              label="Phone Number"
+              label={mockMode ? 'Mock phone (11 digits)' : 'Phone Number'}
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
-              placeholder="03001234567"
+              placeholder={MOCK_WALLET_PHONE}
             />
 
             <View style={styles.methodRow}>
@@ -192,13 +307,20 @@ export default function WalletScreen() {
                     ]}
                   >
                     {method === 'jazzcash' ? 'JazzCash' : 'Easypaisa'}
+                    {mockMode ? ' · mock' : ''}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
             <CustomButton
-              title={depositing ? 'Processing...' : 'Deposit'}
+              title={
+                depositing
+                  ? 'Processing...'
+                  : mockMode
+                    ? 'Credit Mock Funds'
+                    : 'Deposit'
+              }
               onPress={handleDeposit}
               disabled={depositing}
             />
@@ -235,6 +357,24 @@ const createStyles = ({ colors, resp }: any) =>
       fontSize: resp.df(13),
       marginBottom: resp.dy(14),
       lineHeight: 18,
+    },
+    mockBanner: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      backgroundColor: GLASS.primarySoft,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      borderRadius: GLASS.radius.md,
+      padding: 12,
+      marginBottom: resp.dy(12),
+    },
+    mockBannerText: {
+      flex: 1,
+      color: GLASS.textSecondary,
+      fontSize: resp.df(12),
+      lineHeight: 17,
+      fontWeight: '600',
     },
     sheet: {
       flex: 1,
@@ -339,6 +479,57 @@ const createStyles = ({ colors, resp }: any) =>
       color: GLASS.textSecondary,
       fontSize: 13,
       marginBottom: 4,
+      lineHeight: 18,
+    },
+    modeRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+    modeChip: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: GLASS.radius.md,
+      backgroundColor: GLASS.primarySoft,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      alignItems: 'center',
+    },
+    modeChipActive: {
+      backgroundColor: GLASS.primary,
+      borderColor: GLASS.primary,
+    },
+    modeText: {
+      color: GLASS.textSecondary,
+      fontWeight: '700',
+      fontSize: 13,
+    },
+    modeTextActive: {
+      color: '#FFFFFF',
+    },
+    presetRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    presetChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: GLASS.radius.md,
+      backgroundColor: '#F8FAFC',
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+    },
+    presetChipActive: {
+      backgroundColor: GLASS.primarySoft,
+      borderColor: GLASS.primary,
+    },
+    presetText: {
+      color: GLASS.textSecondary,
+      fontWeight: '700',
+      fontSize: 12,
+    },
+    presetTextActive: {
+      color: GLASS.primary,
     },
     methodRow: {
       flexDirection: 'row',
@@ -361,6 +552,7 @@ const createStyles = ({ colors, resp }: any) =>
     methodText: {
       color: GLASS.textSecondary,
       fontWeight: '700',
+      fontSize: 12,
     },
     methodTextActive: {
       color: '#FFFFFF',

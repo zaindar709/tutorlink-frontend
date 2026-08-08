@@ -1,4 +1,4 @@
-import { searchTutorsAPI } from '../../api/tutors.api';
+import { getTutorByIdAPI, searchTutorsAPI } from '../../api/tutors.api';
 import { TutorProfile, TutorSearchPayload } from '../../types/api.types';
 
 /** Walk response and collect the most likely tutor array. */
@@ -33,46 +33,94 @@ const extractTutorList = (payload: unknown): Record<string, unknown>[] => {
   return [];
 };
 
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+
+/** Pull hourly rate from common / nested backend shapes. */
+export const extractHourlyRate = (raw: Record<string, unknown>): number | undefined => {
+  const nested = [
+    raw,
+    asRecord(raw.profile),
+    asRecord(raw.tutorProfile),
+    asRecord(raw.tutor),
+    asRecord(raw.details),
+    asRecord(raw.pricing),
+    asRecord(raw.user),
+  ].filter(Boolean) as Record<string, unknown>[];
+
+  for (const obj of nested) {
+    const candidate =
+      obj.hourlyRate ??
+      obj.hourly_rate ??
+      obj.rate ??
+      obj.pricePerHour ??
+      obj.price_per_hour ??
+      obj.price ??
+      obj.fee ??
+      obj.sessionRate;
+    if (candidate == null || candidate === '') continue;
+    const num = Number(candidate);
+    if (Number.isFinite(num) && num > 0) return num;
+  }
+  return undefined;
+};
+
 const asUser = (
   raw: Record<string, unknown>,
-  fallbackId: string
+  _profileId: string
 ): TutorProfile['user'] => {
-  const user =
-    raw.user && typeof raw.user === 'object'
-      ? (raw.user as Record<string, unknown>)
+  const rawUser = raw.user;
+  const userObj =
+    rawUser && typeof rawUser === 'object'
+      ? (rawUser as Record<string, unknown>)
       : {};
+  const userIdFromString =
+    typeof rawUser === 'string' && rawUser.trim() ? rawUser.trim() : '';
+
+  const resolvedUserId = String(
+    userObj._id ||
+      userObj.id ||
+      raw.userId ||
+      raw.user_id ||
+      userIdFromString ||
+      ''
+  ).trim();
+
+  // Never fall back to TutorProfile._id — booking.confirm compares against User._id.
+  const userId = resolvedUserId;
 
   const name = String(
-    user.name ||
-      user.fullName ||
-      user.displayName ||
+    userObj.name ||
+      userObj.fullName ||
+      userObj.displayName ||
       raw.name ||
       raw.fullName ||
       'Tutor'
   );
 
   return {
-    ...(user as TutorProfile['user']),
-    _id: String(user._id || user.id || raw.userId || fallbackId),
+    ...(userObj as TutorProfile['user']),
+    _id: userId,
+    id: userId || undefined,
     name,
-    email: user.email
-      ? String(user.email)
+    email: userObj.email
+      ? String(userObj.email)
       : raw.email
         ? String(raw.email)
         : undefined,
-    avatarUrl: user.avatarUrl
-      ? String(user.avatarUrl)
-      : user.photoURL
-        ? String(user.photoURL)
+    avatarUrl: userObj.avatarUrl
+      ? String(userObj.avatarUrl)
+      : userObj.photoURL
+        ? String(userObj.photoURL)
         : raw.avatarUrl
           ? String(raw.avatarUrl)
           : undefined,
   };
 };
 
-const normalizeTutor = (
+export const normalizeTutor = (
   raw: Record<string, unknown>,
-  index: number
+  index = 0
 ): TutorProfile => {
   const id = String(
     raw._id ||
@@ -98,14 +146,32 @@ const normalizeTutor = (
     raw.verificationStatus || raw.onboardingStatus || ''
   ).toLowerCase();
 
+  const hourlyRate = extractHourlyRate(raw);
+
+  const relationRaw = asRecord(raw.relation);
+  const relation = relationRaw
+    ? {
+        hasPending: Boolean(relationRaw.hasPending),
+        hasActive: Boolean(relationRaw.hasActive),
+        canRequest:
+          relationRaw.canRequest === undefined
+            ? !relationRaw.hasPending && !relationRaw.hasActive
+            : Boolean(relationRaw.canRequest),
+      }
+    : undefined;
+
   return {
     _id: id,
     user: asUser(raw, id),
-    qualification: raw.qualification ? String(raw.qualification) : undefined,
+    qualification: raw.qualification
+      ? String(raw.qualification)
+      : raw.education
+        ? String(raw.education)
+        : undefined,
     experience: raw.experience != null ? String(raw.experience) : undefined,
     experienceYears:
       raw.experienceYears != null ? Number(raw.experienceYears) : undefined,
-    hourlyRate: raw.hourlyRate != null ? Number(raw.hourlyRate) : undefined,
+    hourlyRate,
     subjects,
     isVerified:
       raw.isVerified === true ||
@@ -119,6 +185,7 @@ const normalizeTutor = (
         : Boolean(raw.availability),
     location: raw.location as TutorProfile['location'],
     distanceKm: raw.distanceKm != null ? Number(raw.distanceKm) : undefined,
+    relation,
   };
 };
 
@@ -130,7 +197,7 @@ const postSearch = async (
   const body = response.data as unknown;
 
   try {
-    console.log('[TutorSearch] raw preview', JSON.stringify(body)?.slice(0, 600));
+    console.log('[TutorSearch] raw preview', JSON.stringify(body)?.slice(0, 800));
   } catch {
     console.log('[TutorSearch] raw type', typeof body);
   }
@@ -141,17 +208,37 @@ const postSearch = async (
   console.log(
     '[TutorSearch] parsed',
     list.length,
-    list.map(t => `${t.user?.name}(v=${t.isVerified})`)
+    list.map(
+      t =>
+        `${t.user?.name}(v=${t.isVerified},rate=${t.hourlyRate ?? 0},uid=${t.user?._id})`
+    )
   );
   return list;
 };
 
 /**
+ * Fetch one tutor by profile id or user id (backend may accept either).
+ */
+export const fetchTutorById = async (
+  tutorId: string
+): Promise<TutorProfile | null> => {
+  if (!tutorId) return null;
+  try {
+    const response = await getTutorByIdAPI(tutorId);
+    const body = response.data as unknown;
+    const root = asRecord(body) || {};
+    const data = asRecord(root.data) || root;
+    if (!data || Object.keys(data).length === 0) return null;
+    return normalizeTutor(data, 0);
+  } catch (error) {
+    console.warn('[TutorSearch] GET /api/tutors/:id failed', tutorId, error);
+    return null;
+  }
+};
+
+/**
  * Student Home / Search / Map:
  * Return every tutor the backend sends for this query.
- * Do NOT client-filter by interests, minRating, or availability.
- *
- * After admin Approve → backend sets isVerified=true → these tutors MUST appear.
  */
 export const searchTutors = async (
   filters: TutorSearchPayload = {}
@@ -164,7 +251,6 @@ export const searchTutors = async (
     return postSearch(filters);
   }
 
-  // 1) Empty body (most compatible with current backend)
   try {
     const all = await postSearch({});
     if (all.length > 0) return all;
@@ -172,7 +258,6 @@ export const searchTutors = async (
     console.warn('[TutorSearch] empty body failed', error);
   }
 
-  // 2) Explicit verified filter (docs contract)
   try {
     const verified = await postSearch({ isVerified: true });
     if (verified.length > 0) return verified;

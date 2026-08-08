@@ -14,6 +14,8 @@ type TopTutorCardProps = {
   verified?: boolean;
   university?: string;
   onHire: () => void;
+  ctaLabel?: string;
+  ctaDisabled?: boolean;
 };
 
 const TopTutorCard: React.FC<TopTutorCardProps> = ({
@@ -25,6 +27,8 @@ const TopTutorCard: React.FC<TopTutorCardProps> = ({
   verified = false,
   university,
   onHire,
+  ctaLabel = 'Hire Tutor',
+  ctaDisabled = false,
 }) => {
   const { colors, resp } = useUi();
   const styles = createStyles(colors, resp);
@@ -89,20 +93,34 @@ const TopTutorCard: React.FC<TopTutorCardProps> = ({
         </View>
       </View>
 
-      <TouchableOpacity onPress={onHire} activeOpacity={0.88}>
-        <LinearGradient
-          colors={[...GLASS.buttonGradient]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.hireBtn}
-        >
-          <Text style={styles.hireBtnText}>Hire Tutor</Text>
-          <MaterialCommunityIcons
-            name="arrow-right"
-            size={resp.df(13)}
-            color="#FFFFFF"
-          />
-        </LinearGradient>
+      <TouchableOpacity
+        onPress={onHire}
+        activeOpacity={0.88}
+        disabled={ctaDisabled}
+      >
+        {ctaDisabled ? (
+          <View style={[styles.hireBtn, styles.hireBtnDisabled]}>
+            <Text style={styles.hireBtnDisabledText} numberOfLines={1}>
+              {ctaLabel}
+            </Text>
+          </View>
+        ) : (
+          <LinearGradient
+            colors={[...GLASS.buttonGradient]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.hireBtn}
+          >
+            <Text style={styles.hireBtnText} numberOfLines={1}>
+              {ctaLabel}
+            </Text>
+            <MaterialCommunityIcons
+              name="arrow-right"
+              size={resp.df(13)}
+              color="#FFFFFF"
+            />
+          </LinearGradient>
+        )}
       </TouchableOpacity>
     </View>
   );
@@ -256,5 +274,14 @@ const createStyles = (_colors: any, resp: any) =>
       fontSize: resp.df(12),
       fontWeight: '700',
       letterSpacing: 0.2,
+    },
+    hireBtnDisabled: {
+      backgroundColor: 'rgba(148, 163, 184, 0.22)',
+    },
+    hireBtnDisabledText: {
+      color: '#64748B',
+      fontSize: resp.df(11),
+      fontWeight: '700',
+      paddingHorizontal: 4,
     },
   });

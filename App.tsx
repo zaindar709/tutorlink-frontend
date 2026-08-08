@@ -15,6 +15,7 @@ import {
   stopApiKeepAlive,
   warmupApi,
 } from './src/services/api/apiWarmup';
+import BookingNotificationsBridge from './src/components/BookingNotificationsBridge';
 
 export default function App() {
   useEffect(() => {
@@ -41,6 +42,7 @@ export default function App() {
       <SafeAreaProvider>
         <ReduxProvider store={store}>
           <PaperProvider>
+            <BookingNotificationsBridge />
             <NavigationContainer ref={navigationRef}>
               <RootNavigator />
             </NavigationContainer>

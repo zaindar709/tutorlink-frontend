@@ -15,6 +15,9 @@ type TutorNearbyCardProps = {
   avatarUrl?: string;
   isSelected: boolean;
   onPress: () => void;
+  /** Book Now | Request Sent | Already in Your Bookings */
+  actionLabel?: string;
+  actionDisabled?: boolean;
 };
 
 const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
@@ -25,13 +28,20 @@ const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
   avatarUrl,
   isSelected,
   onPress,
+  actionLabel = 'Book Now',
+  actionDisabled = false,
 }) => {
   const { colors, resp } = useUi();
-  const styles = createStyles(colors, resp, isSelected);
+  const styles = createStyles(colors, resp, isSelected, actionDisabled);
   const roundedRating = Math.round(rating);
 
   return (
-    <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={onPress}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.85}
+      onPress={onPress}
+      disabled={actionDisabled}
+    >
       <View style={styles.avatarWrapper}>
         <Image
           source={{ uri: avatarUrl || DEFAULT_AVATAR }}
@@ -77,7 +87,9 @@ const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
       </View>
 
       <View style={styles.actionWrapper}>
-        <Text style={styles.actionText}>Book Now</Text>
+        <Text style={styles.actionText} numberOfLines={2}>
+          {actionLabel}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -85,7 +97,12 @@ const TutorNearbyCard: React.FC<TutorNearbyCardProps> = ({
 
 export default TutorNearbyCard;
 
-const createStyles = (colors: any, resp: any, isSelected: boolean) =>
+const createStyles = (
+  colors: any,
+  resp: any,
+  isSelected: boolean,
+  actionDisabled: boolean
+) =>
   StyleSheet.create({
     card: {
       width: resp.pw(85),
@@ -100,6 +117,7 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       borderColor: isSelected ? GLASS.primary : GLASS.cardBorder,
       ...GLASS.shadow.soft,
       marginBottom: resp.dy(14),
+      opacity: actionDisabled ? 0.92 : 1,
     },
     avatarWrapper: {
       width: resp.dx(56),
@@ -165,16 +183,20 @@ const createStyles = (colors: any, resp: any, isSelected: boolean) =>
       marginLeft: resp.dx(4),
     },
     actionWrapper: {
-      backgroundColor: colors.PRIMARY_COLOR,
+      backgroundColor: actionDisabled
+        ? 'rgba(148, 163, 184, 0.25)'
+        : colors.PRIMARY_COLOR,
       borderRadius: resp.dx(16),
       paddingVertical: resp.dy(8),
-      paddingHorizontal: resp.dx(12),
+      paddingHorizontal: resp.dx(10),
       justifyContent: 'center',
       alignItems: 'center',
+      maxWidth: resp.dx(96),
     },
     actionText: {
-      color: colors.WHITE_COLOR,
-      fontSize: resp.df(12),
+      color: actionDisabled ? GLASS.textSecondary : colors.WHITE_COLOR,
+      fontSize: resp.df(11),
       fontWeight: '700',
+      textAlign: 'center',
     },
   });

@@ -1,10 +1,23 @@
 import {
   BookingFlowItem,
+  TimeSlot,
   TutorBookingProfile,
 } from '../types/bookingFlow.types';
 
 const avatar = (id: number) =>
   `https://randomuser.me/api/portraits/${id % 2 === 0 ? 'women' : 'men'}/${id}.jpg`;
+
+/** Preferred session times — 90 min lectures (Mon–Fri schedule rule). */
+const DEFAULT_LIVE_SLOTS: TimeSlot[] = [
+  { id: 's1', label: '9:00 AM', startTime: '9:00 AM', endTime: '10:30 AM', available: true },
+  { id: 's2', label: '10:30 AM', startTime: '10:30 AM', endTime: '12:00 PM', available: true },
+  { id: 's3', label: '12:00 PM', startTime: '12:00 PM', endTime: '1:30 PM', available: true },
+  { id: 's4', label: '1:30 PM', startTime: '1:30 PM', endTime: '3:00 PM', available: true },
+  { id: 's5', label: '3:00 PM', startTime: '3:00 PM', endTime: '4:30 PM', available: true },
+  { id: 's6', label: '4:30 PM', startTime: '4:30 PM', endTime: '6:00 PM', available: true },
+  { id: 's7', label: '6:00 PM', startTime: '6:00 PM', endTime: '7:30 PM', available: true },
+  { id: 's8', label: '7:30 PM', startTime: '7:30 PM', endTime: '9:00 PM', available: true },
+];
 
 export const MOCK_TUTOR_PROFILES: TutorBookingProfile[] = [
   {
@@ -64,13 +77,7 @@ export const MOCK_TUTOR_PROFILES: TutorBookingProfile[] = [
         subject: 'Chemistry',
       },
     ],
-    timeSlots: [
-      { id: 's1', label: '4:00 PM', startTime: '16:00', endTime: '17:00', available: true },
-      { id: 's2', label: '5:00 PM', startTime: '17:00', endTime: '18:00', available: true },
-      { id: 's3', label: '6:00 PM', startTime: '18:00', endTime: '19:00', available: false },
-      { id: 's4', label: '7:00 PM', startTime: '19:00', endTime: '20:00', available: true },
-      { id: 's5', label: '8:00 PM', startTime: '20:00', endTime: '21:00', available: true },
-    ],
+    timeSlots: DEFAULT_LIVE_SLOTS,
     similarTutorIds: ['tutor-ali-raza', 'tutor-nina-malik'],
   },
   {
@@ -81,189 +88,65 @@ export const MOCK_TUTOR_PROFILES: TutorBookingProfile[] = [
     totalReviews: 86,
     hourlyRate: 2000,
     availabilityStatus: 'available',
-    subjects: ['English', 'IELTS', 'Literature'],
+    subjects: ['English', 'Urdu', 'Islamiat'],
     experienceYears: 4,
     qualification: 'MA English — PU',
-    bio: 'Focused on speaking confidence, writing structure, and IELTS band improvement with practical weekly drills.',
+    bio: 'Focused on reading, writing, and spoken confidence for board exams.',
     languages: ['English', 'Urdu'],
     teachingMode: 'online',
-    location: 'Online · Pakistan',
+    location: 'Online',
     isVerified: true,
     responseTime: 'Usually replies in 35 min',
     completedSessions: 210,
     successRate: 93,
     accountSummary: {
-      memberSince: 'Aug 2023',
-      teachingStyle: 'Conversation-first',
-      preferredGrades: ['O-Level', 'A-Level', 'University'],
-    },
-    certificates: [
-      { id: 'c3', title: 'IELTS Trainer', issuer: 'British Council Prep', year: '2024' },
-    ],
-    reviews: [
-      {
-        id: 'r4',
-        studentName: 'Sana Iqbal',
-        studentAvatar: avatar(48),
-        rating: 5,
-        comment: 'Improved my speaking fluency a lot.',
-        createdAt: '2026-07-01T12:00:00.000Z',
-        subject: 'IELTS',
-      },
-    ],
-    timeSlots: [
-      { id: 's1', label: '3:00 PM', startTime: '15:00', endTime: '16:00', available: true },
-      { id: 's2', label: '4:30 PM', startTime: '16:30', endTime: '17:30', available: true },
-      { id: 's3', label: '6:00 PM', startTime: '18:00', endTime: '19:00', available: true },
-    ],
-    similarTutorIds: ['tutor-sara-ahmed'],
-  },
-  {
-    id: 'tutor-nina-malik',
-    name: 'Nina Malik',
-    avatarUrl: avatar(65),
-    rating: 4.8,
-    totalReviews: 64,
-    hourlyRate: 2200,
-    availabilityStatus: 'busy',
-    subjects: ['Computer Science', 'Programming', 'Mathematics'],
-    experienceYears: 5,
-    qualification: 'BS CS — FAST',
-    bio: 'Project-based teaching for coding fundamentals, OOP, and exam prep with real coding exercises.',
-    languages: ['English', 'Urdu'],
-    teachingMode: 'online',
-    location: 'Islamabad · Online',
-    isVerified: true,
-    responseTime: 'Usually replies in 45 min',
-    completedSessions: 175,
-    successRate: 94,
-    accountSummary: {
       memberSince: 'Jan 2024',
-      teachingStyle: 'Hands-on coding',
-      preferredGrades: ['9th–12th', 'University'],
+      teachingStyle: 'Discussion · Writing drills',
+      preferredGrades: ['8th', '9th', '10th'],
     },
     certificates: [],
     reviews: [],
-    timeSlots: [
-      { id: 's1', label: '5:00 PM', startTime: '17:00', endTime: '18:00', available: true },
-      { id: 's2', label: '8:00 PM', startTime: '20:00', endTime: '21:00', available: true },
-    ],
-    similarTutorIds: ['tutor-sara-ahmed', 'tutor-ali-raza'],
+    timeSlots: DEFAULT_LIVE_SLOTS,
+    similarTutorIds: ['tutor-sara-ahmed'],
   },
 ];
 
-export const MOCK_BOOKING_REQUESTS: BookingFlowItem[] = [
-  {
-    id: 'bk-req-1001',
-    status: 'pending',
-    tutor: MOCK_TUTOR_PROFILES[0],
-    student: {
-      id: 'stu-01',
-      name: 'Zain Malik',
-      avatarUrl: avatar(12),
-      rating: 4.6,
-      grade: 'A-Level',
-      subjects: ['Mathematics', 'Physics'],
-      notes: 'Need help with integration and past papers before midterms.',
-    },
-    subject: 'Mathematics',
-    date: '2026-07-28',
-    startTime: '17:00',
-    endTime: '18:00',
-    durationHours: 1,
-    totalCost: 2500,
-    teachingMode: 'online',
-    location: 'Google Meet',
-    paymentMethod: 'TutorLink Wallet',
-    paymentStatus: 'held',
-    notes: 'Prefer evening slots on weekdays.',
-    createdAt: new Date().toISOString(),
-    estimatedResponseMinutes: 25,
-  },
-  {
-    id: 'bk-req-1002',
-    status: 'accepted',
-    tutor: MOCK_TUTOR_PROFILES[1],
-    student: {
-      id: 'stu-02',
-      name: 'Hira Noor',
-      avatarUrl: avatar(47),
-      rating: 4.8,
-      grade: 'O-Level',
-      subjects: ['English'],
-    },
-    subject: 'IELTS Speaking',
-    date: '2026-07-29',
-    startTime: '16:30',
-    endTime: '17:30',
-    durationHours: 1,
-    totalCost: 2000,
-    teachingMode: 'online',
-    location: 'Zoom',
-    paymentMethod: 'Card •••• 4242',
-    paymentStatus: 'held',
-    createdAt: '2026-07-24T08:00:00.000Z',
-    estimatedResponseMinutes: 30,
-  },
-];
+/** Empty — live tutor Requests uses API only. */
+export const MOCK_BOOKING_REQUESTS: BookingFlowItem[] = [];
 
-export const MOCK_PAYMENT_METHODS = [
-  { id: 'wallet', label: 'TutorLink Wallet', detail: 'Balance PKR 12,400' },
-  { id: 'card', label: 'Visa •••• 4242', detail: 'Expires 08/28' },
-  { id: 'jazzcash', label: 'JazzCash', detail: '03XX-XXXXXXX' },
-];
-
-export const MOCK_BOOKING_NOTIFICATIONS = [
-  {
-    id: 'bn1',
-    title: 'New booking request',
-    body: 'Zain Malik requested a Mathematics session.',
-    type: 'booking',
-  },
-  {
-    id: 'bn2',
-    title: 'Booking accepted',
-    body: 'Sara Ahmed accepted your booking request.',
-    type: 'booking',
-  },
-  {
-    id: 'bn3',
-    title: 'Booking rejected',
-    body: 'Your requested slot is no longer available.',
-    type: 'booking',
-  },
-  {
-    id: 'bn4',
-    title: 'Session reminder',
-    body: 'Your session starts in 30 minutes.',
-    type: 'reminder',
-  },
-  {
-    id: 'bn5',
-    title: 'Booking completed',
-    body: 'Rate your session with Sara Ahmed.',
-    type: 'booking',
-  },
-];
-
-export const getMockTutorById = (id?: string | null) => {
+export const getMockTutorById = (id?: string | null): TutorBookingProfile => {
   if (!id) return MOCK_TUTOR_PROFILES[0];
   return (
     MOCK_TUTOR_PROFILES.find(t => t.id === id) ||
-    MOCK_TUTOR_PROFILES.find(t => t.name.toLowerCase().includes(String(id).toLowerCase())) ||
+    MOCK_TUTOR_PROFILES.find(t =>
+      t.name.toLowerCase().includes(String(id).toLowerCase())
+    ) ||
     MOCK_TUTOR_PROFILES[0]
   );
 };
 
-export const getMockBookingById = (id?: string | null) => {
-  if (!id) return MOCK_BOOKING_REQUESTS[0];
-  return MOCK_BOOKING_REQUESTS.find(b => b.id === id) || MOCK_BOOKING_REQUESTS[0];
+export const getMockBookingById = (id?: string | null): BookingFlowItem | null => {
+  if (!id) return null;
+  return MOCK_BOOKING_REQUESTS.find(b => b.id === id) || null;
 };
 
-/** Map live search tutor into booking profile shape (mock enrichment). */
+const avatarFallback = (name: string) =>
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=7548F5&color=fff`;
+
+/**
+ * Map live search tutor into booking profile shape.
+ * Critical: preserves User `_id` for POST /api/bookings — never invent verified/rate from mocks.
+ */
 export const enrichTutorFromSearch = (tutor: {
   _id?: string;
-  user?: { name?: string; fullName?: string; avatarUrl?: string };
+  user?: {
+    _id?: string;
+    id?: string;
+    name?: string;
+    fullName?: string;
+    avatarUrl?: string;
+  } | string;
+  userId?: string;
   subjects?: string[];
   hourlyRate?: number;
   rating?: number;
@@ -273,24 +156,58 @@ export const enrichTutorFromSearch = (tutor: {
   availability?: boolean;
   distanceKm?: number;
 }): TutorBookingProfile => {
-  const base = getMockTutorById(tutor._id);
+  const nestedUser =
+    tutor.user && typeof tutor.user === 'object' ? tutor.user : null;
+  const userIdFromString =
+    typeof tutor.user === 'string' ? tutor.user.trim() : '';
+  const userId = String(
+    nestedUser?._id ||
+      nestedUser?.id ||
+      tutor.userId ||
+      userIdFromString ||
+      ''
+  ).trim();
+
   const name =
-    tutor.user?.name || tutor.user?.fullName || base.name;
+    nestedUser?.name ||
+    nestedUser?.fullName ||
+    (userId ? 'Tutor' : 'Tutor');
+  const profileId = String(tutor._id || userId || '').trim();
+
   return {
-    ...base,
-    id: tutor._id || base.id,
+    id: profileId || userId,
+    userId: userId || undefined,
     name,
-    avatarUrl: tutor.user?.avatarUrl || base.avatarUrl,
-    subjects: tutor.subjects?.length ? tutor.subjects : base.subjects,
-    hourlyRate: tutor.hourlyRate ?? base.hourlyRate,
-    rating: tutor.rating ?? base.rating,
-    experienceYears: tutor.experienceYears ?? base.experienceYears,
-    qualification: tutor.qualification || base.qualification,
-    isVerified: tutor.isVerified ?? base.isVerified,
-    availabilityStatus: tutor.availability === false ? 'busy' : 'available',
+    avatarUrl:
+      nestedUser?.avatarUrl || avatarFallback(name),
+    rating: Number(tutor.rating ?? 0) || 0,
+    totalReviews: 0,
+    hourlyRate: Number(tutor.hourlyRate ?? 0) || 0,
+    availabilityStatus:
+      tutor.availability === false ? 'busy' : 'available',
+    subjects: tutor.subjects?.length ? tutor.subjects : ['General'],
+    experienceYears: Number(tutor.experienceYears ?? 0) || 0,
+    qualification: tutor.qualification || '',
+    bio: '',
+    languages: ['English', 'Urdu'],
+    teachingMode: 'online',
     location:
       typeof tutor.distanceKm === 'number'
         ? `${tutor.distanceKm.toFixed(1)} km away`
-        : base.location,
+        : 'Online',
+    // Only true when API says so — do not inherit mock verified.
+    isVerified: tutor.isVerified === true,
+    responseTime: 'Usually replies soon',
+    completedSessions: 0,
+    successRate: 0,
+    accountSummary: {
+      memberSince: '',
+      teachingStyle: '',
+      preferredGrades: [],
+    },
+    certificates: [],
+    reviews: [],
+    timeSlots: DEFAULT_LIVE_SLOTS.map(slot => ({ ...slot })),
+    similarTutorIds: [],
   };
 };

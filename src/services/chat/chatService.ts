@@ -17,23 +17,16 @@ import {
   MessageType,
   UploadChatMediaParams,
 } from '../../types/chat.types';
-import { formatDateParam, getUserId } from '../../utils/api/userId';
-import { ApiUser, Booking } from '../../types/api.types';
-import { AxiosError } from 'axios';
-import { getApiErrorMessage } from '../../utils/api/errorHandler';
+import { getUserId } from '../../utils/api/userId';
+import { ApiUser } from '../../types/api.types';
 import {
   appendInquiryMessage,
   deleteInquiryMessage,
-  getOrCreateInquiryConversation,
   isInquiryConversationId,
   listInquiryConversations,
   listInquiryMessages,
   updateInquiryMessage,
 } from './localInquiryChat';
-import {
-  createBooking,
-  fetchBookings,
-} from '../bookings/bookingsService';
 
 const asRecord = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
@@ -244,108 +237,6 @@ export const mapMessage = (
   };
 };
 
-const isBookingRequiredError = (error: unknown) => {
-  const status =
-    error instanceof AxiosError ? error.response?.status : undefined;
-  const message = getApiErrorMessage(error, '').toLowerCase();
-  return (
-    status === 400 &&
-    (/booking/i.test(message) ||
-      /participant/i.test(message) ||
-      /required/i.test(message) ||
-      /invalid/i.test(message))
-  );
-};
-
-const createLocalInquiry = async (payload: CreateConversationPayload) => {
-  const participantId = String(
-    payload.participantId || payload.tutorId || ''
-  );
-  if (!participantId) {
-    throw new Error('participantId is required for pre-booking chat.');
-  }
-
-  return getOrCreateInquiryConversation({
-    participantId,
-    subject: payload.subject,
-    participant: {
-      id: participantId,
-      name: payload.peerName || 'Tutor',
-      avatar:
-        payload.peerAvatar ||
-        `https://i.pravatar.cc/150?u=${encodeURIComponent(participantId)}`,
-      role: 'tutor',
-      isVerified: payload.isVerified,
-      subject: payload.subject,
-    },
-  });
-};
-
-const bookingTutorId = (booking: Booking): string => {
-  if (typeof booking.tutor === 'string') return booking.tutor;
-  return String(booking.tutor?._id || booking.tutor?.id || '');
-};
-
-/** Current backend requires bookingId — reuse or create a light inquiry booking. */
-const openConversationViaBookingBridge = async (
-  peerId: string,
-  subject: string | undefined,
-  currentUser?: ApiUser | null,
-  tutorProfileId?: string
-): Promise<ChatConversation | null> => {
-  const tutorIds = [peerId, tutorProfileId].filter(Boolean) as string[];
-  const today = formatDateParam(new Date());
-
-  let bookingId: string | null = null;
-
-  try {
-    for (const tab of ['pending', 'active'] as const) {
-      const bookings = await fetchBookings(today, tab);
-      const match = bookings.find(b => tutorIds.includes(bookingTutorId(b)));
-      if (match?._id) {
-        bookingId = match._id;
-        break;
-      }
-    }
-  } catch (error) {
-    console.warn('[Chat] Could not list bookings for chat bridge', error);
-  }
-
-  if (!bookingId) {
-    for (const tutor of tutorIds) {
-      try {
-        const booking = await createBooking({
-          tutor,
-          subject: subject || 'General',
-          date: today,
-          startTime: '10:00 AM',
-          endTime: '11:00 AM',
-        });
-        bookingId = booking._id;
-        break;
-      } catch (error) {
-        console.warn('[Chat] Inquiry booking bridge failed for', tutor, error);
-      }
-    }
-  }
-
-  if (!bookingId) return null;
-
-  try {
-    const response = await createConversationAPI({
-      bookingId,
-      subject: subject || 'General',
-    });
-    return mapConversation(
-      extractData(response.data),
-      getUserId(currentUser)
-    );
-  } catch (error) {
-    console.warn('[Chat] Conversation via booking bridge failed', error);
-    return null;
-  }
-};
-
 export const listConversations = async (
   currentUser?: ApiUser | null
 ): Promise<ChatConversation[]> => {
@@ -370,6 +261,10 @@ export const listConversations = async (
   );
 };
 
+/**
+ * Chat requires a real booking relationship.
+ * Pass bookingId — reuses an existing thread for that booking when present.
+ */
 export const createConversation = async (
   input: string | CreateConversationPayload,
   currentUser?: ApiUser | null
@@ -377,110 +272,36 @@ export const createConversation = async (
   const payload: CreateConversationPayload =
     typeof input === 'string' ? { bookingId: input } : input;
 
-  if (!payload.bookingId && !payload.participantId && !payload.tutorId) {
-    throw new Error('bookingId or participantId is required.');
-  }
-
-  // Booking-linked chat (backend contract from short doc)
-  if (payload.bookingId) {
-    const response = await createConversationAPI({
-      bookingId: payload.bookingId,
-      subject: payload.subject,
-    });
-    const mapped = mapConversation(
-      extractData(response.data),
-      getUserId(currentUser)
+  const bookingId = payload.bookingId ? String(payload.bookingId) : '';
+  if (!bookingId) {
+    throw new Error(
+      'Chat is available after a booking is created with this tutor.'
     );
-    if (!mapped) throw new Error('Could not create conversation.');
-    return mapped;
   }
 
-  const peerId = String(payload.participantId || payload.tutorId || '');
+  const me = getUserId(currentUser);
 
-  // Reuse an existing SERVER conversation with this peer (ignore local inquiry)
+  // Reuse existing conversation for this booking
   try {
     const response = await listConversationsAPI();
-    const me = getUserId(currentUser);
     const existing = extractList(response.data)
       .map(item => mapConversation(item, me))
       .find(
         (c): c is ChatConversation =>
-          Boolean(
-            c &&
-              !isInquiryConversationId(c.id) &&
-              (c.participant.id === peerId ||
-                c.participant.id === payload.tutorProfileId)
-          )
+          Boolean(c && c.bookingId && c.bookingId === bookingId)
       );
     if (existing) return existing;
   } catch {
     // continue to create
   }
 
-  // Pre-booking / inquiry: try participantId / tutorId variants the backend may accept
-  const attempts: CreateConversationPayload[] = [
-    {
-      participantId: payload.participantId || peerId,
-      subject: payload.subject,
-    },
-    {
-      tutorId: payload.tutorId || payload.participantId || peerId,
-      subject: payload.subject,
-    },
-    {
-      participantId: payload.participantId || peerId,
-      tutorId: payload.tutorId || payload.participantId || peerId,
-      subject: payload.subject,
-    },
-  ];
-  if (payload.tutorProfileId) {
-    attempts.push({
-      tutorId: payload.tutorProfileId,
-      subject: payload.subject,
-    });
-    attempts.push({
-      participantId: payload.tutorProfileId,
-      subject: payload.subject,
-    });
-  }
-
-  let lastError: unknown;
-  for (const attempt of attempts) {
-    if (!attempt.participantId && !attempt.tutorId) continue;
-    try {
-      const response = await createConversationAPI(attempt);
-      const mapped = mapConversation(
-        extractData(response.data),
-        getUserId(currentUser)
-      );
-      if (mapped && !isInquiryConversationId(mapped.id)) {
-        return mapped;
-      }
-      if (mapped) return mapped;
-    } catch (error) {
-      lastError = error;
-      if (!isBookingRequiredError(error)) {
-        // Unexpected error — still try remaining shapes, then fall through
-        continue;
-      }
-    }
-  }
-
-  // Backend still requires bookingId → bridge via existing/new inquiry booking
-  // so the tutor actually receives messages (not device-local only).
-  const bridged = await openConversationViaBookingBridge(
-    peerId,
-    payload.subject,
-    currentUser,
-    payload.tutorProfileId
-  );
-  if (bridged) return bridged;
-
-  console.warn(
-    '[Chat] Pre-booking API + booking bridge failed; local inquiry only.',
-    getApiErrorMessage(lastError, '400')
-  );
-  return createLocalInquiry(payload);
+  const response = await createConversationAPI({
+    bookingId,
+    subject: payload.subject,
+  });
+  const mapped = mapConversation(extractData(response.data), me);
+  if (!mapped) throw new Error('Could not create conversation.');
+  return mapped;
 };
 
 export const listMessages = async (

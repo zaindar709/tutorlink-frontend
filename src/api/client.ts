@@ -223,12 +223,6 @@ api.interceptors.response.use(
       error?.response?.status === 404 &&
       typeof requestUrl === 'string' &&
       requestUrl.includes('/api/notifications/device-token');
-    // Inbox list route may not be deployed yet.
-    const isSoftNotificationsInbox404 =
-      error?.response?.status === 404 &&
-      typeof requestUrl === 'string' &&
-      requestUrl.includes('/api/notifications') &&
-      !requestUrl.includes('device-token');
     // Login may 404 when Firebase user exists but backend profile is missing —
     // authService heals this with register. Don't spam LogBox as a red error.
     const isSoftAuthLogin404 =
@@ -240,7 +234,6 @@ api.interceptors.response.use(
     const isSoftExpected =
       isSoftLinkedParents404 ||
       isSoftDeviceToken404 ||
-      isSoftNotificationsInbox404 ||
       isSoftAuthLogin404;
 
     if (isSoftExpected) {

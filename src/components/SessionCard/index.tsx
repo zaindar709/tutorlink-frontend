@@ -7,7 +7,7 @@ type Props = {
   colors: any;
   resp: any;
 
-  title: string; // NEXT SESSION label
+  title: string;
   timerText: string;
 
   name: string;
@@ -15,9 +15,11 @@ type Props = {
   time: string;
   image: string;
 
+  showJoin?: boolean;
   onJoin?: () => void;
   onMessage?: () => void;
   onAddCalendar?: () => void;
+  onPress?: () => void;
 };
 
 const SessionCard = ({
@@ -29,15 +31,21 @@ const SessionCard = ({
   subject,
   time,
   image,
+  showJoin = true,
   onJoin,
   onMessage,
   onAddCalendar,
+  onPress,
 }: Props) => {
   const styles = createStyles(colors, resp);
 
   return (
-    <View style={styles.card}>
-      {/* TOP */}
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={onPress ? 0.92 : 1}
+      disabled={!onPress}
+      onPress={onPress}
+    >
       <View style={styles.topRow}>
         <Text style={styles.title}>{title}</Text>
 
@@ -47,16 +55,18 @@ const SessionCard = ({
         </View>
       </View>
 
-      {/* PROFILE */}
       <View style={styles.profileRow}>
         <View style={styles.imageWrapper}>
           <Image source={{ uri: image }} style={styles.image} />
-          <View style={styles.onlineDot} />
         </View>
 
         <View style={styles.info}>
-          <Text style={styles.name}>{name}</Text>
-          <Text style={styles.subject}>{subject}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {name}
+          </Text>
+          <Text style={styles.subject} numberOfLines={1}>
+            {subject}
+          </Text>
 
           <View style={styles.timeRow}>
             <Icon source="clock-outline" size={14} color={colors.SPACES_COLOR} />
@@ -65,25 +75,56 @@ const SessionCard = ({
         </View>
       </View>
 
-      {/* JOIN */}
-      <TouchableOpacity style={styles.joinBtn} onPress={onJoin}>
-        <Icon source="video-outline" size={18} color="#fff" />
-        <Text style={styles.joinText}>Join Class Now</Text>
-      </TouchableOpacity>
+      {showJoin ? (
+        <TouchableOpacity
+          style={styles.joinBtn}
+          onPress={e => {
+            e?.stopPropagation?.();
+            onJoin?.();
+          }}
+        >
+          <Icon source="video-outline" size={18} color="#fff" />
+          <Text style={styles.joinText}>Join Class Now</Text>
+        </TouchableOpacity>
+      ) : null}
 
-      {/* ACTIONS */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onMessage}>
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={e => {
+            e?.stopPropagation?.();
+            onMessage?.();
+          }}
+        >
           <Icon source="message-outline" size={18} color={colors.BLACK_COLOR} />
           <Text style={styles.secondaryText}>Message</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onAddCalendar}>
-          <Icon source="plus" size={18} color={colors.BLACK_COLOR} />
-          <Text style={styles.secondaryText}>Add to Calendar</Text>
-        </TouchableOpacity>
+        {onAddCalendar ? (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={e => {
+              e?.stopPropagation?.();
+              onAddCalendar();
+            }}
+          >
+            <Icon source="plus" size={18} color={colors.BLACK_COLOR} />
+            <Text style={styles.secondaryText}>Add to Calendar</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={e => {
+              e?.stopPropagation?.();
+              onPress?.();
+            }}
+          >
+            <Icon source="eye-outline" size={18} color={colors.BLACK_COLOR} />
+            <Text style={styles.secondaryText}>View details</Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -141,6 +182,7 @@ const createStyles = (colors: any, resp: any) =>
       borderRadius: resp.dx(18),
       overflow: 'hidden',
       marginRight: resp.dx(14),
+      backgroundColor: GLASS.primarySoft,
     },
 
     image: {
@@ -148,20 +190,9 @@ const createStyles = (colors: any, resp: any) =>
       height: '100%',
     },
 
-    onlineDot: {
-      position: 'absolute',
-      bottom: 3,
-      right: 3,
-      width: resp.dx(14),
-      height: resp.dx(14),
-      borderRadius: resp.dx(7),
-      backgroundColor: '#20D67B',
-      borderWidth: 2,
-      borderColor: '#fff',
-    },
-
     info: {
       flex: 1,
+      minWidth: 0,
     },
 
     name: {
@@ -192,7 +223,7 @@ const createStyles = (colors: any, resp: any) =>
     joinBtn: {
       height: resp.dy(54),
       borderRadius: resp.dx(18),
-      backgroundColor: '#2F6BFF',
+      backgroundColor: GLASS.primary,
       marginTop: resp.dy(22),
       flexDirection: 'row',
       alignItems: 'center',
@@ -210,10 +241,11 @@ const createStyles = (colors: any, resp: any) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       marginTop: resp.dy(14),
+      gap: 10,
     },
 
     secondaryBtn: {
-      width: '48%',
+      flex: 1,
       height: resp.dy(52),
       borderRadius: resp.dx(16),
       backgroundColor: GLASS.cardBg,

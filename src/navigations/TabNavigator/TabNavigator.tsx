@@ -1,4 +1,4 @@
-import { View, StyleSheet, Image, Pressable } from 'react-native';
+import { View, StyleSheet, Image, Pressable, Text } from 'react-native';
 import {
   createBottomTabNavigator,
   BottomTabBarButtonProps,
@@ -15,6 +15,8 @@ import TutorProfileTabTip from '../../components/Profile/TutorProfileTabTip';
 import Images from '../../assets/images';
 import { GLASS } from '../../theme/glass';
 import GlassPillTabBar from './GlassPillTabBar';
+import { useAppSelector } from '../../store/hooks';
+import { selectUnreadTotal } from '../../store/chat/chatSelectors';
 
 import FirstTimeHome from '../../screens/MainScreens/StudentMainScreens/Home/HomeScreen/FirstTimeHome';
 import SearchScreen from '../../screens/MainScreens/StudentMainScreens/SearchScreen';
@@ -45,16 +47,25 @@ const TabIcon = ({ source, focused }: { source: any; focused: boolean }) => (
   />
 );
 
-const ChatTabIcon = ({ focused }: { focused: boolean }) => (
-  <View>
-    <MaterialCommunityIcons
-      name={focused ? 'message-text' : 'message-text-outline'}
-      size={22}
-      color={focused ? TAB_ACTIVE : TAB_INACTIVE}
-    />
-    <View style={styles.chatBadge} />
-  </View>
-);
+const ChatTabIcon = ({ focused }: { focused: boolean }) => {
+  const unread = useAppSelector(selectUnreadTotal);
+  return (
+    <View>
+      <MaterialCommunityIcons
+        name={focused ? 'message-text' : 'message-text-outline'}
+        size={22}
+        color={focused ? TAB_ACTIVE : TAB_INACTIVE}
+      />
+      {unread > 0 ? (
+        <View style={styles.chatBadge}>
+          <Text style={styles.chatBadgeText}>
+            {unread > 99 ? '99+' : String(unread)}
+          </Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
 
 const GlassTabButton = (props: BottomTabBarButtonProps) => {
   const scale = useSharedValue(1);
@@ -269,12 +280,20 @@ const styles = StyleSheet.create({
   },
   chatBadge: {
     position: 'absolute',
-    top: -2,
-    right: -6,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: TAB_ACTIVE,
+    top: -6,
+    right: -10,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: GLASS.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chatBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
   },
 });
 

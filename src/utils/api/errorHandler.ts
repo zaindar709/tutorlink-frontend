@@ -27,6 +27,31 @@ export const getApiErrorMessage = (
 
   if (axiosLike?.response) {
     const data = axiosLike.response.data as ApiErrorResponse | undefined;
+    const code = data?.code;
+
+    const bookingCodeMessages: Record<string, string> = {
+      PAST_DATE: 'You cannot book a date in the past.',
+      INVALID_TIME_RANGE: 'End time must be after start time.',
+      SELF_BOOKING: 'You cannot book yourself.',
+      TUTOR_UNAVAILABLE:
+        'This tutor cannot be booked yet (needs rate, availability on, and verified/approved).',
+      SLOT_CONFLICT: 'That time slot is already booked. Please choose another.',
+      INSUFFICIENT_BALANCE:
+        'Wallet balance is too low for this session. Please top up first.',
+      INVALID_TRANSITION:
+        'This booking cannot be updated from its current status.',
+      SESSION_EXPIRED: 'This session has already ended.',
+      SESSION_NOT_ENDED:
+        'You can complete the session only after it ends.',
+      ESCROW_UNDER_DISPUTE:
+        'This payment is under dispute. Please contact support.',
+      NOT_LINKED_STUDENT: 'You can only book for a linked student.',
+    };
+
+    if (code && bookingCodeMessages[code]) {
+      return bookingCodeMessages[code];
+    }
+
     if (data?.message) {
       return data.message;
     }
@@ -56,7 +81,10 @@ export const getApiErrorMessage = (
       case 410:
         return data?.message || 'This code has expired.';
       case 500:
-        return 'Server error. Please try again later.';
+        return (
+          data?.message ||
+          'Server error. Please try again later.'
+        );
       default:
         break;
     }

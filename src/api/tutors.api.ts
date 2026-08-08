@@ -9,3 +9,11 @@ export const searchTutorsAPI = (data: TutorSearchPayload) => {
     { timeout: 45000 }
   );
 };
+
+/** Live tutor details (includes hourlyRate when backend stores it). */
+export const getTutorByIdAPI = (tutorId: string) =>
+  api.get<ApiSuccessResponse<Record<string, unknown> | TutorProfile>>(
+    `/api/tutors/${tutorId}`,
+    { timeout: 20000 }
+  );
+

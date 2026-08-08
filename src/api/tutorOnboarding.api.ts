@@ -14,6 +14,14 @@ export const getTutorOnboardingStatusAPI = (config?: { timeout?: number }) => {
 export const submitTutorOnboardingStep1API = (data: {
   subject: string;
   grades: string[];
+  hourlyRate?: number;
+  availability?: boolean;
+  qualification?: string;
+  experience?: string;
+  experienceYears?: number;
+  bio?: string;
+  name?: string;
+  phoneNumber?: string;
 }) => {
   return api.patch<ApiSuccessResponse<TutorOnboardingStatusData>>(
     '/api/tutor/onboarding/step-1',

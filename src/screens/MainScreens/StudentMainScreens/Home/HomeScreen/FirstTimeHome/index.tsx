@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -24,10 +24,19 @@ import { GLASS } from '../../../../../../theme/glass';
 import { useDashboard } from '../../../../../../hooks/api/useDashboard';
 import { useTutorSearch } from '../../../../../../hooks/api/useTutorSearch';
 import { useAiTutorRecommendation } from '../../../../../../hooks/api/useAiTutorRecommendation';
+import { useStudentTutorRelations } from '../../../../../../hooks/api/useStudentTutorRelations';
 import { getDisplayName } from '../../../../../../utils/api/bookingHelpers';
-import { navigateHomeStack } from '../../../../../../navigation/navigationRef';
+import {
+  leaveHomeStackToTabs,
+  navigateHomeStack,
+} from '../../../../../../navigation/navigationRef';
 import { enrichTutorFromSearch } from '../../../../../../constants/bookingFlowMockData';
 import { TutorProfile } from '../../../../../../types/api.types';
+import {
+  getUnreadNotificationCount,
+  subscribeNotificationInbox,
+} from '../../../../../../services/notifications/notificationInboxStore';
+import { getUserId } from '../../../../../../utils/api/userId';
 
 type FirstTimeHomeProps = {
   onFindTutorPress?: () => void;
@@ -68,8 +77,10 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
   const navigation = useNavigation<any>();
   const user = useSelector((state: any) => state.auth.user);
   const userName = getDisplayName(user);
+  const userId = getUserId(user);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const { data: dashboard, loading: dashboardLoading } = useDashboard();
+  const [inboxUnread, setInboxUnread] = useState(0);
   const {
     tutors,
     loading: tutorsLoading,
@@ -86,15 +97,30 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
     refresh: refreshAi,
     requestAnother,
   } = useAiTutorRecommendation();
+  const { getRelation } = useStudentTutorRelations();
+
+  const refreshUnread = useCallback(async () => {
+    const count = await getUnreadNotificationCount(userId);
+    setInboxUnread(count);
+  }, [userId]);
 
   useFocusEffect(
     useCallback(() => {
       void reloadTutors({}, { replace: true });
-    }, [reloadTutors])
+      void refreshUnread();
+    }, [reloadTutors, refreshUnread])
   );
+
+  useEffect(() => subscribeNotificationInbox(() => void refreshUnread()), [
+    refreshUnread,
+  ]);
 
   const topTutors = tutors.slice(0, 4);
   const nextLesson = dashboard?.todaySchedule?.currentLessons?.[0];
+  const unreadBadge =
+    inboxUnread > 0
+      ? inboxUnread
+      : dashboard?.notifications?.unreadCount || 0;
 
   const guideMessage =
     guideMode === 'no_match'
@@ -121,6 +147,20 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
     tutor: TutorProfile,
     ctaLabel: 'Hire Tutor' | 'Book Now'
   ) => {
+    const relation = getRelation(
+      [tutor._id, tutor.user?._id, tutor.user?.id],
+      tutor.relation
+    );
+    if (!relation.canBook) {
+      if (relation.state === 'request_sent' && relation.booking) {
+        navigateHomeStack('BookingPendingScreen', {
+          bookingId: relation.booking._id,
+        });
+        return;
+      }
+      leaveHomeStackToTabs('Bookings');
+      return;
+    }
     try {
       const enriched = enrichTutorFromSearch(tutor);
       navigateHomeStack('TutorBookingDetailsScreen', {
@@ -146,6 +186,18 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
     if (!recommendation?.tutor.source) return;
     openTutorBooking(recommendation.tutor.source, 'Book Now');
   };
+
+  const aiRelation = recommendation?.tutor.source
+    ? getRelation(
+        [
+          recommendation.tutor.source._id,
+          recommendation.tutor.source.user?._id,
+          recommendation.tutor.source.user?.id,
+          recommendation.tutor.id,
+        ],
+        recommendation.tutor.source.relation
+      )
+    : null;
 
   return (
     <GlassScreen scroll={false} edges={['top', 'left', 'right']} contentStyle={styles.screen}>
@@ -176,8 +228,12 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
               size={24}
               color={colors.PRIMARY_COLOR as string}
             />
-            {dashboard?.notifications?.hasUnread ? (
-              <View style={styles.notificationDot} />
+            {unreadBadge > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadBadge > 99 ? '99+' : String(unreadBadge)}
+                </Text>
+              </View>
             ) : null}
           </TouchableOpacity>
         </View>
@@ -253,26 +309,36 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
             contentContainerStyle={styles.tutorsRow}
             style={styles.tutorsScroll}
           >
-            {topTutors.map(tutor => (
-              <TopTutorCard
-                key={tutor._id}
-                image={
-                  tutor.user?.avatarUrl
-                    ? { uri: tutor.user.avatarUrl }
-                    : Images.OneOnOne
-                }
-                name={tutor.user?.name || 'Top Tutor'}
-                subject={(tutor.subjects || []).join(', ') || 'General'}
-                rating={tutor.rating || 4}
-                badge={tutor.isVerified ? 'Verified Tutor' : 'Recommended'}
-                verified={!!tutor.isVerified}
-                university={
-                  tutor.qualification ||
-                  (tutor.isVerified ? 'Verified Tutor' : 'Recommended')
-                }
-                onHire={() => openTutorBooking(tutor, 'Hire Tutor')}
-              />
-            ))}
+            {topTutors.map(tutor => {
+              const relation = getRelation(
+                [tutor._id, tutor.user?._id, tutor.user?.id],
+                tutor.relation
+              );
+              return (
+                <TopTutorCard
+                  key={tutor._id}
+                  image={
+                    tutor.user?.avatarUrl
+                      ? { uri: tutor.user.avatarUrl }
+                      : Images.OneOnOne
+                  }
+                  name={tutor.user?.name || 'Top Tutor'}
+                  subject={(tutor.subjects || []).join(', ') || 'General'}
+                  rating={tutor.rating || 4}
+                  badge={tutor.isVerified ? 'Verified Tutor' : 'Recommended'}
+                  verified={!!tutor.isVerified}
+                  university={
+                    tutor.qualification ||
+                    (tutor.isVerified ? 'Verified Tutor' : 'Recommended')
+                  }
+                  ctaLabel={
+                    relation.canBook ? 'Hire Tutor' : relation.label
+                  }
+                  ctaDisabled={!relation.canBook}
+                  onHire={() => openTutorBooking(tutor, 'Hire Tutor')}
+                />
+              );
+            })}
           </ScrollView>
         ) : (
           <View style={{ marginBottom: 16 }}>
@@ -310,6 +376,12 @@ const FirstTimeHome: React.FC<FirstTimeHomeProps> = ({ onFindTutorPress }) => {
             onBookNow={handleAiBookNow}
             onRefresh={() => void refreshAi()}
             onAnother={() => void requestAnother()}
+            bookLabel={
+              aiRelation?.canBook
+                ? 'Book Now'
+                : aiRelation?.label || 'Book Now'
+            }
+            bookDisabled={Boolean(aiRelation && !aiRelation.canBook)}
           />
         </View>
 
@@ -381,6 +453,26 @@ const createStyles = (colors: any, resp: any) =>
       alignItems: 'center',
       justifyContent: 'center',
       ...GLASS.shadow.soft,
+    },
+    notificationBadge: {
+      position: 'absolute',
+      top: 4,
+      right: 4,
+      minWidth: 18,
+      height: 18,
+      borderRadius: 9,
+      paddingHorizontal: 4,
+      backgroundColor: GLASS.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1.5,
+      borderColor: '#FFFFFF',
+    },
+    notificationBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '800',
+      lineHeight: 12,
     },
     notificationDot: {
       position: 'absolute',
