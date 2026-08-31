@@ -7,13 +7,12 @@ import StudentLoginScreen from '../../screens/AuthScreens/StudentAuthScreens/Stu
 import StudentSignUpScreen from '../../screens/AuthScreens/StudentAuthScreens/StudentSignUp';
 import StudentSubjectSelection from '../../screens/AuthScreens/StudentAuthScreens/StudenSubjectSelection';
 import ForgotPasswordScreen from '../../screens/AuthScreens/ForgotPassword';
-import VerifyCodeScreen from '../../screens/AuthScreens/VerifyCodeScreen';
+import ResetEmailSentScreen from '../../screens/AuthScreens/ResetEmailSentScreen';
 import NewPasswordScreen from '../../screens/AuthScreens/NewPasswordScreen';
 import SuccessScreen from '../../screens/AuthScreens/SuccessScreen';
 import TutorLoginScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorLoginScreen';
 import TutorSignUpScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorSignUpScreen';
 import DocumentUploadScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentUpload';
-import TutorDocumentReview from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentReview';
 import DocumentReviewScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorDocumentReview';
 import TutorApprovalStatusScreen from '../../screens/AuthScreens/TutorAuthScreens/TutorApprovalStatus';
 import ParentLinkRedeemScreen from '../../screens/AuthScreens/ParentAuthScreens/ParentLinkRedeem';
@@ -36,21 +35,39 @@ export default function AuthNavigator() {
       {/* student auth */}
       <Stack.Screen name="StudentLoginScreen" component={StudentLoginScreen} />
       <Stack.Screen name="StudentSignUpScreen" component={StudentSignUpScreen} />
-      <Stack.Screen name="StudentSubjectSelection" component={StudentSubjectSelection} />
-      <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} />
-      <Stack.Screen name="VerifyCodeScreen" component={VerifyCodeScreen} />
+      <Stack.Screen
+        name="StudentSubjectSelection"
+        component={StudentSubjectSelection}
+      />
+      <Stack.Screen
+        name="ForgotPasswordScreen"
+        component={ForgotPasswordScreen}
+      />
+      <Stack.Screen
+        name="ResetEmailSentScreen"
+        component={ResetEmailSentScreen}
+      />
       <Stack.Screen name="NewPasswordScreen" component={NewPasswordScreen} />
       <Stack.Screen name="SuccessScreen" component={SuccessScreen} />
       {/* tutor auth */}
       <Stack.Screen name="TutorLoginScreen" component={TutorLoginScreen} />
       <Stack.Screen name="TutorSignUpScreen" component={TutorSignUpScreen} />
-      <Stack.Screen name="DocumentUploadScreen" component={DocumentUploadScreen} />
-      <Stack.Screen name="DocumentReviewScreen" component={DocumentReviewScreen} />
+      <Stack.Screen
+        name="DocumentUploadScreen"
+        component={DocumentUploadScreen}
+      />
+      <Stack.Screen
+        name="DocumentReviewScreen"
+        component={DocumentReviewScreen}
+      />
       <Stack.Screen
         name="TutorApprovalStatusScreen"
         component={TutorApprovalStatusScreen}
       />
-      <Stack.Screen name="ParentLinkRedeemScreen" component={ParentLinkRedeemScreen} />
+      <Stack.Screen
+        name="ParentLinkRedeemScreen"
+        component={ParentLinkRedeemScreen}
+      />
     </Stack.Navigator>
   );
 }

@@ -114,7 +114,7 @@ const ChatListScreen = () => {
   );
 
   const emptyStudent = (
-    <Animated.View entering={FadeIn} style={styles.empty}>
+    <View style={styles.empty}>
       <LinearGradient
         colors={[...GLASS.buttonGradient]}
         style={styles.emptyIcon}
@@ -131,11 +131,11 @@ const ChatListScreen = () => {
       <Text style={[styles.emptyBody, { fontSize: resp.df(13) }]}>
         Book a tutor from Search or Home, then message them from your booking.
       </Text>
-    </Animated.View>
+    </View>
   );
 
   const emptyTutor = (
-    <Animated.View entering={FadeIn} style={styles.empty}>
+    <View style={styles.empty}>
       <LinearGradient
         colors={[...GLASS.buttonGradient]}
         style={styles.emptyIcon}
@@ -153,7 +153,7 @@ const ChatListScreen = () => {
         When students message you before or after a booking, their chats will
         appear here.
       </Text>
-    </Animated.View>
+    </View>
   );
 
   return (

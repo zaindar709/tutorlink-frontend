@@ -1,4 +1,45 @@
 import { Booking, BookingStatus } from '../../types/api.types';
+import { PANEL_DEMO_SESSION_MINUTES } from '../../config/features';
+
+/** Normalize API/Mongo date (YYYY-MM-DD or ISODate) → YYYY-MM-DD for queries. */
+export const normalizeBookingDateParam = (
+  date: string | Date | null | undefined
+): string => {
+  if (!date) return '';
+  if (date instanceof Date && !Number.isNaN(date.getTime())) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const raw = String(date).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  // ISODate / ISO string — use the calendar day from the UTC components when
+  // the time is midnight UTC (common Mongo date-only storage), otherwise local.
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return raw.slice(0, 10);
+  }
+
+  const isUtcMidnight =
+    parsed.getUTCHours() === 0 &&
+    parsed.getUTCMinutes() === 0 &&
+    parsed.getUTCSeconds() === 0;
+
+  if (isUtcMidnight || /T00:00:00(\.0+)?Z$/i.test(raw)) {
+    const y = parsed.getUTCFullYear();
+    const m = String(parsed.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  const y = parsed.getFullYear();
+  const m = String(parsed.getMonth() + 1).padStart(2, '0');
+  const d = String(parsed.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
 
 /** Parse "2:00 PM" / "14:00" into hours+minutes. */
 export const parseTimeToMinutes = (time: string): number | null => {
@@ -15,7 +56,7 @@ export const parseTimeToMinutes = (time: string): number | null => {
     return hours * 60 + minutes;
   }
 
-  const twentyFour = raw.match(/^(\d{1,2}):(\d{2})$/);
+  const twentyFour = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
   if (twentyFour) {
     return Number(twentyFour[1]) * 60 + Number(twentyFour[2]);
   }
@@ -28,7 +69,7 @@ export const getBookingDateTime = (
   date: string,
   time: string
 ): Date | null => {
-  const day = String(date || '').slice(0, 10);
+  const day = normalizeBookingDateParam(date);
   const mins = parseTimeToMinutes(time);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || mins == null) return null;
 
@@ -54,11 +95,42 @@ export const getSessionAmount = (booking: Booking): number => {
   return Math.max(1, Math.round(rate * hours));
 };
 
+/**
+ * Effective session end for join/complete/tab logic.
+ * Panel demo shortens the window to N minutes after startTime.
+ */
+export const getEffectiveSessionEnd = (
+  booking: Pick<Booking, 'date' | 'startTime' | 'endTime'>
+): Date | null => {
+  if (
+    PANEL_DEMO_SESSION_MINUTES != null &&
+    Number.isFinite(PANEL_DEMO_SESSION_MINUTES) &&
+    PANEL_DEMO_SESSION_MINUTES > 0
+  ) {
+    const start = getBookingDateTime(booking.date, booking.startTime);
+    if (start) {
+      return new Date(
+        start.getTime() + PANEL_DEMO_SESSION_MINUTES * 60 * 1000
+      );
+    }
+  }
+  return getBookingDateTime(booking.date, booking.endTime);
+};
+
 export const hasSessionEnded = (
-  booking: Pick<Booking, 'date' | 'endTime'>,
+  booking: Pick<Booking, 'date' | 'endTime'> & {
+    startTime?: string;
+  },
   now = new Date()
 ): boolean => {
-  const end = getBookingDateTime(booking.date, booking.endTime);
+  const end =
+    booking.startTime != null
+      ? getEffectiveSessionEnd({
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        })
+      : getBookingDateTime(booking.date, booking.endTime);
   if (!end) return false;
   return now.getTime() >= end.getTime();
 };
@@ -109,12 +181,66 @@ export const pickFirstFutureSlot = <
 export const isAcceptedActive = (
   booking: Booking,
   now = new Date()
-): boolean =>
-  booking.status === 'accepted' && !hasSessionEnded(booking, now);
+): boolean => {
+  const status = String(booking.status || '').toLowerCase();
+  return (
+    (status === 'accepted' || status === 'confirmed') &&
+    !hasSessionEnded(booking, now)
+  );
+};
 
-export const canJoinMeeting = (booking: Booking): boolean =>
-  booking.status === 'accepted' &&
-  Boolean(booking.meetingLink && booking.meetingLink.trim());
+/**
+ * Mirrors backend `filterByTab` in bookingRoutes:
+ * - pending: status === pending
+ * - active: status === accepted && session end still in the future
+ * - past: completed/cancelled/missed, OR accepted but session already ended
+ */
+export const matchesBookingTab = (
+  booking: Pick<Booking, 'status' | 'date' | 'endTime'> & {
+    kind?: string;
+  },
+  tab: 'active' | 'pending' | 'past',
+  now = new Date()
+): boolean => {
+  const status = String(booking.status || '').toLowerCase().trim();
+  const kind = String(booking.kind || '').toLowerCase().trim();
+
+  // Package parent rows only belong on Pending while awaiting tutor accept.
+  // After confirm, Active/Past use generated weekday session bookings.
+  if (kind === 'package') {
+    return tab === 'pending' && status === 'pending';
+  }
+
+  if (tab === 'pending') return status === 'pending';
+  if (tab === 'active') {
+    return (
+      (status === 'accepted' || status === 'confirmed') &&
+      !hasSessionEnded(booking, now)
+    );
+  }
+  if (
+    status === 'completed' ||
+    status === 'cancelled' ||
+    status === 'canceled' ||
+    status === 'missed'
+  ) {
+    return true;
+  }
+  return status === 'accepted' && hasSessionEnded(booking, now);
+};
+
+/**
+ * Joinable when the booking is accepted and the session window has not ended.
+ * Opens the in-app TutorLink WebRTC classroom (booking._id = sessionId).
+ * Optional external meetingLink remains available as a secondary link.
+ */
+export const canJoinMeeting = (booking: Booking, now = new Date()): boolean => {
+  const status = String(booking.status || '').toLowerCase();
+  return (
+    (status === 'accepted' || status === 'confirmed') &&
+    !hasSessionEnded(booking, now)
+  );
+};
 
 export const canCompleteSession = (
   booking: Booking,

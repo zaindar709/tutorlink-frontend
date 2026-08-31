@@ -220,8 +220,28 @@ const chatSlice = createSlice({
     ) {
       const { message, incrementUnread } = action.payload;
       const list = state.messagesByConversationId[message.chatId] || [];
+      // If this exact message id already exists, ignore.
       if (list.some(m => m.id === message.id)) return;
-      state.messagesByConversationId[message.chatId] = [...list, message];
+
+      // Attempt to match an optimistic local message (id startsWith 'local-')
+      // with the server-confirmed message. Match by senderId + text + close timestamp.
+      const optimisticIndex = list.findIndex(m =>
+        m.id.startsWith('local-') &&
+        m.senderId === message.senderId &&
+        m.text &&
+        message.text &&
+        m.text === message.text &&
+        Math.abs(new Date(m.createdAt).getTime() - new Date(message.createdAt).getTime()) < 5000
+      );
+
+      if (optimisticIndex >= 0) {
+        // Replace optimistic message with server message
+        const newList = [...list];
+        newList[optimisticIndex] = message;
+        state.messagesByConversationId[message.chatId] = newList;
+      } else {
+        state.messagesByConversationId[message.chatId] = [...list, message];
+      }
       bumpConversationPreview(
         state,
         message.chatId,

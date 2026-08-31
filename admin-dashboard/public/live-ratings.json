@@ -1,0 +1,27 @@
+[
+  {
+    "id": "6a79b1ac4bcb2a9b16b4a42a-2026-08-11T02:19:03.360Z",
+    "bookingId": "6a79b1ac4bcb2a9b16b4a42a",
+    "tutorId": "6a79ad544bcb2a9b16b4a09d",
+    "tutorName": "Ammar",
+    "studentId": "6a799066d61be853ffb3894d",
+    "studentName": "Afifa",
+    "subject": "Computer Science",
+    "rating": 3,
+    "liked": true,
+    "ratedAt": "2026-08-11T02:19:03.360Z"
+  },
+  {
+    "id": "panel-afifa-ammar-20260811071743",
+    "bookingId": "panel-demo-booking",
+    "liked": true,
+    "tutorName": "Ammar",
+    "rating": 5,
+    "studentId": "afifa",
+    "subject": "Mathematics",
+    "review": "Great class",
+    "ratedAt": "2026-08-11T02:17:43.3468632Z",
+    "tutorId": "ammar",
+    "studentName": "Afifa"
+  }
+]

@@ -1,33 +1,52 @@
 import { AxiosError } from 'axios';
-import { Booking } from '../../types/api.types';
+import { Booking, BookingMutationResult } from '../../types/api.types';
 import { MOCK_WALLET_DEPOSITS } from '../../config/features';
+import { normalizeBookingFromApi, normalizeBookingList } from './normalizeBooking';
 
 type MutationPayload = {
   success?: boolean;
   message?: string;
-  data?: Booking | { booking?: Booking; sessionAmount?: number; escrowRefunded?: boolean };
+  data?:
+    | Booking
+    | {
+        booking?: Booking;
+        sessionAmount?: number;
+        escrowRefunded?: boolean;
+        kind?: string;
+        packageId?: string;
+        status?: string;
+        sessionCount?: number;
+        escrowBookingId?: string;
+        sessions?: Booking[];
+        _id?: string;
+      };
   booking?: Booking;
   sessionAmount?: number;
   escrowRefunded?: boolean;
+  sessionCount?: number;
+  packageId?: string;
+  kind?: string;
+  escrowBookingId?: string;
+  idempotent?: boolean;
 };
 
 /** Normalize PATCH confirm/cancel/complete responses from varying backend shapes. */
 export const parseBookingMutationResponse = (
   payload: MutationPayload | undefined,
   fallbackMessage: string
-): {
-  booking: Booking;
-  sessionAmount?: number;
-  escrowRefunded?: boolean;
-  message?: string;
-} => {
+): BookingMutationResult => {
   if (!payload) {
     throw new Error(fallbackMessage);
   }
 
-  let booking: Booking | undefined;
   let sessionAmount = payload.sessionAmount;
   let escrowRefunded = payload.escrowRefunded;
+  let sessions: Booking[] | undefined;
+  let sessionCount = payload.sessionCount;
+  let packageId = payload.packageId;
+  let kind = payload.kind;
+  let escrowBookingId = payload.escrowBookingId;
+  let booking: Booking | undefined;
 
   if (payload.data && typeof payload.data === 'object') {
     const inner = payload.data as {
@@ -35,18 +54,68 @@ export const parseBookingMutationResponse = (
       booking?: Booking;
       sessionAmount?: number;
       escrowRefunded?: boolean;
+      kind?: string;
+      packageId?: string;
+      status?: string;
+      sessionCount?: number;
+      escrowBookingId?: string;
+      sessions?: unknown;
+      subject?: string;
+      date?: string;
+      startTime?: string;
+      endTime?: string;
+      student?: Booking['student'];
+      tutor?: Booking['tutor'];
+      mode?: string;
+      durationDays?: number;
     };
-    if (inner._id) {
-      booking = inner as Booking;
+
+    sessionAmount = inner.sessionAmount ?? sessionAmount;
+    escrowRefunded = inner.escrowRefunded ?? escrowRefunded;
+    kind = inner.kind ?? kind;
+    packageId = inner.packageId ?? packageId;
+    sessionCount = inner.sessionCount ?? sessionCount;
+    escrowBookingId = inner.escrowBookingId ?? escrowBookingId;
+
+    // Monthly package confirm: { kind, packageId, sessions: [...] }
+    if (Array.isArray(inner.sessions)) {
+      sessions = normalizeBookingList(inner.sessions, 'confirm.sessions');
+      sessionCount = sessionCount ?? sessions.length;
+      packageId =
+        packageId ||
+        sessions[0]?.packageId ||
+        (inner._id ? String(inner._id) : undefined);
+
+      booking =
+        sessions.find(s => s._id === escrowBookingId) ||
+        sessions.find(s => s.isNextSession) ||
+        sessions[0];
+
+      // Keep a package-shaped booking when sessions are empty (edge) or for Redux parent.
+      if (!booking && (inner._id || packageId)) {
+        booking = normalizeBookingFromApi(
+          {
+            ...inner,
+            _id: String(inner._id || packageId),
+            packageId: packageId || String(inner._id || ''),
+            kind: 'package',
+            status: inner.status || 'accepted',
+          },
+          'confirm.package'
+        ) || undefined;
+      }
+    } else if (inner._id) {
+      booking = normalizeBookingFromApi(inner, 'confirm.data') || undefined;
     } else if (inner.booking) {
-      booking = inner.booking;
-      sessionAmount = inner.sessionAmount ?? sessionAmount;
-      escrowRefunded = inner.escrowRefunded ?? escrowRefunded;
+      booking =
+        normalizeBookingFromApi(inner.booking, 'confirm.data.booking') ||
+        undefined;
     }
   }
 
   if (!booking && payload.booking) {
-    booking = payload.booking;
+    booking =
+      normalizeBookingFromApi(payload.booking, 'confirm.booking') || undefined;
   }
 
   if (!booking) {
@@ -58,6 +127,12 @@ export const parseBookingMutationResponse = (
     sessionAmount,
     escrowRefunded,
     message: payload.message,
+    kind: kind || booking.kind,
+    packageId: packageId || booking.packageId || booking._id,
+    sessionCount,
+    escrowBookingId,
+    sessions,
+    idempotent: payload.idempotent,
   };
 };
 

@@ -1,17 +1,50 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import {
   BottomTabBar,
   BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+export interface GlassPillTabBarProps extends BottomTabBarProps {
+  onProfileTabLayout?: (layout: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => void;
+}
+
 /**
  * Floating glass pill — transparent outer (no purple strip).
  * Top padding so elevated 3rd/Home tab is not clipped.
  */
-export default function GlassPillTabBar(props: BottomTabBarProps) {
+export default function GlassPillTabBar(props: GlassPillTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    if (!props.state?.routes?.length || !props.onProfileTabLayout) return;
+
+    const routes = props.state.routes;
+    const profileIndex = routes.findIndex(route => route.name === 'Profile');
+    if (profileIndex < 0) return;
+
+    const profileCount = Math.max(routes.length, 1);
+    const tabWidth = Math.max((screenWidth - 32) / profileCount, 34);
+    const tabHeight = 64;
+
+    const barLeft = 16;
+    const tabX = barLeft + (profileIndex + 0.5) * ((screenWidth - 32) / profileCount);
+    const tabY = screenHeight - 80 - Math.max(insets.bottom, 10);
+
+    props.onProfileTabLayout({
+      x: tabX - tabWidth / 2,
+      y: tabY,
+      width: tabWidth,
+      height: tabHeight,
+    });
+  }, [insets.bottom, props, screenHeight, screenWidth]);
 
   return (
     <View

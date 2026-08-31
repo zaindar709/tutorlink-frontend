@@ -11,11 +11,7 @@ module.exports = {
     'react-native-maps': {
       platforms: { android: null, ios: null },
     },
-    'react-native-webrtc': {
-      platforms: { android: null, ios: null },
-    },
-    'react-native-incall-manager': {
-      platforms: { android: null, ios: null },
-    },
+    // react-native-webrtc + react-native-incall-manager MUST stay autolinked
+    // for the classroom. Do not set platforms to null here.
   },
 };

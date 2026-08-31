@@ -24,6 +24,7 @@ import { loadTutorEditableProfile } from '../../../../services/profile/tutorProf
 import { getDisplayName } from '../../../../utils/api/bookingHelpers';
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
 import useUi from '../../../../hooks/ui/useUi';
+import ConfirmLogoutModal from '../../../../components/ConfirmLogoutModal';
 
 type MenuItem = {
   title: string;
@@ -55,6 +56,13 @@ const MENU_SECTIONS: MenuSection[] = [
         icon: 'wallet-outline',
         iconColor: '#7548F5',
         screen: 'TutorEarningsScreen',
+      },
+      {
+        title: 'AI Summaries',
+        description: 'Review & publish class notes',
+        icon: 'star-four-points',
+        iconColor: '#F59E0B',
+        screen: 'TutorSummariesScreen',
       },
       {
         title: 'Payment Methods',
@@ -109,6 +117,7 @@ const TutorProfileScreen = () => {
     user?.uid || user?.firebaseUid || user?.id || user?._id || ''
   );
   const [loggingOut, setLoggingOut] = useState(false);
+  const [confirmVisible, setConfirmVisible] = useState(false);
   const [localProfile, setLocalProfile] = useState({
     bio: '',
     phone: '',
@@ -156,9 +165,10 @@ const TutorProfileScreen = () => {
     : 'Add experience';
   const educationLabel = localProfile.education || 'Add education';
 
-  const handleLogout = async () => {
+  const performLogout = async () => {
     try {
       setLoggingOut(true);
+      setConfirmVisible(false);
       await logoutUser();
       dispatch(logout());
       navigation.reset({
@@ -319,13 +329,19 @@ const TutorProfileScreen = () => {
           style={styles.logoutBtn}
           activeOpacity={0.75}
           disabled={loggingOut}
-          onPress={() => void handleLogout()}
+          onPress={() => setConfirmVisible(true)}
         >
           <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
           <Text style={styles.logoutText}>
             {loggingOut ? 'Logging out…' : 'Logout'}
           </Text>
         </TouchableOpacity>
+        <ConfirmLogoutModal
+          visible={confirmVisible}
+          onCancel={() => setConfirmVisible(false)}
+          onConfirm={() => void performLogout()}
+          confirming={loggingOut}
+        />
         <Text style={styles.version}>TutorLink v1.1.0 · Tutor</Text>
       </ScrollView>
     </GlassScreen>

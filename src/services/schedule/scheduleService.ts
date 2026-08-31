@@ -16,7 +16,38 @@ export const fetchTutorDaySchedule = async (
   if (!response.data.data) {
     throw new Error(response.data.message || 'Failed to load schedule');
   }
-  return response.data.data;
+  const raw = response.data.data as TutorDaySchedule;
+
+  // Deduplicate booked/free items client-side in case backend returns
+  // repeated entries for the same booking or slot. Keep the first
+  // occurrence for stability.
+  const items = Array.isArray(raw.items) ? raw.items : [];
+  const seen = new Set<string>();
+  const deduped: TutorScheduleItem[] = [];
+
+  items.forEach(it => {
+    if ((it as any).kind === 'booked') {
+      const b = it as TutorScheduleBookedItem;
+      const key = b.bookingId || `${b.startTime}-${b.endTime}-${b.student?._id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(it);
+      }
+    } else {
+      // free slot
+      const f = it as TutorScheduleFreeItem;
+      const key = `free-${f.startTime}-${f.endTime}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(it);
+      }
+    }
+  });
+
+  return {
+    ...raw,
+    items: deduped,
+  };
 };
 
 export const fetchTutorAvailability = async (): Promise<TutorAvailability> => {

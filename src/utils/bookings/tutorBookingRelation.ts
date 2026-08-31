@@ -46,7 +46,7 @@ export const relationFromSearchFlags = (
 ): TutorBookingRelation | null => {
   if (!flags) return null;
 
-  if (flags.hasPending) {
+  if (flags.hasPending || flags.hasPendingPackage) {
     return {
       state: 'request_sent',
       label: 'Request Sent',
@@ -55,7 +55,7 @@ export const relationFromSearchFlags = (
     };
   }
 
-  if (flags.hasActive) {
+  if (flags.hasActive || flags.hasActivePackage) {
     return {
       state: 'already_booked',
       label: 'Already in Your Bookings',

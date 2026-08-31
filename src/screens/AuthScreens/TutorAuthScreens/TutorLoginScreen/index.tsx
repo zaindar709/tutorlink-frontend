@@ -125,12 +125,12 @@ const TutorLoginScreen = () => {
         />
 
         <AuthGlassDivider />
-
+{/* 
         <GlassSocialButton
           title="Continue with Google"
           icon="google"
           onPress={handleContinueWithGoogle}
-        />
+        /> */}
 
         {Platform.OS === 'ios' && (
           <GlassSocialButton

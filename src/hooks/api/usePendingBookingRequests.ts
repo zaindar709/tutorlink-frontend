@@ -4,8 +4,10 @@ import { fetchBookingsThunk } from '../../store/booking/bookingSlice';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { ApiUser, Booking } from '../../types/api.types';
 import { formatDateParam, getUserId } from '../../utils/api/userId';
-import { listCacheKey } from '../../utils/bookings/bookingStatus';
+import { listCacheKey, matchesBookingTab } from '../../utils/bookings/bookingStatus';
 import { syncServerNotifications } from '../../services/notifications/notificationSyncService';
+import { fetchBookingByIdThunk } from '../../store/booking/bookingSlice';
+import { store } from '../../store/store';
 
 const PENDING_LOOKAHEAD_DAYS = 14;
 const CACHE_TTL_MS = 30_000;
@@ -83,6 +85,24 @@ export const usePendingBookingRequests = () => {
               // ignore single-day failures
             }
           });
+
+          // Drop stale pending rows that are already accepted on the server
+          const pendingIds = Object.values(store.getState().booking.byId)
+            .filter(b => b && String(b.status).toLowerCase() === 'pending')
+            .map(b => b._id)
+            .slice(0, 15);
+          await Promise.all(
+            pendingIds.map(async id => {
+              try {
+                await dispatch(
+                  fetchBookingByIdThunk({ id, force: true })
+                ).unwrap();
+              } catch {
+                // ignore
+              }
+            })
+          );
+
           lastOkAtRef.current = Date.now();
           void syncServerNotifications(getUserId(authUser));
         } catch (err) {
@@ -123,13 +143,13 @@ export const usePendingBookingRequests = () => {
       const meta = lists[listCacheKey(date, 'pending')];
       meta?.ids?.forEach(id => {
         const booking = byId[id];
-        if (booking && booking.status === 'pending') {
+        if (booking && matchesBookingTab(booking, 'pending')) {
           map.set(booking._id, booking);
         }
       });
     });
     Object.values(byId).forEach(booking => {
-      if (booking?.status === 'pending') {
+      if (booking && matchesBookingTab(booking, 'pending')) {
         map.set(booking._id, booking);
       }
     });

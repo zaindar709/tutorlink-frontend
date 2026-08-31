@@ -23,6 +23,11 @@ import { navigateHomeStack } from '../../../../navigation/navigationRef';
 import { getSessionAmount } from '../../../../utils/bookings/bookingStatus';
 import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
 import { Booking } from '../../../../types/api.types';
+import {
+  estimateWeekdaySessionCount,
+  getBookingDurationDays,
+  isMonthlyWeekdaysBooking,
+} from '../../../../utils/bookings/packageHelpers';
 
 /**
  * Tutor Requests tab — live pending bookings only (no demo/mock cards).
@@ -126,8 +131,8 @@ const TutorRequestsScreen = () => {
               <Ionicons name="mail-open-outline" size={40} color="#9CA3AF" />
               <Text style={styles.emptyTitle}>No pending requests</Text>
               <Text style={styles.emptySub}>
-                When a student books you, their name and session details will
-                appear here.
+                When a student sends a monthly Mon–Fri request, it appears here
+                as one pending package.
               </Text>
             </View>
           ) : null}
@@ -137,6 +142,9 @@ const TutorRequestsScreen = () => {
             const avatar = getBookingStudentAvatar(item);
             const amount = getSessionAmount(item);
             const dateLabel = String(item.date).slice(0, 10);
+            const monthly = isMonthlyWeekdaysBooking(item);
+            const durationDays = getBookingDurationDays(item);
+            const sessions = estimateWeekdaySessionCount(item.date, durationDays);
 
             return (
               <TouchableOpacity
@@ -153,17 +161,23 @@ const TutorRequestsScreen = () => {
                         {name}
                       </Text>
                       <View style={styles.newBadge}>
-                        <Text style={styles.newText}>PENDING</Text>
+                        <Text style={styles.newText}>
+                          {monthly ? 'MONTHLY' : 'PENDING'}
+                        </Text>
                       </View>
                     </View>
                     <Text style={styles.timeText}>
-                      {dateLabel} · {item.startTime}–{item.endTime}
+                      {monthly
+                        ? `Mon–Fri · ${item.startTime}–${item.endTime} · ~${sessions} classes`
+                        : `${dateLabel} · ${item.startTime}–${item.endTime}`}
                     </Text>
                     <Text style={styles.subjectName} numberOfLines={1}>
                       {item.subject}
+                      {monthly ? ` · from ${dateLabel}` : ''}
                     </Text>
                     <Text style={styles.rateText}>
-                      PKR {amount.toLocaleString()} · Tap for details
+                      PKR {amount.toLocaleString()}
+                      {monthly ? ' / class' : ''} · Tap for details
                     </Text>
                   </View>
                 </View>

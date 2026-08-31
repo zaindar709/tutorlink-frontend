@@ -15,14 +15,14 @@ import { speedLog } from '../utils/debug/speedLog';
 const LOG = '[API]';
 
 /** Avoid hanging every request on a slow Firebase token refresh. */
-const TOKEN_RESOLVE_TIMEOUT_MS = 4000;
-/** Reuse token briefly so list/dashboard calls don't wait on Firebase each time. */
-const TOKEN_CACHE_TTL_MS = 4 * 60 * 1000;
+const TOKEN_RESOLVE_TIMEOUT_MS = 2500;
+/** Reuse token so list/dashboard calls skip Firebase round-trips. */
+const TOKEN_CACHE_TTL_MS = 8 * 60 * 1000;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  // Render free tier cold-starts can exceed 15s — keep patient for release testing.
-  timeout: 35000,
+  // Render free tier cold-starts can be slow — keep enough headroom, fail faster than before.
+  timeout: 25000,
   headers: {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -161,7 +161,10 @@ api.interceptors.request.use(async config => {
     tokenResolveMs: tokenMs,
   });
 
-  if (url.includes('/api/tutor/onboarding') || url.includes('/api/auth/')) {
+  if (
+    __DEV__ &&
+    (url.includes('/api/tutor/onboarding') || url.includes('/api/auth/'))
+  ) {
     console.log(LOG, 'request', {
       method: config.method,
       url,
@@ -194,8 +197,9 @@ api.interceptors.response.use(
     });
 
     if (
-      (response.config.url ?? '').includes('/api/tutor/onboarding') ||
-      (response.config.url ?? '').includes('/api/auth/')
+      __DEV__ &&
+      ((response.config.url ?? '').includes('/api/tutor/onboarding') ||
+        (response.config.url ?? '').includes('/api/auth/'))
     ) {
       console.log(LOG, 'response OK', {
         url: response.config.url,
@@ -231,10 +235,27 @@ api.interceptors.response.use(
       (requestUrl.includes('/api/auth/login') ||
         requestUrl.includes('/api/auth/register'));
 
+    const serverMsg = String(
+      (error?.response?.data as { message?: string } | undefined)?.message || ''
+    );
+    const isSoftBookingsDateRequired =
+      error?.response?.status === 400 &&
+      typeof requestUrl === 'string' &&
+      requestUrl.includes('/api/bookings') &&
+      /date query parameter is required/i.test(serverMsg);
+
+    // GET /api/bookings/:id is not implemented on some backends — list by date+tab instead.
+    const isSoftBookingById404 =
+      error?.response?.status === 404 &&
+      typeof requestUrl === 'string' &&
+      /\/api\/bookings\/[a-f0-9]{24}$/i.test(requestUrl);
+
     const isSoftExpected =
       isSoftLinkedParents404 ||
       isSoftDeviceToken404 ||
-      isSoftAuthLogin404;
+      isSoftAuthLogin404 ||
+      isSoftBookingsDateRequired ||
+      isSoftBookingById404;
 
     if (isSoftExpected) {
       speedLog('API ← soft', {
@@ -254,14 +275,16 @@ api.interceptors.response.use(
         ms,
         message: error?.message,
       });
-      console.error(LOG, 'response ERROR', {
-        url: requestUrl,
-        status: error?.response?.status,
-        message: error?.message,
-        data: error?.response?.data,
-        ms,
-        hasAuthHeader: !!error?.config?.headers?.Authorization,
-      });
+      if (__DEV__) {
+        console.error(LOG, 'response ERROR', {
+          url: requestUrl,
+          status: error?.response?.status,
+          message: error?.message,
+          data: error?.response?.data,
+          ms,
+          hasAuthHeader: !!error?.config?.headers?.Authorization,
+        });
+      }
     }
 
     // Only kick to auth when a real authenticated request was rejected.

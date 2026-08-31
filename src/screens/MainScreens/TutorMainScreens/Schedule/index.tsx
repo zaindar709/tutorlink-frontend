@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Linking,
   Alert,
   Image,
 } from 'react-native';
@@ -30,7 +29,11 @@ import {
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
 import { formatDisplayDate } from '../../../../utils/api/userId';
 import { getWorkWeekDates } from '../../../../utils/schedule/scheduleHelpers';
-
+import { useAppSelector } from '../../../../store/hooks';
+import { ApiUser, Booking } from '../../../../types/api.types';
+import { openClassroom } from '../../../../services/webrtc/openClassroom';
+import { useWallet } from '../../../../hooks/api/useWallet';
+import { PANEL_DEMO_SESSION_MINUTES } from '../../../../config/features';
 const statusTone = (status: string) => {
   switch (status) {
     case 'pending':
@@ -49,6 +52,7 @@ const statusTone = (status: string) => {
 
 const TutorScheduleScreen = () => {
   const { colors, resp } = useUi();
+  const authUser = useAppSelector(state => state.auth.user as ApiUser | null);
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const {
     selectedDate,
@@ -63,6 +67,7 @@ const TutorScheduleScreen = () => {
     refresh,
   } = useTutorSchedule();
   const { completeBooking, actionLoading } = useBookings('active');
+  const { refresh: refreshWallet } = useWallet();
 
   const weekDates = useMemo(() => getWorkWeekDates(new Date()), []);
 
@@ -86,12 +91,17 @@ const TutorScheduleScreen = () => {
   const handleComplete = async (bookingId: string) => {
     const result = await completeBooking(bookingId);
     if (result) {
-      Alert.alert(
-        'Completed',
-        result.sessionAmount
-          ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
-          : 'Session completed.'
-      );
+      void refreshWallet();
+      const amountMsg = result.sessionAmount
+        ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
+        : 'Session completed.';
+      Alert.alert('Completed', `${amountMsg}\n\nCheck Earnings for updated balance.`, [
+        { text: 'OK', style: 'cancel' },
+        {
+          text: 'Open Earnings',
+          onPress: () => navigateHomeStack('TutorEarningsScreen'),
+        },
+      ]);
       void refresh();
     }
   };
@@ -120,9 +130,13 @@ const TutorScheduleScreen = () => {
       endTime: item.endTime,
       date: dateParam,
       subject: item.subject,
-      student: item.student._id,
-      tutor: '',
-    } as const;
+      student: {
+        _id: item.student._id,
+        name: item.student.name,
+        avatarUrl: item.student.avatarUrl,
+      },
+      tutor: authUser?._id || authUser?.id || '',
+    } as Booking;
 
     return (
       <TouchableOpacity
@@ -164,10 +178,22 @@ const TutorScheduleScreen = () => {
           </View>
 
           <View style={styles.actions}>
-            {canJoinMeeting(bookingLike) ? (
+            {canJoinMeeting(bookingLike) || __DEV__ ? (
               <TouchableOpacity
                 style={styles.joinWrap}
-                onPress={() => void Linking.openURL(item.meetingLink!)}
+                onPress={() => {
+                  const opened = openClassroom(bookingLike, {
+                    user: authUser,
+                    role: 'tutor',
+                    autoStart: true,
+                  });
+                  if (!opened) {
+                    Alert.alert(
+                      'Unable to start',
+                      'Class starts only for accepted bookings that have not ended yet.'
+                    );
+                  }
+                }}
               >
                 <LinearGradient
                   colors={[...GLASS.buttonGradient]}
@@ -180,7 +206,7 @@ const TutorScheduleScreen = () => {
                     size={16}
                     color="#fff"
                   />
-                  <Text style={styles.joinText}>Join class</Text>
+                  <Text style={styles.joinText}>Start class</Text>
                 </LinearGradient>
               </TouchableOpacity>
             ) : null}
@@ -209,7 +235,9 @@ const TutorScheduleScreen = () => {
                   if (!canCompleteSession(bookingLike)) {
                     Alert.alert(
                       'Too early',
-                      'You can complete the session only after the scheduled end time.'
+                      PANEL_DEMO_SESSION_MINUTES
+                        ? `Panel demo: wait ~${PANEL_DEMO_SESSION_MINUTES} min after start time, then tap Complete to release escrow.`
+                        : 'You can complete the session only after the scheduled end time.'
                     );
                     return;
                   }

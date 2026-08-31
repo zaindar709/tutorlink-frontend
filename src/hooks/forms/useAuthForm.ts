@@ -23,6 +23,9 @@ import { getTutorResetRoute } from '../../utils/tutor/tutorNavigation';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
 import { warmupApi } from '../../services/api/apiWarmup';
 import { formatAuthTimingForAlert } from '../../utils/debug/speedLog';
+import { openParentDashboard } from '../../config/parentDashboard';
+import { clearAuthSession } from '../../services/storage';
+import { logout } from '../../store/auth/authSlice';
 
 type Mode = 'login' | 'signup';
 
@@ -155,9 +158,13 @@ export const useAuthForm = (
     }
 
     if (sessionRole === 'parent') {
+      // Parent auth/dashboard is web-only.
+      await clearAuthSession();
+      dispatch(logout());
+      void openParentDashboard();
       navigation.reset({
         index: 0,
-        routes: [{ name: 'ParentLinkRedeemScreen' }],
+        routes: [{ name: 'RoleSelectionScreen' }],
       });
       return;
     }
@@ -252,11 +259,7 @@ export const useAuthForm = (
         (error as { response?: { status?: number } })?.response?.status === 404;
 
       const loginScreen =
-        role === 'tutor'
-          ? 'TutorLoginScreen'
-          : role === 'parent'
-            ? 'ParentLinkRedeemScreen'
-            : 'StudentLoginScreen';
+        role === 'tutor' ? 'TutorLoginScreen' : 'StudentLoginScreen';
 
       const studentLogin = 'StudentLoginScreen';
 

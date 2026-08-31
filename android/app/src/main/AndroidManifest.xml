@@ -11,8 +11,17 @@
   <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
   <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
   <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+  <uses-permission android:name="android.permission.BLUETOOTH" />
+  <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+  <uses-feature android:name="android.hardware.camera" android:required="false" />
+  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+  <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
   <application
     android:name=".MainApplication"
@@ -27,6 +36,9 @@
     android:name="com.google.firebase.messaging.default_notification_channel_id"
     android:value="@string/default_notification_channel_id"
     tools:replace="android:value"/>
+    <meta-data
+      android:name="com.google.firebase.messaging.default_notification_icon"
+      android:resource="@drawable/ic_notification" />
     <activity
       android:name=".MainActivity"
       android:label="@string/app_name"
@@ -37,6 +49,76 @@
       <intent-filter>
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+
+      <!--
+        App Links: ONE host + ONE pathPrefix per intent-filter.
+        Putting multiple hosts/paths in a single filter makes Android OR the
+        attribute lists (cartesian product) and is a common autoVerify failure
+        mode on OEM verifiers (state 1024 / none).
+        Email reset links use: https://tutor-link-62ed9.firebaseapp.com/__/auth/links?...
+      -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.firebaseapp.com"
+          android:pathPrefix="/__/auth/links" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.web.app"
+          android:pathPrefix="/__/auth/links" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.firebaseapp.com"
+          android:pathPrefix="/__/auth/action" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.web.app"
+          android:pathPrefix="/__/auth/action" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.firebaseapp.com"
+          android:pathPrefix="/auth/action" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+          android:scheme="https"
+          android:host="tutor-link-62ed9.web.app"
+          android:pathPrefix="/auth/action" />
+      </intent-filter>
+
+      <!-- Custom scheme fallback (not an App Link; no autoVerify) -->
+      <intent-filter>
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="tutorlink" android:host="reset-password" />
       </intent-filter>
     </activity>
   </application>

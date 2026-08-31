@@ -10,20 +10,30 @@ const VIEW_W = 640;
 const VIEW_H = 220;
 const PAD = { top: 28, right: 20, bottom: 36, left: 40 };
 
+function scoreRange(weeks: { score: number }[]): { min: number; max: number } {
+  const scores = weeks.map(w => w.score);
+  const lo = Math.min(...scores, 0);
+  const hi = Math.max(...scores, 0);
+  // Fresh 0% dashboards: use full 0–100 axis so zeros sit on the baseline.
+  if (hi <= 0) return { min: 0, max: 100 };
+  if (lo >= 55) return { min: 55, max: 100 };
+  return { min: 0, max: Math.max(100, hi) };
+}
+
 function pointCoords(
   weeks: { score: number }[],
   index: number
 ): { x: number; y: number } {
   const innerW = VIEW_W - PAD.left - PAD.right;
   const innerH = VIEW_H - PAD.top - PAD.bottom;
-  const min = 55;
-  const max = 100;
+  const { min, max } = scoreRange(weeks);
+  const span = Math.max(max - min, 1);
   const x =
     PAD.left + (index / Math.max(weeks.length - 1, 1)) * innerW;
   const y =
     PAD.top +
     innerH -
-    ((weeks[index].score - min) / (max - min)) * innerH;
+    ((weeks[index].score - min) / span) * innerH;
   return { x, y };
 }
 

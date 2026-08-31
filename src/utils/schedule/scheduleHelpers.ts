@@ -73,6 +73,41 @@ export const getUpcomingWorkDates = (
   return dates;
 };
 
+/**
+ * All Mon–Fri dates from `from` through `from + durationDays` (calendar days).
+ * Used for monthly_weekdays tuition packages.
+ */
+export const getWorkDatesForDuration = (
+  from: Date = new Date(),
+  durationDays = 30
+): Date[] => {
+  const start = new Date(from);
+  start.setHours(12, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + Math.max(1, durationDays) - 1);
+
+  const dates: Date[] = [];
+  const cursor = new Date(start);
+  while (cursor.getTime() <= end.getTime()) {
+    const day = cursor.getDay();
+    if (day >= 1 && day <= 5) {
+      dates.push(new Date(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+};
+
+/** Skip Sat/Sun when picking the first preferred class day. */
+export const nextWeekdayOnOrAfter = (from: Date = new Date()): Date => {
+  const cursor = new Date(from);
+  cursor.setHours(12, 0, 0, 0);
+  while (isWeekendDate(cursor)) {
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return cursor;
+};
+
 export const isWeekendDate = (date: Date) => {
   const day = date.getDay();
   return day === 0 || day === 6;

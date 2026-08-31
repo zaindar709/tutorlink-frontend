@@ -70,23 +70,29 @@ export default function OverviewPage({ data, onNavigate }: OverviewPageProps) {
             </button>
           </div>
           <div className="space-y-3">
-            {upcoming.map(session => (
-              <div
-                key={session.id}
-                className="flex flex-col gap-3 rounded-xl border border-tl-border bg-tl-surface-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:bg-tl-surface-muted/60"
-              >
-                <div>
-                  <p className="font-semibold text-tl-text">{session.subject}</p>
-                  <p className="text-sm text-tl-text-muted">
-                    {session.childName} · {session.tutorName}
-                  </p>
-                  <p className="mt-1 text-xs text-tl-text-muted">
-                    {session.date} at {session.time}
-                  </p>
+            {upcoming.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-tl-border bg-tl-surface-muted/40 px-4 py-8 text-center text-sm text-tl-text-muted">
+                No upcoming sessions yet — book a class to get started.
+              </p>
+            ) : (
+              upcoming.map(session => (
+                <div
+                  key={session.id}
+                  className="flex flex-col gap-3 rounded-xl border border-tl-border bg-tl-surface-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between dark:bg-tl-surface-muted/60"
+                >
+                  <div>
+                    <p className="font-semibold text-tl-text">{session.subject}</p>
+                    <p className="text-sm text-tl-text-muted">
+                      {session.childName} · {session.tutorName}
+                    </p>
+                    <p className="mt-1 text-xs text-tl-text-muted">
+                      {session.date} at {session.time}
+                    </p>
+                  </div>
+                  <Badge variant="warning">Upcoming</Badge>
                 </div>
-                <Badge variant="warning">Upcoming</Badge>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </GlassCard>
 

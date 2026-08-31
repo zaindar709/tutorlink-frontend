@@ -1,5 +1,6 @@
 package com.tutorlink
 
+import android.content.Intent
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -12,6 +13,15 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "Tutorlink"
+
+  /**
+   * singleTask + App Links: replace the activity intent so React Native Linking
+   * (getInitialURL / url events) sees the latest VIEW deep link.
+   */
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+  }
 
   /**
    * Returns the instance of the [ReactActivityDelegate]. We use [DefaultReactActivityDelegate]

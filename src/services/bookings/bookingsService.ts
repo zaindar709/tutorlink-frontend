@@ -29,6 +29,12 @@ import {
   getTutorUserId,
 } from '../../utils/api/bookingHelpers';
 import { parseBookingMutationResponse } from '../../utils/bookings/bookingResponse';
+import {
+  extractBookingsPayload,
+  logBookingTabSummary,
+  normalizeBookingFromApi,
+} from '../../utils/bookings/normalizeBooking';
+import { API_BASE_URL } from '../../config/api';
 
 type NotifyAudience = 'student' | 'tutor';
 
@@ -97,29 +103,93 @@ const toMutationResult = (
     escrowRefunded?: boolean;
   },
   fallbackMessage: string
-): BookingMutationResult => {
-  const parsed = parseBookingMutationResponse(responseData, fallbackMessage);
-  return {
-    booking: parsed.booking,
-    sessionAmount: parsed.sessionAmount,
-    escrowRefunded: parsed.escrowRefunded,
-    message: parsed.message,
-  };
-};
+): BookingMutationResult => parseBookingMutationResponse(responseData, fallbackMessage);
 
 export const fetchBookings = async (
-  date: string,
+  date: string | undefined,
   tab: BookingTab
 ): Promise<Booking[]> => {
-  const response = await getBookingsAPI(date, tab);
-  return response.data.data ?? [];
+  const queryDate = date && date !== 'all' ? date : undefined;
+  const path = queryDate
+    ? `/api/bookings?date=${queryDate}&tab=${tab}`
+    : `/api/bookings?tab=${tab}`;
+  const fullUrl = `${API_BASE_URL}${path}`;
+
+  console.log('[BookingAPI] REQUEST', {
+    method: 'GET',
+    path,
+    fullUrl,
+    date: queryDate ?? '(none)',
+    tab,
+  });
+
+  try {
+    const response = await getBookingsAPI(queryDate, tab);
+    const list = extractBookingsPayload(
+      response.data,
+      `GET ${path}`
+    );
+
+    logBookingTabSummary(`RESPONSE ${path}`, list);
+
+    const active = list.filter(
+      b => String(b.status).toLowerCase() === 'accepted'
+    );
+    const pending = list.filter(
+      b => String(b.status).toLowerCase() === 'pending'
+    );
+    console.log('[BookingAPI] tab split for student', {
+      path,
+      requestedTab: tab,
+      total: list.length,
+      acceptedCount: active.length,
+      pendingCount: pending.length,
+      acceptedTutors: active.map(b =>
+        typeof b.tutor === 'object' && b.tutor
+          ? (b.tutor as { name?: string }).name
+          : b.tutor
+      ),
+      pendingTutors: pending.map(b =>
+        typeof b.tutor === 'object' && b.tutor
+          ? (b.tutor as { name?: string }).name
+          : b.tutor
+      ),
+    });
+
+    return list;
+  } catch (error) {
+    const err = error as {
+      response?: { status?: number; data?: unknown };
+      message?: string;
+    };
+    console.log('[BookingAPI] REQUEST FAILED', {
+      path,
+      fullUrl,
+      status: err?.response?.status,
+      message: err?.message,
+      data: err?.response?.data,
+    });
+    throw error;
+  }
 };
 
 export const fetchBookingById = async (id: string): Promise<Booking | null> => {
+  // Prefer list endpoints — GET /api/bookings/:id often 404s on this backend.
   try {
     const response = await getBookingByIdAPI(id);
-    return response.data.data ?? null;
-  } catch {
+    const one = normalizeBookingFromApi(
+      response.data?.data ?? response.data,
+      `GET /api/bookings/${id}`
+    );
+    return one;
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response
+      ?.status;
+    if (status === 404) {
+      console.log('[BookingAPI] GET /api/bookings/:id → 404 (use list)', {
+        id,
+      });
+    }
     return null;
   }
 };
@@ -128,18 +198,96 @@ export const fetchBookingsWithTutor = async (
   tutorId: string,
   studentId?: string
 ) => {
-  const response = await getBookingsWithTutorAPI(tutorId, studentId);
-  return (
-    response.data.data ?? {
+  const path = `/api/bookings/with-tutor/${tutorId}`;
+  console.log('[BookingAPI] REQUEST', {
+    method: 'GET',
+    path,
+    studentId: studentId || '(self)',
+  });
+  try {
+    const response = await getBookingsWithTutorAPI(tutorId, studentId);
+    const data =
+      response.data.data ?? {
+        tutorId,
+        hasPending: false,
+        hasActive: false,
+        canRequest: true,
+        pendingBooking: null,
+        activeBooking: null,
+        openBookings: [],
+      };
+
+    const activeBooking = data.activeBooking
+      ? normalizeBookingFromApi(data.activeBooking, `${path}.activeBooking`)
+      : null;
+    const pendingBooking = data.pendingBooking
+      ? normalizeBookingFromApi(data.pendingBooking, `${path}.pendingBooking`)
+      : null;
+    const pendingPackage = data.pendingPackage
+      ? normalizeBookingFromApi(data.pendingPackage, `${path}.pendingPackage`)
+      : null;
+    const activePackage = data.activePackage
+      ? normalizeBookingFromApi(data.activePackage, `${path}.activePackage`)
+      : null;
+    const nextSession = data.nextSession
+      ? normalizeBookingFromApi(data.nextSession, `${path}.nextSession`)
+      : null;
+    const openBookings = Array.isArray(data.openBookings)
+      ? data.openBookings
+          .map((b, i) =>
+            normalizeBookingFromApi(b, `${path}.openBookings[${i}]`)
+          )
+          .filter((b): b is Booking => Boolean(b))
+      : [];
+    const packageSessions = Array.isArray(data.packageSessions)
+      ? data.packageSessions
+          .map((b, i) =>
+            normalizeBookingFromApi(b, `${path}.packageSessions[${i}]`)
+          )
+          .filter((b): b is Booking => Boolean(b))
+      : [];
+
+    const hasPending = Boolean(
+      data.hasPending || data.hasPendingPackage || pendingPackage || pendingBooking
+    );
+    const hasActive = Boolean(
+      data.hasActive || data.hasActivePackage || activePackage || activeBooking
+    );
+
+    console.log('[BookingAPI] with-tutor result', {
       tutorId,
-      hasPending: false,
-      hasActive: false,
-      canRequest: true,
-      pendingBooking: null,
-      activeBooking: null,
-      openBookings: [],
-    }
-  );
+      hasActive,
+      hasPending,
+      hasPendingPackage: data.hasPendingPackage,
+      hasActivePackage: data.hasActivePackage,
+      activeId: activeBooking?._id,
+      pendingId: pendingBooking?._id || pendingPackage?._id,
+      openCount: openBookings.length,
+      upcomingSessionCount: data.upcomingSessionCount,
+    });
+
+    return {
+      ...data,
+      hasPending,
+      hasActive,
+      canRequest:
+        data.canRequest === undefined ? !hasPending && !hasActive : data.canRequest,
+      activeBooking,
+      pendingBooking: pendingBooking || pendingPackage,
+      pendingPackage,
+      activePackage,
+      nextSession,
+      openBookings,
+      packageSessions,
+    };
+  } catch (error) {
+    console.log('[BookingAPI] with-tutor FAILED', {
+      tutorId,
+      error: (error as { message?: string })?.message,
+      status: (error as { response?: { status?: number } })?.response?.status,
+    });
+    throw error;
+  }
 };
 
 export const createBooking = async (
@@ -156,49 +304,98 @@ export const createBooking = async (
     date: payload.date,
     startTime: payload.startTime,
     endTime: payload.endTime,
+    mode: payload.mode || 'monthly_weekdays',
+    durationDays: payload.durationDays ?? 30,
   });
   const response = await createBookingAPI({
     ...payload,
     tutor: tutorId,
     tutorId,
+    mode: payload.mode || 'monthly_weekdays',
+    durationDays: payload.durationDays ?? 30,
   });
   if (!response.data.data) {
     throw new Error(response.data.message || 'Failed to create booking');
   }
-  const booking = response.data.data;
+  const booking =
+    normalizeBookingFromApi(response.data.data, 'POST /api/bookings') ||
+    response.data.data;
+  // Ensure monthly package markers survive even if API omits kind briefly.
+  if (!booking.mode) booking.mode = payload.mode || 'monthly_weekdays';
+  if (booking.durationDays == null) {
+    booking.durationDays = payload.durationDays ?? 30;
+  }
+  if (!booking.kind && booking.mode === 'monthly_weekdays') {
+    booking.kind = 'package';
+  }
+  if (!booking.packageId) booking.packageId = booking._id;
+
   const tutorName = getBookingTutorName(booking);
 
+  const isMonthly = (payload.mode || 'monthly_weekdays') === 'monthly_weekdays';
   notifyBookingParty(
     booking,
     'student',
-    'Booking request sent',
-    `Waiting for ${tutorName} to respond to your ${booking.subject} request.`,
-    { status: 'pending' }
+    isMonthly ? 'Monthly tuition request sent' : 'Booking request sent',
+    isMonthly
+      ? `Waiting for ${tutorName} to accept Mon–Fri classes (${payload.startTime}–${payload.endTime}).`
+      : `Waiting for ${tutorName} to respond to your ${booking.subject} request.`,
+    {
+      status: 'pending',
+      kind: isMonthly ? 'package' : 'session',
+      packageId: booking.packageId || booking._id,
+    }
   );
   notifyBookingParty(
     booking,
     'tutor',
-    'New booking request',
-    `${getBookingStudentName(booking)} requested ${booking.subject} · ${booking.startTime}–${booking.endTime}.`,
-    { status: 'pending' }
+    isMonthly ? 'New monthly tuition request' : 'New booking request',
+    isMonthly
+      ? `${getBookingStudentName(booking)} requested Mon–Fri ${booking.subject} · ${booking.startTime}–${booking.endTime} (~${payload.durationDays ?? 30} days).`
+      : `${getBookingStudentName(booking)} requested ${booking.subject} · ${booking.startTime}–${booking.endTime}.`,
+    {
+      status: 'pending',
+      kind: isMonthly ? 'package' : 'session',
+      packageId: booking.packageId || booking._id,
+    }
   );
 
   return booking;
 };
 
-export const notifyStudentBookingAccepted = (booking: Booking, sessionAmount?: number) => {
+export const notifyStudentBookingAccepted = (
+  booking: Booking,
+  sessionAmount?: number,
+  extras?: { sessionCount?: number; isPackage?: boolean }
+) => {
   const tutorName = getBookingTutorName(booking);
+  const isPackage =
+    extras?.isPackage ||
+    booking.kind === 'package' ||
+    booking.mode === 'monthly_weekdays';
+  const count = extras?.sessionCount;
+
   notifyBookingParty(
     booking,
     'student',
-    'Booking accepted',
-    sessionAmount
-      ? `${tutorName} accepted your ${booking.subject} session. Escrow held: PKR ${sessionAmount.toLocaleString()}.`
-      : `Your booking request has been accepted by ${tutorName}.`,
+    isPackage ? 'Monthly tuition accepted' : 'Booking accepted',
+    isPackage
+      ? sessionAmount
+        ? `${tutorName} accepted your Mon–Fri ${booking.subject} package${
+            count ? ` (${count} classes)` : ''
+          }. Escrow held (1 session): PKR ${sessionAmount.toLocaleString()}.`
+        : `${tutorName} accepted your Mon–Fri ${booking.subject} package${
+            count ? ` (${count} classes)` : ''
+          }.`
+      : sessionAmount
+        ? `${tutorName} accepted your ${booking.subject} session. Escrow held: PKR ${sessionAmount.toLocaleString()}.`
+        : `Your booking request has been accepted by ${tutorName}.`,
     {
       status: 'accepted',
       screen: 'Bookings',
       type: 'booking_accepted',
+      kind: isPackage ? 'package' : 'session',
+      packageId: booking.packageId || booking._id,
     }
   );
 };
@@ -226,15 +423,42 @@ export const confirmBooking = async (
   const result = toMutationResult(response.data, 'Failed to confirm booking');
   const tutorName = getBookingTutorName(result.booking);
   const studentName = getBookingStudentName(result.booking);
+  const sessionCount = result.sessionCount || result.sessions?.length || 0;
+  const isPackage =
+    result.kind === 'package' ||
+    Boolean(result.sessions?.length) ||
+    result.booking.mode === 'monthly_weekdays';
 
-  notifyStudentBookingAccepted(result.booking, result.sessionAmount);
+  notifyStudentBookingAccepted(result.booking, result.sessionAmount, {
+    sessionCount,
+    isPackage,
+  });
   notifyBookingParty(
     result.booking,
     'tutor',
-    'Booking confirmed',
-    `You accepted ${studentName}'s ${result.booking.subject} request.`,
-    { status: 'accepted' }
+    isPackage ? 'Monthly package confirmed' : 'Booking confirmed',
+    isPackage
+      ? `You accepted ${studentName}'s Mon–Fri ${result.booking.subject} package${
+          sessionCount ? ` (${sessionCount} classes)` : ''
+        }.`
+      : `You accepted ${studentName}'s ${result.booking.subject} request.`,
+    {
+      status: 'accepted',
+      kind: isPackage ? 'package' : 'session',
+      packageId: result.packageId || result.booking.packageId || id,
+      ...(sessionCount ? { sessionCount: String(sessionCount) } : {}),
+    }
   );
+
+  // Keep lint quiet if tutorName unused in package branch — still useful for logs.
+  console.log('[Booking] confirm ok', {
+    id,
+    kind: result.kind,
+    packageId: result.packageId,
+    sessionCount,
+    sessionAmount: result.sessionAmount,
+    tutorName,
+  });
 
   return result;
 };

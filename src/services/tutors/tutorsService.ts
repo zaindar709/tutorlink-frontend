@@ -151,12 +151,21 @@ export const normalizeTutor = (
   const relationRaw = asRecord(raw.relation);
   const relation = relationRaw
     ? {
-        hasPending: Boolean(relationRaw.hasPending),
-        hasActive: Boolean(relationRaw.hasActive),
+        hasPending: Boolean(
+          relationRaw.hasPending || relationRaw.hasPendingPackage
+        ),
+        hasActive: Boolean(
+          relationRaw.hasActive || relationRaw.hasActivePackage
+        ),
         canRequest:
           relationRaw.canRequest === undefined
-            ? !relationRaw.hasPending && !relationRaw.hasActive
+            ? !relationRaw.hasPending &&
+              !relationRaw.hasActive &&
+              !relationRaw.hasPendingPackage &&
+              !relationRaw.hasActivePackage
             : Boolean(relationRaw.canRequest),
+        hasPendingPackage: Boolean(relationRaw.hasPendingPackage),
+        hasActivePackage: Boolean(relationRaw.hasActivePackage),
       }
     : undefined;
 

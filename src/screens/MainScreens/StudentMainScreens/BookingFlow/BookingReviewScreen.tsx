@@ -19,11 +19,14 @@ import {
   rateBookingThunk,
 } from '../../../../store/booking/bookingSlice';
 import {
+  addLocalRating,
+} from '../../../../store/rating/ratingSlice';import {
   getBookingParticipantName,
 } from '../../../../utils/api/bookingHelpers';
 import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
 import { canRate } from '../../../../utils/bookings/bookingStatus';
 import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
+import { getUserId } from '../../../../utils/api/userId';
 
 const BookingReviewScreen = () => {
   const { colors } = useUi();
@@ -33,6 +36,7 @@ const BookingReviewScreen = () => {
   const dispatch = useAppDispatch();
   const bookingId = route.params?.bookingId as string;
   const booking = useAppSelector(state => state.booking.byId[bookingId]);
+  const authUser = useAppSelector(state => state.auth.user);
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -60,6 +64,16 @@ const BookingReviewScreen = () => {
     }
     setSubmitting(true);
     try {
+      const tutorId =
+        typeof booking.tutor === 'object'
+          ? String(
+              (booking.tutor as any)?._id ||
+                (booking.tutor as any)?.id ||
+                ''
+            )
+          : String(booking.tutor || '');
+      const tutorName = getBookingParticipantName(booking, 'student');
+
       await dispatch(
         rateBookingThunk({
           bookingId,
@@ -67,6 +81,26 @@ const BookingReviewScreen = () => {
           review: comment.trim() || undefined,
         })
       ).unwrap();
+
+      dispatch(
+        addLocalRating({
+          id: `${bookingId}-${Date.now()}`,
+          bookingId,
+          tutorId: tutorId || 'tutor',
+          tutorName,
+          subject: booking.subject,
+          studentId: getUserId(authUser as any) || undefined,
+          studentName:
+            (authUser as any)?.name ||
+            (authUser as any)?.fullName ||
+            undefined,
+          rating,
+          liked: rating >= 4,
+          review: comment.trim() || undefined,
+          ratedAt: new Date().toISOString(),
+        })
+      );
+
       Alert.alert('Thanks!', 'Your review was submitted.', [
         {
           text: 'Done',

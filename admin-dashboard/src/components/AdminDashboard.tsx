@@ -7,6 +7,7 @@ import LoadingSpinner from './shared/LoadingSpinner';
 import Toast from './shared/Toast';
 import OverviewPage from './pages/OverviewPage';
 import TutorVerificationPage from './pages/TutorVerificationPage';
+import TutorRatingsPage from './pages/TutorRatingsPage';
 import ParentStudentLinksPage from './pages/ParentStudentLinksPage';
 import EscrowManagementPage from './pages/EscrowManagementPage';
 import AiSystemHealthPage from './pages/AiSystemHealthPage';
@@ -38,6 +39,8 @@ export default function AdminDashboard({
     handleResolveDispute,
     handleRevokeLink,
     handleUpdateSettings,
+    handleKeepTutor,
+    handleRemoveRatedTutor,
   } = useAdminDashboard();
 
   const handleLogout = () => {
@@ -66,6 +69,16 @@ export default function AdminDashboard({
             onApprove={handleApprove}
             onReject={handleReject}
             onScheduleInterview={handleScheduleInterview}
+          />
+        );
+      case 'ratings':
+        return (
+          <TutorRatingsPage
+            rows={dashboard.tutorRatings ?? []}
+            actionLoading={actionLoading}
+            onKeep={handleKeepTutor}
+            onRemove={handleRemoveRatedTutor}
+            onRefresh={() => void loadDashboard()}
           />
         );
       case 'links':

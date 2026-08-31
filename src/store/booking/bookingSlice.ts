@@ -15,13 +15,16 @@ import {
   completeBooking as completeBookingRequest,
   confirmBooking as confirmBookingRequest,
   createBooking as createBookingRequest,
-  fetchBookingById,
   fetchBookings as fetchBookingsRequest,
   proposeReschedule as proposeRescheduleRequest,
   rateBooking as rateBookingRequest,
   rejectReschedule as rejectRescheduleRequest,
 } from '../../services/bookings/bookingsService';
-import { listCacheKey } from '../../utils/bookings/bookingStatus';
+import { listCacheKey, normalizeBookingDateParam } from '../../utils/bookings/bookingStatus';
+import {
+  normalizeBookingFromApi,
+  normalizeBookingStatus,
+} from '../../utils/bookings/normalizeBooking';
 import { getBookingErrorMessage } from '../../utils/bookings/bookingErrors';
 import { getConfirmBookingErrorMessage } from '../../utils/bookings/bookingResponse';
 
@@ -60,9 +63,33 @@ const initialState: BookingState = {
 };
 
 const upsertBooking = (state: BookingState, booking: Booking) => {
-  state.byId[booking._id] = {
-    ...state.byId[booking._id],
-    ...booking,
+  const normalizedIn = normalizeBookingFromApi(booking, 'redux.upsert');
+  if (!normalizedIn?._id) return;
+
+  const prev = state.byId[normalizedIn._id];
+  const nextStatus = String(
+    normalizeBookingStatus(normalizedIn.status) || ''
+  ) as Booking['status'];
+  const prevStatus = prev?.status;
+
+  // Never downgrade accepted → pending from a stale pending-tab response.
+  let status = nextStatus;
+  if (prevStatus === 'accepted' && nextStatus === 'pending') {
+    status = 'accepted';
+    console.log('[BookingAPI] keep accepted (skip pending downgrade)', {
+      id: normalizedIn._id,
+    });
+  }
+
+  state.byId[normalizedIn._id] = {
+    ...prev,
+    ...normalizedIn,
+    date:
+      normalizeBookingDateParam(normalizedIn.date) ||
+      normalizedIn.date ||
+      prev?.date ||
+      '',
+    status: status || prevStatus || ('pending' as Booking['status']),
   };
 };
 
@@ -94,36 +121,83 @@ export const fetchBookingsThunk = createAsyncThunk<
   { rejectValue: string }
 >('booking/fetchBookings', async ({ date, tab }, { rejectWithValue }) => {
   try {
-    const bookings = await fetchBookingsRequest(date, tab);
-    return { date, tab, bookings };
+    const bookings = await fetchBookingsRequest(
+      date && date !== 'all' ? date : undefined,
+      tab
+    );
+    return { date: date || 'all', tab, bookings };
   } catch (error) {
     return rejectWithValue(getBookingErrorMessage(error));
   }
 });
 
+/** Local YYYY-MM-DD helpers for by-id list scan (no GET /:id). */
+const localYmd = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const shiftYmd = (ymd: string, deltaDays: number) => {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dt = new Date(y, m - 1, d, 12, 0, 0, 0);
+  dt.setDate(dt.getDate() + deltaDays);
+  return localYmd(dt);
+};
+
 export const fetchBookingByIdThunk = createAsyncThunk<
   Booking | null,
-  string,
+  string | { id: string; force?: boolean },
   { rejectValue: string; state: { booking: BookingState } }
 >(
   'booking/fetchBookingById',
-  async (id, { getState, rejectWithValue, dispatch }) => {
+  async (arg, { getState, rejectWithValue, dispatch }) => {
+    const id = typeof arg === 'string' ? arg : arg.id;
+    const force = typeof arg === 'string' ? false : Boolean(arg.force);
     try {
       const cached = getState().booking.byId[id];
-      if (cached) return cached;
-
-      const direct = await fetchBookingById(id);
-      if (direct) return direct;
-
-      // Fallback: scan today's tabs (GET-by-id may be unsupported).
-      const today = new Date().toISOString().slice(0, 10);
-      for (const tab of ['pending', 'active', 'past'] as BookingTab[]) {
-        const result = await dispatch(
-          fetchBookingsThunk({ date: today, tab })
-        ).unwrap();
-        const found = result.bookings.find(b => b._id === id);
-        if (found) return found;
+      if (!force && cached && cached.status !== 'pending') {
+        return cached;
       }
+
+      // Resolve via list endpoints only (GET /:id → 404 on this backend).
+      // Prefer booking's own session date, then nearby days — not date-less spam.
+      const anchor =
+        (cached?.date && normalizeBookingDateParam(cached.date)) || localYmd();
+      const datesToTry = Array.from(
+        new Set([
+          'all',
+          anchor,
+          ...[-3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].map(d =>
+            shiftYmd(anchor, d)
+          ),
+          localYmd(),
+        ])
+      );
+
+      if (__DEV__) {
+        console.log('[BookingAPI] resolve booking via lists', {
+          id,
+          cachedStatus: cached?.status,
+          datesToTry: datesToTry.slice(0, 8),
+        });
+      }
+
+      for (const date of datesToTry) {
+        for (const tab of ['active', 'pending', 'past'] as BookingTab[]) {
+          try {
+            const result = await dispatch(
+              fetchBookingsThunk({ date, tab })
+            ).unwrap();
+            const found = result.bookings.find(b => b._id === id);
+            if (found) return found;
+          } catch {
+            // try next
+          }
+        }
+      }
+
       return getState().booking.byId[id] ?? null;
     } catch (error) {
       return rejectWithValue(getBookingErrorMessage(error));
@@ -334,19 +408,29 @@ const bookingSlice = createSlice({
           error: null,
           ids: bookings.map(b => b._id),
         };
+        state.lastError = null;
       })
       .addCase(fetchBookingsThunk.rejected, (state, action) => {
         const key = listCacheKey(action.meta.arg.date, action.meta.arg.tab);
+        const message = action.payload || 'Failed to load bookings';
+        const dateRequired = /date query parameter is required/i.test(message);
         state.lists[key] = {
           ...(state.lists[key] || emptyList()),
           status: 'failed',
-          error: action.payload || 'Failed to load bookings',
+          error: dateRequired ? null : message,
           ids: state.lists[key]?.ids || [],
         };
-        state.lastError = action.payload || 'Failed to load bookings';
+        if (!dateRequired) {
+          state.lastError = message;
+        }
       })
       .addCase(fetchBookingByIdThunk.fulfilled, (state, action) => {
-        if (action.payload) upsertBooking(state, action.payload);
+        if (action.payload) {
+          upsertBooking(state, action.payload);
+          // Status may have moved pending → accepted; drop stale list caches
+          // for that session day so Active/Pending re-query correctly.
+          invalidateDateLists(state, action.payload.date);
+        }
       })
       .addCase(createBookingThunk.pending, state => {
         state.mutating = true;
@@ -370,8 +454,33 @@ const bookingSlice = createSlice({
       .addCase(confirmBookingThunk.fulfilled, (state, action) => {
         state.mutating = false;
         state.actionLoadingById[action.meta.arg.id] = false;
-        upsertBooking(state, action.payload.booking);
-        state.lastSessionAmount = action.payload.sessionAmount ?? null;
+        const result = action.payload;
+        const packageId =
+          result.packageId ||
+          result.booking.packageId ||
+          action.meta.arg.id;
+
+        // Mark the pending package parent accepted so Requests tab drops it.
+        const parent = state.byId[packageId] || state.byId[action.meta.arg.id];
+        if (parent) {
+          upsertBooking(state, {
+            ...parent,
+            status: 'accepted',
+            kind: parent.kind || 'package',
+            packageId: packageId,
+            mode: parent.mode || result.booking.mode || 'monthly_weekdays',
+            durationDays:
+              parent.durationDays || result.booking.durationDays || 30,
+          });
+        }
+
+        if (result.sessions?.length) {
+          result.sessions.forEach(session => upsertBooking(state, session));
+        } else {
+          upsertBooking(state, result.booking);
+        }
+
+        state.lastSessionAmount = result.sessionAmount ?? null;
         invalidateAllLists(state);
       })
       .addCase(confirmBookingThunk.rejected, (state, action) => {

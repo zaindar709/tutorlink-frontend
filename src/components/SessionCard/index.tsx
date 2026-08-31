@@ -96,7 +96,7 @@ const SessionCard = ({
             onMessage?.();
           }}
         >
-          <Icon source="message-outline" size={18} color={colors.BLACK_COLOR} />
+          <Icon source="message-outline" size={18} color={GLASS.primary} />
           <Text style={styles.secondaryText}>Message</Text>
         </TouchableOpacity>
 
@@ -108,7 +108,7 @@ const SessionCard = ({
               onAddCalendar();
             }}
           >
-            <Icon source="plus" size={18} color={colors.BLACK_COLOR} />
+            <Icon source="plus" size={18} color={GLASS.primary} />
             <Text style={styles.secondaryText}>Add to Calendar</Text>
           </TouchableOpacity>
         ) : (
@@ -119,7 +119,7 @@ const SessionCard = ({
               onPress?.();
             }}
           >
-            <Icon source="eye-outline" size={18} color={colors.BLACK_COLOR} />
+            <Icon source="eye-outline" size={18} color={GLASS.primary} />
             <Text style={styles.secondaryText}>View details</Text>
           </TouchableOpacity>
         )}
@@ -135,12 +135,11 @@ const createStyles = (colors: any, resp: any) =>
     card: {
       marginHorizontal: resp.dx(20),
       marginTop: resp.dy(20),
-      backgroundColor: GLASS.cardBg,
+      backgroundColor: 'transparent',
       borderRadius: GLASS.radius.xxl,
       padding: resp.dx(20),
       borderWidth: 1,
       borderColor: GLASS.cardBorder,
-      ...GLASS.shadow.soft,
     },
 
     topRow: {
@@ -246,11 +245,11 @@ const createStyles = (colors: any, resp: any) =>
 
     secondaryBtn: {
       flex: 1,
-      height: resp.dy(52),
-      borderRadius: resp.dx(16),
-      backgroundColor: GLASS.cardBg,
+      height: resp.dy(48),
+      borderRadius: resp.dx(14),
+      backgroundColor: 'transparent',
       borderWidth: 1,
-      borderColor: GLASS.cardBorder,
+      borderColor: GLASS.cardBorderStrong,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -258,8 +257,8 @@ const createStyles = (colors: any, resp: any) =>
 
     secondaryText: {
       marginLeft: resp.dx(8),
-      fontWeight: '600',
-      color: colors.BLACK_COLOR,
+      fontWeight: '700',
+      color: GLASS.primary,
       fontSize: resp.df(13),
     },
   });

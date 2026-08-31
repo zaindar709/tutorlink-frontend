@@ -11,6 +11,7 @@ import {
   GlassCard,
   AUTH_GLASS,
 } from '../../../components/AuthGlass';
+import { openParentDashboard } from '../../../config/parentDashboard';
 
 export default function AuthSelectionScreen() {
   const route = useRoute<any>();
@@ -20,6 +21,14 @@ export default function AuthSelectionScreen() {
   const roleLabel =
     role === 'tutor' ? 'Tutor' : role === 'parent' ? 'Parent' : 'Student';
 
+  // Parent auth is web-only — bounce to browser immediately.
+  React.useEffect(() => {
+    if (role === 'parent') {
+      void openParentDashboard();
+      navigation.goBack();
+    }
+  }, [navigation, role]);
+
   const authRoutes: Record<string, { login: string; signup: string }> = {
     student: {
       login: 'StudentLoginScreen',
@@ -28,10 +37,6 @@ export default function AuthSelectionScreen() {
     tutor: {
       login: 'TutorLoginScreen',
       signup: 'TutorSignUpScreen',
-    },
-    parent: {
-      login: 'StudentLoginScreen',
-      signup: 'StudentSignUpScreen',
     },
   };
 
@@ -57,8 +62,8 @@ export default function AuthSelectionScreen() {
 
       case 'parent':
         return {
-          title: 'Safe & Trusted:',
-          text: 'Parents can connect with verified tutors safely.',
+          title: 'Web dashboard:',
+          text: 'Parent signup and login happen on the TutorLink Parent Dashboard in your browser.',
         };
 
       case 'student':
@@ -77,10 +82,22 @@ export default function AuthSelectionScreen() {
 
   const trust = getTrustContent();
 
+  if (role === 'parent') {
+    return (
+      <AuthGlassBackground>
+        <AuthGlassHeader
+          title="Parent Dashboard"
+          subtitle="Opening the web Parent Dashboard…"
+          onBack={() => navigation.goBack()}
+        />
+      </AuthGlassBackground>
+    );
+  }
+
   return (
     <AuthGlassBackground>
       <AuthGlassHeader
-        title={`Welcome ${role === 'parent' ? 'Parent' : role || 'Student'}`}
+        title={`Welcome ${role || 'Student'}`}
         subtitle="Login or signup to continue"
         onBack={() => navigation.goBack()}
       />

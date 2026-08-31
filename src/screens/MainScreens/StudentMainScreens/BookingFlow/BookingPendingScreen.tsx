@@ -6,7 +6,6 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Linking,
   ScrollView,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -36,20 +35,21 @@ import { syncServerNotifications } from '../../../../services/notifications/noti
 import { getUserId } from '../../../../utils/api/userId';
 import { ApiUser } from '../../../../types/api.types';
 import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
+import { openClassroom } from '../../../../services/webrtc/openClassroom';
 
 const STATUS_COPY: Record<
   string,
   { title: string; subtitle: string; color: string; bg: string }
 > = {
   pending: {
-    title: 'Booking Pending',
-    subtitle: 'Waiting for tutor response',
+    title: 'Monthly request pending',
+    subtitle: 'Waiting for tutor to accept Mon–Fri classes',
     color: '#B45309',
     bg: 'rgba(245, 158, 11, 0.18)',
   },
   accepted: {
-    title: 'Booking Accepted',
-    subtitle: 'Your session is confirmed',
+    title: 'Monthly tuition accepted',
+    subtitle: 'Weekday classes are on your Bookings calendar',
     color: '#15803D',
     bg: 'rgba(34, 197, 94, 0.16)',
   },
@@ -82,6 +82,7 @@ const BookingPendingScreen = () => {
   const dispatch = useAppDispatch();
   const bookingId = route.params?.bookingId as string;
   const authUser = useAppSelector(state => state.auth.user as ApiUser | null);
+  const authRole = useAppSelector(state => state.auth.role);
   const apiBooking = useAppSelector(state => state.booking.byId[bookingId]);
   const actionLoading = useAppSelector(state =>
     Boolean(state.booking.actionLoadingById[bookingId] || state.booking.mutating)
@@ -95,7 +96,9 @@ const BookingPendingScreen = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const booking = await dispatch(fetchBookingByIdThunk(bookingId)).unwrap();
+      const booking = await dispatch(
+        fetchBookingByIdThunk({ id: bookingId, force: true })
+      ).unwrap();
       if (booking) {
         setFlowItem(mapBookingToFlowItem(booking));
       }
@@ -109,7 +112,7 @@ const BookingPendingScreen = () => {
       void load();
       void syncServerNotifications(getUserId(authUser));
       const timer = setInterval(() => {
-        void dispatch(fetchBookingByIdThunk(bookingId));
+        void dispatch(fetchBookingByIdThunk({ id: bookingId, force: true }));
         void syncServerNotifications(getUserId(authUser));
       }, 5000);
       return () => clearInterval(timer);
@@ -192,20 +195,38 @@ const BookingPendingScreen = () => {
   };
 
   const joinMeeting = () => {
-    if (!canJoinMeeting(apiBooking) || !apiBooking.meetingLink) {
+    if (!apiBooking || !canJoinMeeting(apiBooking)) {
       Alert.alert(
-        'Meeting link unavailable',
-        'The tutor has not shared a meeting link yet.'
+        'Classroom unavailable',
+        'This session is not ready to join yet.'
       );
       return;
     }
-    void Linking.openURL(apiBooking.meetingLink);
+    const role = authRole === 'tutor' ? 'tutor' : 'student';
+    const opened = openClassroom(apiBooking, {
+      user: authUser,
+      role,
+    });
+    if (!opened) {
+      Alert.alert(
+        'Unable to join',
+        'Could not open the TutorLink classroom for this booking.'
+      );
+    }
   };
 
   const pendingReschedule =
     apiBooking.rescheduleProposal?.status === 'pending'
       ? apiBooking.rescheduleProposal
       : null;
+
+  const baseButtonStyle = {
+    alignSelf: 'center',
+    width: '92%',
+    shadowColor: 'transparent',
+    elevation: 0,
+    marginTop: resp.dy(10),
+  } as const;
 
   const acceptReschedule = () => {
     if (!pendingReschedule) return;
@@ -326,6 +347,7 @@ const BookingPendingScreen = () => {
                 title={actionLoading ? 'Updating…' : 'Accept new time'}
                 onPress={acceptReschedule}
                 disabled={actionLoading}
+                style={baseButtonStyle}
               />
               <CustomButton
                 title="Keep original"
@@ -333,6 +355,7 @@ const BookingPendingScreen = () => {
                 disabled={actionLoading}
                 backgroundColor={GLASS.primarySoft}
                 textColor={GLASS.primary}
+                style={baseButtonStyle}
               />
             </View>
           </View>
@@ -368,10 +391,11 @@ const BookingPendingScreen = () => {
               disabled={actionLoading}
               backgroundColor="rgba(239, 68, 68, 0.12)"
               textColor={GLASS.error}
+              style={baseButtonStyle}
             />
           ) : null}
           {canJoinMeeting(apiBooking) ? (
-            <CustomButton title="Join session" onPress={joinMeeting} />
+            <CustomButton title="Join session" onPress={joinMeeting} style={baseButtonStyle} />
           ) : null}
           {canMessage(apiBooking) ? (
             <CustomButton
@@ -380,6 +404,7 @@ const BookingPendingScreen = () => {
               disabled={messaging}
               backgroundColor={GLASS.primarySoft}
               textColor={GLASS.primary}
+              style={baseButtonStyle}
             />
           ) : null}
           {canRate(apiBooking) ? (
@@ -390,12 +415,14 @@ const BookingPendingScreen = () => {
                   bookingId: booking.id,
                 })
               }
+              style={baseButtonStyle}
             />
           ) : null}
           {apiBooking.status === 'accepted' ? (
             <CustomButton
               title="View in Bookings"
               onPress={() => leaveHomeStackToTabs('Bookings')}
+              style={baseButtonStyle}
             />
           ) : null}
           <CustomButton
@@ -403,6 +430,7 @@ const BookingPendingScreen = () => {
             onPress={() => leaveHomeStackToTabs('Home')}
             backgroundColor={GLASS.primarySoft}
             textColor={GLASS.primary}
+            style={baseButtonStyle}
           />
         </View>
       </ScrollView>

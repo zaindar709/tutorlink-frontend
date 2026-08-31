@@ -49,10 +49,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   const styles = createStyles(colors, resp);
   const isDisabled = disabled || loading;
   const resolvedTextColor = String(textColor || colors.WHITE_COLOR);
-  const useGradient =
-    !backgroundColor &&
-    !borderWidth &&
-    !isDisabled;
+  const useGradient = !backgroundColor && !borderWidth;
+  const resolvedDisabledBackgroundColor = backgroundColor ?? '#C4B5FD';
 
   const content = (
     <View style={styles.content}>
@@ -94,10 +92,19 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         onPress={onPress}
         disabled={isDisabled}
         activeOpacity={0.85}
-        style={[styles.button, styles.gradientWrap, style]}
+        style={[
+          styles.button,
+          styles.gradientWrap,
+          isDisabled && styles.disabledButton,
+          style,
+        ]}
       >
         <LinearGradient
-          colors={[...GLASS.buttonGradient]}
+          colors={
+            isDisabled
+              ? ['#C4B5FD', '#C4B5FD', '#C4B5FD']
+              : [...GLASS.buttonGradient]
+          }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
@@ -109,7 +116,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   }
 
   const resolvedBackgroundColor = isDisabled
-    ? '#C4B5FD'
+    ? resolvedDisabledBackgroundColor
     : backgroundColor ?? colors.PRIMARY_COLOR;
 
   return (
@@ -124,6 +131,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
           borderColor: borderColor ?? 'transparent',
           borderWidth: borderWidth ?? 0,
         },
+        isDisabled && styles.disabledButton,
         style,
       ]}
     >
@@ -137,18 +145,23 @@ export default CustomButton;
 const createStyles = (colors: any, resp: any) =>
   StyleSheet.create({
     button: {
-      width: resp.dx(350),
-      height: resp.dy(56),
+      width: '100%',
+      minHeight: resp.dy(48),
+      paddingVertical: resp.dy(10),
       borderRadius: GLASS.radius.lg,
       justifyContent: 'center',
       alignItems: 'center',
-      alignSelf: 'center',
-      ...GLASS.shadow.glow,
+      alignSelf: 'stretch',
+      // reduce heavy glow which can visually overflow on small screens
+      ...GLASS.shadow.soft,
       overflow: 'hidden',
     },
     gradientWrap: {
       paddingHorizontal: 0,
       backgroundColor: 'transparent',
+    },
+    disabledButton: {
+      opacity: 0.64,
     },
     gradient: {
       width: '100%',

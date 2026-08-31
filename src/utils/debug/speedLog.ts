@@ -34,6 +34,7 @@ export const speedLog = (
   step: string,
   detail?: Record<string, unknown>
 ) => {
+  if (!__DEV__) return;
   if (detail) {
     console.log(LOG, step, detail);
     return;
@@ -48,14 +49,18 @@ export const speedDone = (
   detail?: Record<string, unknown>
 ) => {
   const ms = Date.now() - startedAt;
-  console.log(LOG, step, { ms, ...detail });
+  if (__DEV__) {
+    console.log(LOG, step, { ms, ...detail });
+  }
   return ms;
 };
 
 export const createSpeedTimer = (label: string) => {
   const startedAt = Date.now();
   const steps: Array<{ name: string; ms: number }> = [];
-  console.log(LOG, `${label} START`);
+  if (__DEV__) {
+    console.log(LOG, `${label} START`);
+  }
 
   return {
     step: (name: string, started: number, detail?: Record<string, unknown>) => {

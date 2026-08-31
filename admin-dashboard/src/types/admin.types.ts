@@ -112,12 +112,38 @@ export interface AdminDashboardData {
   escrowTransactions?: EscrowTransaction[];
   aiNotes?: AiNoteLog[];
   settings?: AdminSettings;
+  tutorRatings?: TutorRatingRow[];
 }
 
 export type NavSectionId =
   | 'overview'
   | 'verification'
+  | 'ratings'
   | 'links'
   | 'escrow'
   | 'ai'
   | 'settings';
+
+export type TutorRatingDecision = 'active' | 'flagged' | 'removed';
+
+export interface TutorReviewItem {
+  id: string;
+  studentName: string;
+  subject: string;
+  rating: number;
+  liked: boolean;
+  review?: string;
+  ratedAt: string;
+}
+
+export interface TutorRatingRow {
+  tutorId: string;
+  tutorName: string;
+  email: string;
+  expertise: string;
+  avgRating: number;
+  reviewCount: number;
+  likeCount: number;
+  decision: TutorRatingDecision;
+  recentReviews: TutorReviewItem[];
+}

@@ -30,9 +30,22 @@ import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors
 import { getConfirmBookingErrorMessage } from '../../../../utils/bookings/bookingResponse';
 import { getSessionAmount } from '../../../../utils/bookings/bookingStatus';
 import { ApiUser } from '../../../../types/api.types';
-import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
-import { DEV_SKIP_WALLET_ESCROW } from '../../../../config/features';
-
+import {
+  leaveHomeStackToTabs,
+  navigateHomeStack,
+} from '../../../../navigation/navigationRef';
+import {
+  DEV_SKIP_WALLET_ESCROW,
+  PANEL_DEMO_SESSION_MINUTES,
+} from '../../../../config/features';
+import { openClassroom } from '../../../../services/webrtc/openClassroom';
+import { useWallet } from '../../../../hooks/api/useWallet';
+import {
+  estimateWeekdaySessionCount,
+  getBookingDurationDays,
+  isMonthlyWeekdaysBooking,
+  isPackageBooking,
+} from '../../../../utils/bookings/packageHelpers';
 const TutorBookingRequestDetailsScreen = () => {
   const { colors } = useUi();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -48,6 +61,7 @@ const TutorBookingRequestDetailsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [meetingLink, setMeetingLink] = useState('');
+  const { refresh: refreshWallet } = useWallet();
 
   const load = useCallback(async () => {
     if (!bookingId) {
@@ -85,6 +99,12 @@ const TutorBookingRequestDetailsScreen = () => {
   const booking = mapBookingToFlowItem(apiBooking);
   const student = booking.student;
   const completeEnabled = canCompleteSession(apiBooking);
+  const monthly = isMonthlyWeekdaysBooking(apiBooking);
+  const durationDays = getBookingDurationDays(apiBooking);
+  const estimatedSessions = estimateWeekdaySessionCount(
+    apiBooking.date,
+    durationDays
+  );
 
   const accept = async () => {
     const link = meetingLink.trim();
@@ -122,10 +142,18 @@ const TutorBookingRequestDetailsScreen = () => {
         })
       ).unwrap();
       Alert.alert(
-        'Accepted',
-        result.sessionAmount
-          ? `Booking confirmed. Escrow held: PKR ${result.sessionAmount.toLocaleString()}.`
-          : 'Booking confirmed successfully.'
+        monthly ? 'Monthly package accepted' : 'Accepted',
+        result.sessions?.length || result.sessionCount
+          ? `Generated ${
+              result.sessionCount || result.sessions?.length
+            } weekday classes.${
+              result.sessionAmount
+                ? `\nEscrow held (1 session): PKR ${result.sessionAmount.toLocaleString()}.`
+                : ''
+            }`
+          : result.sessionAmount
+            ? `Booking confirmed. Escrow held: PKR ${result.sessionAmount.toLocaleString()}.`
+            : 'Booking confirmed successfully.'
       );
       await load();
     } catch (err) {
@@ -163,19 +191,26 @@ const TutorBookingRequestDetailsScreen = () => {
     if (!completeEnabled) {
       Alert.alert(
         'Too early',
-        'You can complete the session only after the scheduled end time.'
+        PANEL_DEMO_SESSION_MINUTES
+          ? `Panel demo: wait ~${PANEL_DEMO_SESSION_MINUTES} min after start time, then tap Complete to release escrow.`
+          : 'You can complete the session only after the scheduled end time.'
       );
       return;
     }
     setBusy(true);
     try {
       const result = await dispatch(completeBookingThunk(bookingId)).unwrap();
-      Alert.alert(
-        'Completed',
-        result.sessionAmount
-          ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
-          : 'Session marked complete.'
-      );
+      void refreshWallet();
+      const amountMsg = result.sessionAmount
+        ? `Escrow released: PKR ${result.sessionAmount.toLocaleString()}.`
+        : 'Session marked complete.';
+      Alert.alert('Completed', `${amountMsg}\n\nCheck Earnings for updated balance.`, [
+        { text: 'OK', style: 'cancel' },
+        {
+          text: 'Open Earnings',
+          onPress: () => navigateHomeStack('TutorEarningsScreen'),
+        },
+      ]);
       await load();
     } catch (err) {
       Alert.alert('Could not complete', getBookingErrorMessage(err));
@@ -211,9 +246,17 @@ const TutorBookingRequestDetailsScreen = () => {
     }
   };
 
+  const baseButtonStyle = {
+    alignSelf: 'center',
+    width: '92%',
+    shadowColor: 'transparent',
+    elevation: 0,
+    marginTop: 12,
+  } as const;
+
   return (
     <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: 'transparent' }]}> 
         <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
         <Text style={styles.title}>Booking request</Text>
         <View style={{ width: 48 }} />
@@ -243,20 +286,51 @@ const TutorBookingRequestDetailsScreen = () => {
 
         <View style={styles.card}>
           <Row label="Subject" value={booking.subject} />
-          <Row label="Date" value={booking.date} />
+          {monthly ? (
+            <>
+              <Row label="Package" value="Monthly · Mon–Fri" />
+              <Row
+                label="Window"
+                value={`~${durationDays} days · ~${estimatedSessions} classes`}
+              />
+              <Row
+                label="First day"
+                value={`${booking.date} · ${booking.startTime} – ${booking.endTime}`}
+              />
+              <Row
+                label="Daily time"
+                value={`${booking.startTime} – ${booking.endTime}`}
+              />
+            </>
+          ) : (
+            <>
+              <Row label="Date" value={booking.date} />
+              <Row
+                label="Time"
+                value={`${booking.startTime} – ${booking.endTime}`}
+              />
+            </>
+          )}
           <Row
-            label="Time"
-            value={`${booking.startTime} – ${booking.endTime}`}
+            label="Duration"
+            value={`${booking.durationHours} hour / class`}
           />
-          <Row label="Duration" value={`${booking.durationHours} hour`} />
           <Row
-            label="Amount"
+            label={monthly ? 'Amount / class' : 'Amount'}
             value={`PKR ${booking.totalCost.toLocaleString()}`}
           />
           <Row
             label="Payment"
             value={`${booking.paymentMethod} (${booking.paymentStatus})`}
           />
+          {monthly &&
+          isPackageBooking(apiBooking) &&
+          apiBooking.status === 'pending' ? (
+            <Text style={styles.hint}>
+              Accepting creates every Mon–Fri class in this window. Escrow holds
+              one session amount (v1).
+            </Text>
+          ) : null}
           {apiBooking.meetingLink ? (
             <Row label="Meeting link" value={apiBooking.meetingLink} />
           ) : null}
@@ -286,6 +360,7 @@ const TutorBookingRequestDetailsScreen = () => {
               title={busy ? 'Please wait…' : 'Accept Booking'}
               disabled={busy}
               onPress={() => void accept()}
+              style={baseButtonStyle}
             />
             <CustomButton
               title="Reject Booking"
@@ -293,16 +368,37 @@ const TutorBookingRequestDetailsScreen = () => {
               onPress={reject}
               backgroundColor="#FEE2E2"
               textColor="#B91C1C"
+              style={baseButtonStyle}
             />
           </View>
         ) : null}
 
-        {apiBooking.status === 'accepted' ? (
+        {(apiBooking.status === 'accepted' || (__DEV__ && apiBooking.status === 'pending')) ? (
           <View style={styles.actions}>
-            {canJoinMeeting(apiBooking) ? (
+            <CustomButton
+              title={apiBooking.status === 'accepted' ? 'Start class' : 'Force start (test)'}
+              onPress={() => {
+                const opened = openClassroom(apiBooking, {
+                  user: authUser,
+                  role: 'tutor',
+                  autoStart: true,
+                });
+                if (!opened) {
+                  Alert.alert(
+                    'Unable to start',
+                    'Could not open the TutorLink classroom.'
+                  );
+                }
+              }}
+              style={baseButtonStyle}
+            />
+            {apiBooking.meetingLink ? (
               <CustomButton
-                title="Open meeting link"
+                title="Open external meeting link"
                 onPress={() => void Linking.openURL(apiBooking.meetingLink!)}
+                backgroundColor={GLASS.primarySoft}
+                textColor={GLASS.primary}
+                style={baseButtonStyle}
               />
             ) : null}
             {apiBooking.canReschedule &&
@@ -317,6 +413,7 @@ const TutorBookingRequestDetailsScreen = () => {
                 }
                 backgroundColor={GLASS.primarySoft}
                 textColor={GLASS.primary}
+                style={baseButtonStyle}
               />
             ) : null}
             {apiBooking.rescheduleProposal?.status === 'pending' ? (
@@ -330,6 +427,7 @@ const TutorBookingRequestDetailsScreen = () => {
                 }
                 backgroundColor="#FEF3C7"
                 textColor="#B45309"
+                style={baseButtonStyle}
               />
             ) : null}
             <CustomButton
@@ -342,6 +440,7 @@ const TutorBookingRequestDetailsScreen = () => {
               }
               disabled={busy || !completeEnabled}
               onPress={() => void complete()}
+              style={baseButtonStyle}
             />
             <CustomButton
               title="Cancel booking"
@@ -349,6 +448,7 @@ const TutorBookingRequestDetailsScreen = () => {
               onPress={reject}
               backgroundColor="#FEE2E2"
               textColor="#B91C1C"
+              style={baseButtonStyle}
             />
           </View>
         ) : null}
@@ -360,6 +460,7 @@ const TutorBookingRequestDetailsScreen = () => {
             onPress={() => void openChat()}
             backgroundColor={GLASS.primarySoft}
             textColor={GLASS.primary}
+            style={baseButtonStyle}
           />
         ) : null}
 
@@ -368,6 +469,7 @@ const TutorBookingRequestDetailsScreen = () => {
           onPress={() => leaveHomeStackToTabs('Request')}
           backgroundColor="#EEF2FF"
           textColor="#4338CA"
+          style={baseButtonStyle}
         />
       </ScrollView>
     </GlassScreen>
@@ -399,9 +501,9 @@ const createStyles = (_colors: Record<string, unknown>) =>
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: GLASS.headerBg,
-      borderBottomWidth: 1,
-      borderBottomColor: GLASS.cardBorder,
+      backgroundColor: 'transparent',
+      borderBottomWidth: 0,
+      borderBottomColor: 'transparent',
     },
     title: {
       flex: 1,
@@ -412,16 +514,15 @@ const createStyles = (_colors: Record<string, unknown>) =>
     },
     content: { padding: GLASS.space.lg, paddingBottom: 40 },
     card: {
-      backgroundColor: GLASS.cardBg,
+      backgroundColor: 'transparent',
       borderRadius: GLASS.radius.xl,
       padding: 14,
       marginBottom: 12,
       borderWidth: 1,
-      borderColor: GLASS.cardBorder,
+      borderColor: 'transparent',
       flexDirection: 'row',
       gap: 12,
       flexWrap: 'wrap',
-      ...GLASS.shadow.soft,
     },
     avatar: { width: 64, height: 64, borderRadius: GLASS.radius.lg },
     name: { fontSize: 17, fontWeight: '800', color: GLASS.textPrimary },
@@ -457,5 +558,10 @@ const createStyles = (_colors: Record<string, unknown>) =>
       marginBottom: 10,
       color: GLASS.textPrimary,
     },
-    actions: { gap: 10, marginTop: 4, width: '100%' },
+    actions: {
+      gap: 10,
+      marginTop: 4,
+      width: '100%',
+      alignItems: 'stretch',
+    },
   });

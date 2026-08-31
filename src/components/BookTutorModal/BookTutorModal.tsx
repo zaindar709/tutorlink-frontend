@@ -48,16 +48,19 @@ const BookTutorModal: React.FC<BookTutorModalProps> = ({
 
     const success = await createBooking({
       tutor: tutorUserId,
+      tutorId: tutorUserId,
       subject: subject.trim() || defaultSubject,
       date: formatDateParam(new Date()),
       startTime,
       endTime,
+      mode: 'monthly_weekdays',
+      durationDays: 30,
     });
 
     if (success) {
       Alert.alert(
-        'Request Sent',
-        `Your request was saved for ${tutorName}. They can accept it from Requests — class will use ${startTime}–${endTime}.`
+        'Monthly request sent',
+        `Mon–Fri tuition request saved for ${tutorName} (${startTime}–${endTime}). They can accept it from Requests.`
       );
       onSuccess?.();
       onClose();
@@ -76,8 +79,8 @@ const BookTutorModal: React.FC<BookTutorModalProps> = ({
           </View>
 
           <Text style={styles.subtitle}>
-            Choose any preferred time. The tutor gets this on Requests and can
-            accept — class then starts at that time.
+            This sends a monthly Mon–Fri package request (~30 days). The tutor
+            accepts once; weekday classes are generated automatically.
           </Text>
 
           <CustomInput

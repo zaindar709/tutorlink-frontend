@@ -44,25 +44,39 @@ import {
 } from '../../../../hooks/api/useStudentTutorRelations';
 import { MOCK_WALLET_DEPOSITS } from '../../../../config/features';
 import { getAvailableWalletBalance } from '../../../../services/wallet/mockWallet';
-import { ApiUser } from '../../../../types/api.types';
+import { ApiUser, CreateBookingPayload } from '../../../../types/api.types';
+import {
+  getWorkDatesForDuration,
+  isWeekendDate,
+  nextWeekdayOnOrAfter,
+} from '../../../../utils/schedule/scheduleHelpers';
 
-const DATE_OPTIONS_COUNT = 8;
+const MONTHLY_DURATION_DAYS = 30;
+const DATE_OPTIONS_COUNT = 10;
 
 const buildDateOptions = () => {
-  const today = new Date();
-  return Array.from({ length: DATE_OPTIONS_COUNT }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(today.getDate() + index);
-    const iso = formatDateParam(date);
-    let label = date.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-    if (index === 0) label = 'Today';
-    if (index === 1) label = 'Tomorrow';
-    return { iso, label };
-  });
+  const start = nextWeekdayOnOrAfter(new Date());
+  const options: { iso: string; label: string }[] = [];
+  const cursor = new Date(start);
+  while (options.length < DATE_OPTIONS_COUNT) {
+    if (!isWeekendDate(cursor)) {
+      const iso = formatDateParam(cursor);
+      let label = cursor.toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      });
+      const todayIso = formatDateParam(new Date());
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowIso = formatDateParam(tomorrow);
+      if (iso === todayIso) label = 'Today';
+      else if (iso === tomorrowIso) label = 'Tomorrow';
+      options.push({ iso, label });
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return options;
 };
 
 const TutorBookingDetailsScreen = () => {
@@ -292,16 +306,25 @@ const TutorBookingDetailsScreen = () => {
       return;
     }
 
-    const payload = {
+    const sessionCount = getWorkDatesForDuration(
+      new Date(selectedDate + 'T12:00:00'),
+      MONTHLY_DURATION_DAYS
+    ).length;
+
+    const payload: CreateBookingPayload = {
       tutor: tutorUserId,
       tutorId: tutorUserId,
       subject: subject.trim(),
       date: selectedDate,
       startTime: selectedSlot.startTime,
       endTime: selectedSlot.endTime,
+      mode: 'monthly_weekdays',
+      durationDays: MONTHLY_DURATION_DAYS,
     };
 
-    console.log('[Booking] POST /api/bookings', payload);
+    console.log('[Booking] POST /api/bookings', payload, {
+      estimatedWeekdaySessions: sessionCount,
+    });
 
     setSubmitting(true);
     try {
@@ -327,7 +350,7 @@ const TutorBookingDetailsScreen = () => {
 
       const booking = await dispatch(createBookingThunk(payload)).unwrap();
       setConfirmOpen(false);
-      setToastMsg('Request sent to tutor');
+      setToastMsg('Monthly Mon–Fri request sent');
       invalidateStudentTutorRelationsCache();
       void refreshRelations();
       navigation.replace('BookingPendingScreen', { bookingId: booking._id });
@@ -414,9 +437,17 @@ const TutorBookingDetailsScreen = () => {
 
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Preferred class time</Text>
+          <View style={styles.monthlyBanner}>
+            <Icon source="calendar-month" size={18} color={GLASS.primary} />
+            <Text style={styles.monthlyBannerText}>
+              Monthly tuition · Mon–Fri at this time · weekends off (~
+              {MONTHLY_DURATION_DAYS} days)
+            </Text>
+          </View>
           <Text style={styles.hint}>
-            Pick any date/time and send a request. It appears on the tutor’s
-            Requests. After they accept, class starts at this time.
+            Pick the first weekday and time. After the tutor accepts, classes
+            continue every Mon–Fri at this slot. You will get a reminder before
+            each class.
           </Text>
 
           <Text style={[styles.subLabel, { marginTop: 12 }]}>Date</Text>
@@ -606,7 +637,7 @@ const TutorBookingDetailsScreen = () => {
 
       <View style={[styles.footer, { paddingBottom: footerBottomPad }]}>
         <View style={styles.footerPriceBlock}>
-          <Text style={styles.footerLabel}>Est. ({durationHours} hr)</Text>
+          <Text style={styles.footerLabel}>Est. / class ({durationHours} hr)</Text>
           <Text style={styles.footerPrice}>
             PKR {totalCost.toLocaleString()}
           </Text>
@@ -638,19 +669,21 @@ const TutorBookingDetailsScreen = () => {
             ]}
           >
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Send booking request</Text>
+            <Text style={styles.sheetTitle}>Send monthly tuition request</Text>
             <Text style={styles.body}>
               {tutor.name} · {subject}
             </Text>
             <Text style={styles.muted}>
-              {selectedDateLabel} · {selectedSlot?.startTime}–
-              {selectedSlot?.endTime}
+              Starts {selectedDateLabel} · {selectedSlot?.startTime}–
+              {selectedSlot?.endTime} · Mon–Fri
             </Text>
             <Text style={styles.muted}>
-              {durationHours} hr · {mode === 'online' ? 'Online' : 'Physical'}
+              {durationHours} hr/day · {mode === 'online' ? 'Online' : 'Physical'}{' '}
+              · ~{MONTHLY_DURATION_DAYS} days (weekends off)
             </Text>
             <Text style={[styles.hint, { marginTop: 10 }]}>
-              Tutor sees this on Requests. After accept, class uses this time.
+              Tutor sees this on Requests. After accept, weekday classes continue
+              at this time and both of you get class reminders.
             </Text>
             <Text style={[styles.priceDark, { marginTop: 10 }]}>
               PKR {totalCost.toLocaleString()}
@@ -790,6 +823,23 @@ const createStyles = (_colors: Record<string, unknown>, resp: any) =>
       fontWeight: '700',
       color: GLASS.textSecondary,
       marginBottom: 8,
+    },
+    monthlyBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: 'rgba(117, 72, 245, 0.08)',
+      borderRadius: GLASS.radius.md,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      marginBottom: 10,
+    },
+    monthlyBannerText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: '600',
+      color: GLASS.primary,
+      lineHeight: 16,
     },
     hint: {
       color: GLASS.textSecondary,

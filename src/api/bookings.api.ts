@@ -2,6 +2,7 @@ import api from './client';
 import {
   ApiSuccessResponse,
   Booking,
+  BookingsWithTutorResult,
   BookingTab,
   ConfirmBookingPayload,
   CreateBookingPayload,
@@ -9,9 +10,25 @@ import {
   RescheduleProposal,
 } from '../types/api.types';
 
-export type BookingMutationResponse = ApiSuccessResponse<Booking> & {
+export type BookingMutationResponse = ApiSuccessResponse<
+  | Booking
+  | {
+      kind?: string;
+      packageId?: string;
+      status?: string;
+      sessionCount?: number;
+      escrowBookingId?: string;
+      sessions?: Booking[];
+      booking?: Booking;
+    }
+> & {
   sessionAmount?: number;
   escrowRefunded?: boolean;
+  sessionCount?: number;
+  packageId?: string;
+  kind?: string;
+  escrowBookingId?: string;
+  idempotent?: boolean;
 };
 
 export type RescheduleMutationResponse = ApiSuccessResponse<Booking> & {
@@ -23,19 +40,12 @@ export const getBookingsWithTutorAPI = (
   tutorId: string,
   studentId?: string
 ) => {
-  return api.get<
-    ApiSuccessResponse<{
-      tutorId: string;
-      hasPending: boolean;
-      hasActive: boolean;
-      canRequest: boolean;
-      pendingBooking?: Booking | null;
-      activeBooking?: Booking | null;
-      openBookings?: Booking[];
-    }>
-  >(`/api/bookings/with-tutor/${tutorId}`, {
-    params: studentId ? { studentId } : undefined,
-  });
+  return api.get<ApiSuccessResponse<BookingsWithTutorResult>>(
+    `/api/bookings/with-tutor/${tutorId}`,
+    {
+      params: studentId ? { studentId } : undefined,
+    }
+  );
 };
 
 export const createBookingAPI = (data: CreateBookingPayload) => {
@@ -48,9 +58,13 @@ export const createBookingAPI = (data: CreateBookingPayload) => {
   return api.post<ApiSuccessResponse<Booking>>('/api/bookings', body);
 };
 
-export const getBookingsAPI = (date: string, tab: BookingTab) => {
+export const getBookingsAPI = (date: string | undefined, tab: BookingTab) => {
+  const params: { tab: BookingTab; date?: string } = { tab };
+  if (date && date !== 'all') {
+    params.date = date;
+  }
   return api.get<ApiSuccessResponse<Booking[]>>('/api/bookings', {
-    params: { date, tab },
+    params,
   });
 };
 

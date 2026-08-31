@@ -7,7 +7,6 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Linking,
   Alert,
   RefreshControl,
 } from 'react-native';
@@ -44,6 +43,7 @@ import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors
 import { getCalendarWeekDates } from '../../../../utils/schedule/scheduleHelpers';
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
 import { ApiUser, Booking } from '../../../../types/api.types';
+import { openClassroom } from '../../../../services/webrtc/openClassroom';
 
 const TAB_LABELS = ['Active', 'Pending', 'Past'] as const;
 
@@ -67,6 +67,7 @@ const BookingScreen = () => {
     error,
     refresh,
     cancelBooking,
+    datesWithBookings,
   } = useBookings('active');
 
   const weekDates = useMemo(
@@ -90,12 +91,21 @@ const BookingScreen = () => {
   const handleJoin = (booking: Booking) => {
     if (!canJoinMeeting(booking)) {
       Alert.alert(
-        'Meeting link unavailable',
-        'The tutor has not shared a meeting link yet.'
+        'Classroom unavailable',
+        'This session is not ready to join yet.'
       );
       return;
     }
-    void Linking.openURL(booking.meetingLink!);
+    const opened = openClassroom(booking, {
+      user: authUser,
+      role: 'student',
+    });
+    if (!opened) {
+      Alert.alert(
+        'Unable to join',
+        'Could not open the TutorLink classroom for this booking.'
+      );
+    }
   };
 
   const handleCancel = (booking: Booking) => {
@@ -236,10 +246,10 @@ const BookingScreen = () => {
 
   const emptyHint =
     tab === 'active'
-      ? 'Accepted sessions with your tutor appear here after they confirm.'
+      ? 'Monthly Mon–Fri classes appear here after your tutor accepts. Next upcoming session shows first — weekends are off.'
       : tab === 'pending'
-        ? 'Requests waiting for tutor response show on this day.'
-        : 'Completed and cancelled sessions for this day show here.';
+        ? 'Requests waiting for tutor response show here across upcoming days.'
+        : 'Completed and ended sessions from recent days show here.';
 
   const renderRescheduleBanner = (booking: Booking) => {
     if (!hasPendingRescheduleProposal(booking) || !booking.rescheduleProposal) {
@@ -311,7 +321,8 @@ const BookingScreen = () => {
                 {booking.subject}
               </Text>
               <Text style={styles.dateHint}>
-                {booking.startTime}–{booking.endTime}
+                {String(booking.date || '').slice(0, 10)} · {booking.startTime}–
+                {booking.endTime}
                 {booking.hourlyRateAtBooking
                   ? ` · PKR ${booking.hourlyRateAtBooking.toLocaleString()}/hr`
                   : ''}
@@ -375,13 +386,14 @@ const BookingScreen = () => {
             refreshing={Boolean(refreshing)}
             onRefresh={() => void refresh()}
             tintColor={GLASS.primary}
+            colors={[GLASS.primary]}
           />
         }
       >
         <View style={styles.header}>
           <Text style={styles.headerTitle}>My Bookings</Text>
           <Text style={styles.headerSub}>
-            Your sessions with tutors by day
+            Active sessions across upcoming days — tap a date to highlight it
           </Text>
         </View>
 
@@ -401,6 +413,10 @@ const BookingScreen = () => {
             const item = formatDisplayDate(date);
             const active =
               date.toDateString() === selectedDate.toDateString();
+            const dayKey = `${date.getFullYear()}-${String(
+              date.getMonth() + 1
+            ).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            const hasBooking = datesWithBookings?.has(dayKey);
 
             return (
               <TouchableOpacity
@@ -415,7 +431,14 @@ const BookingScreen = () => {
                 <Text style={[styles.dateText, active && styles.activeText]}>
                   {item.date}
                 </Text>
-                {active ? <View style={styles.activeDot} /> : null}
+                {active || hasBooking ? (
+                  <View
+                    style={[
+                      styles.activeDot,
+                      !active && hasBooking && styles.bookingDot,
+                    ]}
+                  />
+                ) : null}
               </TouchableOpacity>
             );
           })}
@@ -454,6 +477,7 @@ const BookingScreen = () => {
           <ActivityIndicator
             style={{ marginTop: resp.dy(24) }}
             color={GLASS.primary}
+            size="small"
           />
         ) : null}
 
@@ -504,7 +528,9 @@ const BookingScreen = () => {
               color={GLASS.textMuted}
             />
             <Text style={styles.emptyTitle}>
-              No bookings found for this date.
+              {tab === 'active'
+                ? 'No active sessions yet.'
+                : 'No bookings found in this range.'}
             </Text>
             <Text style={styles.emptyHint}>{emptyHint}</Text>
           </View>
@@ -592,6 +618,9 @@ const createStyles = (colors: any, resp: any) =>
       backgroundColor: GLASS.textOnPrimary,
       marginTop: resp.dy(4),
     },
+    bookingDot: {
+      backgroundColor: GLASS.primary,
+    },
     tabsContainer: {
       flexDirection: 'row',
       backgroundColor: GLASS.cardBg,
@@ -610,8 +639,7 @@ const createStyles = (colors: any, resp: any) =>
       borderRadius: GLASS.radius.md,
     },
     activeTabButton: {
-      backgroundColor: GLASS.cardBgStrong,
-      ...GLASS.shadow.soft,
+      backgroundColor: GLASS.primarySoft,
     },
     tabText: {
       color: GLASS.textSecondary,
@@ -619,8 +647,8 @@ const createStyles = (colors: any, resp: any) =>
       fontSize: resp.df(14),
     },
     activeTabText: {
-      color: GLASS.primary,
-      fontWeight: '700',
+      color: GLASS.primaryDeep,
+      fontWeight: '800',
     },
     errorCard: {
       marginHorizontal: resp.dx(20),
@@ -702,12 +730,11 @@ const createStyles = (colors: any, resp: any) =>
     },
     timelineCard: {
       flex: 1,
-      backgroundColor: GLASS.cardBg,
+      backgroundColor: 'transparent',
       borderRadius: GLASS.radius.xl,
       borderWidth: 1,
       borderColor: GLASS.cardBorder,
       padding: resp.dx(14),
-      ...GLASS.shadow.soft,
     },
     profileRow: {
       flexDirection: 'row',
@@ -769,7 +796,9 @@ const createStyles = (colors: any, resp: any) =>
       paddingHorizontal: resp.dx(12),
       paddingVertical: resp.dy(8),
       borderRadius: GLASS.radius.md,
-      backgroundColor: GLASS.primarySoft,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: GLASS.cardBorderStrong,
     },
     messageText: {
       color: GLASS.primary,
@@ -780,7 +809,9 @@ const createStyles = (colors: any, resp: any) =>
       paddingHorizontal: resp.dx(12),
       paddingVertical: resp.dy(8),
       borderRadius: GLASS.radius.md,
-      backgroundColor: 'rgba(245, 158, 11, 0.15)',
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.45)',
     },
     rateText: {
       color: '#B45309',
@@ -790,6 +821,10 @@ const createStyles = (colors: any, resp: any) =>
     cancelButton: {
       paddingHorizontal: resp.dx(12),
       paddingVertical: resp.dy(8),
+      borderRadius: GLASS.radius.md,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: 'rgba(239, 68, 68, 0.35)',
     },
     cancelText: {
       color: GLASS.error,
@@ -798,9 +833,11 @@ const createStyles = (colors: any, resp: any) =>
     },
     rescheduleCard: {
       marginTop: 12,
-      backgroundColor: '#FEF3C7',
+      backgroundColor: 'rgba(245, 158, 11, 0.12)',
       borderRadius: 12,
       padding: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(245, 158, 11, 0.28)',
     },
     rescheduleTitle: {
       fontWeight: '800',

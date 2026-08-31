@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "750381394371-13rsdid2uq46j9j1g0h5j0cas5rsb7ro.apps.googleusercontent.com",
+          "client_id": "750381394371-lp9fuj8qev8t7i7iohafmebtnorsr3b7.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.tutorlink",
-            "certificate_hash": "39cd02d025286ecb8b8d1b7ac7e4410b4a63a61c"
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
           }
         },
         {

@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { InteractionManager } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
 import CustomButton from '../../../../components/CustomButton';
@@ -99,14 +100,17 @@ const TutorApprovalStatusScreen = () => {
   }, [refreshStatus]);
 
   const goToDashboard = () => {
-    navigation.reset({
-      index: 0,
-      routes: [
-        {
-          name: 'MyTabs',
-          params: { role: 'tutor', screen: 'Home' },
-        },
-      ],
+    // Defer heavy navigation reset until ongoing animations/interactions finish
+    InteractionManager.runAfterInteractions(() => {
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'MyTabs',
+            params: { role: 'tutor', screen: 'Home' },
+          },
+        ],
+      });
     });
   };
 
@@ -207,7 +211,13 @@ const TutorApprovalStatusScreen = () => {
               <CustomButton
                 title="Go to Tutor Dashboard"
                 onPress={goToDashboard}
-                style={{ marginTop: resp.dy(20) }}
+                style={{
+                  marginTop: resp.dy(20),
+                  alignSelf: 'center',
+                  width: '92%',
+                  shadowColor: 'transparent',
+                  elevation: 0,
+                }}
               />
             ) : (
               <CustomButton
@@ -216,7 +226,13 @@ const TutorApprovalStatusScreen = () => {
                 loading={loading}
                 backgroundColor="#EEF2FF"
                 textColor={colors.PRIMARY_COLOR as string}
-                style={{ marginTop: resp.dy(20) }}
+                style={{
+                  marginTop: resp.dy(20),
+                  alignSelf: 'center',
+                  width: '92%',
+                  shadowColor: 'transparent',
+                  elevation: 0,
+                }}
               />
             )}
 
@@ -272,7 +288,7 @@ const createStyles = (colors: any, resp: any) =>
     },
     timelineCard: {
       marginTop: resp.dy(18),
-      backgroundColor: AUTH_GLASS.cardBg,
+      backgroundColor: 'transparent',
       borderRadius: resp.dx(18),
       padding: resp.dx(18),
       borderWidth: 1,

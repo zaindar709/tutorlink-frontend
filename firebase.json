@@ -1,5 +1,33 @@
 {
   "react-native": {
     "messaging_android_notification_channel_id": "tutorlink_default"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/auth/action",
+        "destination": "/auth/action/index.html"
+      },
+      {
+        "source": "/auth/action/**",
+        "destination": "/auth/action/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ]
+      }
+    ]
   }
 }

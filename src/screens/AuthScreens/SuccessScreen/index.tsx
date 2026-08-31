@@ -76,7 +76,9 @@ const SuccessScreen = () => {
   // Counter countdown
   useEffect(() => {
     if (counter === 0) {
-      navigation.replace('StudentLoginScreen', { role });
+      const loginScreen =
+        role === 'tutor' ? 'TutorLoginScreen' : 'StudentLoginScreen';
+      navigation.replace(loginScreen, { role });
       return;
     }
 

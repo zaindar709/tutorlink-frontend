@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { Alert } from 'react-native';
-import { setUser, setLoading } from '../../store/auth/authSlice';
+import { setUser, setLoading, logout } from '../../store/auth/authSlice';
 import { loginWithGoogle, AuthRole } from '../../services/auth/authService';
 import { getTutorOnboardingStatus } from '../../services/tutor/tutorOnboardingService';
 import { getTutorResetRoute } from '../../utils/tutor/tutorNavigation';
 import { signInWithGoogle } from '../../services/googleSignin';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
+import { openParentDashboard } from '../../config/parentDashboard';
+import { clearAuthSession } from '../../services/storage';
 
 export const useGoogleAuth = (role: AuthRole) => {
   const dispatch = useDispatch();
@@ -31,9 +33,12 @@ export const useGoogleAuth = (role: AuthRole) => {
       );
 
       if (session.role === 'parent') {
+        await clearAuthSession();
+        dispatch(logout());
+        void openParentDashboard();
         navigation.reset({
           index: 0,
-          routes: [{ name: 'ParentLinkRedeemScreen' }],
+          routes: [{ name: 'RoleSelectionScreen' }],
         });
         return;
       }

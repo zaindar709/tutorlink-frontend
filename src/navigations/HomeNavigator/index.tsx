@@ -24,12 +24,19 @@ import StudentPrivacySecurityScreen from '../../screens/MainScreens/StudentMainS
 import StudentAppSettingsScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/AppSettings';
 import StudentHelpSupportScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/HelpSupport';
 import StudentTermsPoliciesScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/TermsPolicies';
+import ParentLinkRedeemScreen from '../../screens/AuthScreens/ParentAuthScreens/ParentLinkRedeem';
 import TutorBookingDetailsScreen from '../../screens/MainScreens/StudentMainScreens/BookingFlow/TutorBookingDetailsScreen';
 import BookingPendingScreen from '../../screens/MainScreens/StudentMainScreens/BookingFlow/BookingPendingScreen';
 import BookingReviewScreen from '../../screens/MainScreens/StudentMainScreens/BookingFlow/BookingReviewScreen';
 import TutorBookingRequestDetailsScreen from '../../screens/MainScreens/TutorMainScreens/BookingFlow/TutorBookingRequestDetailsScreen';
 import TutorRescheduleScreen from '../../screens/MainScreens/TutorMainScreens/Schedule/TutorRescheduleScreen';
 import DeveloperOptionsScreen from '../../screens/MainScreens/SharedScreens/DeveloperOptions';
+import VideoSessionScreen from '../../screens/MainScreens/SharedScreens/VideoSession';
+import SessionSummaryProcessingScreen from '../../screens/MainScreens/SharedScreens/Summary/SessionSummaryProcessingScreen';
+import StudentSummariesScreen from '../../screens/MainScreens/StudentMainScreens/Summary/StudentSummariesScreen';
+import StudentSummaryDetailScreen from '../../screens/MainScreens/StudentMainScreens/Summary/StudentSummaryDetailScreen';
+import TutorSummariesScreen from '../../screens/MainScreens/TutorMainScreens/Summary/TutorSummariesScreen';
+import TutorSummaryReviewScreen from '../../screens/MainScreens/TutorMainScreens/Summary/TutorSummaryReviewScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -85,6 +92,10 @@ const HomeNavigator = () => {
         component={StudentLinkParentScreen}
       />
       <Stack.Screen
+        name="ParentLinkRedeemScreen"
+        component={ParentLinkRedeemScreen}
+      />
+      <Stack.Screen
         name="StudentSessionHistoryScreen"
         component={StudentSessionHistoryScreen}
       />
@@ -135,6 +146,34 @@ const HomeNavigator = () => {
       <Stack.Screen
         name="DeveloperOptionsScreen"
         component={DeveloperOptionsScreen}
+      />
+      <Stack.Screen
+        name="VideoSessionScreen"
+        component={VideoSessionScreen}
+        options={{
+          gestureEnabled: false,
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="SessionSummaryProcessingScreen"
+        component={SessionSummaryProcessingScreen}
+      />
+      <Stack.Screen
+        name="StudentSummariesScreen"
+        component={StudentSummariesScreen}
+      />
+      <Stack.Screen
+        name="StudentSummaryDetailScreen"
+        component={StudentSummaryDetailScreen}
+      />
+      <Stack.Screen
+        name="TutorSummariesScreen"
+        component={TutorSummariesScreen}
+      />
+      <Stack.Screen
+        name="TutorSummaryReviewScreen"
+        component={TutorSummaryReviewScreen}
       />
     </Stack.Navigator>
   );

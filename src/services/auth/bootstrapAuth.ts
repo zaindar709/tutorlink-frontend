@@ -50,7 +50,7 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
   if (!session) {
     console.log(LOG, 'no stored session');
     // Stale Firebase user without app session → sign out so next launch is clean
-    const firebaseUser = await waitForFirebaseAuth(1500);
+    const firebaseUser = await waitForFirebaseAuth(1000);
     if (firebaseUser) {
       console.log(LOG, 'firebase user without session — clearing');
       await clearAllAuth();
@@ -58,7 +58,7 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
     return null;
   }
 
-  const firebaseUser = await waitForFirebaseAuth(2500);
+  const firebaseUser = await waitForFirebaseAuth(1800);
   if (!firebaseUser) {
     console.log(LOG, 'stored session but no firebase user — clearing');
     await clearAuthSession();
@@ -70,7 +70,7 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
     // Cached token first — force refresh can stall splash on bad networks.
     const idToken = await withTimeout(
       getFirebaseIdToken(false, firebaseUser),
-      6000,
+      4000,
       'getIdToken'
     );
 
@@ -82,8 +82,8 @@ export const restoreAuthSessionFast = async (): Promise<AuthSession | null> => {
     }
 
     const profileResponse = await withTimeout(
-      getAuthProfileAPI(userId, { timeout: 10000 }),
-      12000,
+      getAuthProfileAPI(userId, { timeout: 8000 }),
+      9000,
       'getAuthProfile'
     );
 

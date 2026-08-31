@@ -7,6 +7,9 @@ import type {
   EscrowTransaction,
   ParentStudentLink,
   PendingTutor,
+  TutorRatingDecision,
+  TutorRatingRow,
+  TutorReviewItem,
   TutorVerificationStatus,
 } from '../types/admin.types';
 
@@ -185,6 +188,7 @@ export const getMockDashboardData = (
   parentLinks: [],
   escrowTransactions: [],
   aiNotes: [] as AiNoteLog[],
+  tutorRatings: [],
   settings: MOCK_SETTINGS,
 });
 
@@ -347,6 +351,8 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
       })
     );
 
+    const tutorRatings = await fetchTutorRatings(pendingTutors);
+
     return {
       stats: {
         pendingTutors: pendingTutors.filter(t => t.status === 'pending').length,
@@ -369,6 +375,7 @@ export const fetchDashboardData = async (): Promise<AdminDashboardData> => {
       disputes,
       parentLinks,
       escrowTransactions,
+      tutorRatings,
       settings: MOCK_SETTINGS,
     };
 };
@@ -461,3 +468,206 @@ export const updateLinkStatus = (
   links.map(l =>
     l.id === linkId ? { ...l, status: 'revoked' as const } : l
   );
+
+const RATING_DECISIONS_KEY = 'tl-admin-tutor-rating-decisions';
+const LIVE_RATINGS_CACHE_KEY = 'tl-admin-live-tutor-ratings';
+
+export type LiveTutorRatingEntry = {
+  id: string;
+  bookingId: string;
+  tutorId: string;
+  tutorName: string;
+  studentId?: string;
+  studentName?: string;
+  subject?: string;
+  rating: number;
+  liked: boolean;
+  review?: string;
+  ratedAt: string;
+};
+
+const readRatingDecisions = (): Record<string, TutorRatingDecision> => {
+  try {
+    const raw = localStorage.getItem(RATING_DECISIONS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, TutorRatingDecision>;
+  } catch {
+    return {};
+  }
+};
+
+export const saveRatingDecision = (
+  tutorId: string,
+  decision: TutorRatingDecision
+) => {
+  const next = { ...readRatingDecisions(), [tutorId]: decision };
+  try {
+    localStorage.setItem(RATING_DECISIONS_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+  return next;
+};
+
+const cacheLiveRatings = (entries: LiveTutorRatingEntry[]) => {
+  try {
+    localStorage.setItem(LIVE_RATINGS_CACHE_KEY, JSON.stringify(entries));
+  } catch {
+    // ignore
+  }
+};
+
+const readCachedLiveRatings = (): LiveTutorRatingEntry[] => {
+  try {
+    const raw = localStorage.getItem(LIVE_RATINGS_CACHE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as LiveTutorRatingEntry[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+/** Fetch ratings posted by the student app (Vite /api/live-ratings). */
+export const fetchLiveStudentRatings = async (): Promise<
+  LiveTutorRatingEntry[]
+> => {
+  const endpoints = ['/api/live-ratings', '/live-ratings.json'];
+  for (const path of endpoints) {
+    try {
+      const res = await fetch(path, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length >= 0) {
+        const entries = data as LiveTutorRatingEntry[];
+        cacheLiveRatings(entries);
+        return entries;
+      }
+    } catch {
+      // try next
+    }
+  }
+  return readCachedLiveRatings();
+};
+
+const groupLiveRatings = (
+  entries: LiveTutorRatingEntry[],
+  tutors: PendingTutor[]
+): TutorRatingRow[] => {
+  const decisions = readRatingDecisions();
+  const byKey = new Map<string, LiveTutorRatingEntry[]>();
+
+  for (const entry of entries) {
+    const key =
+      String(entry.tutorId || '').trim() ||
+      String(entry.tutorName || '')
+        .trim()
+        .toLowerCase() ||
+      'unknown';
+    const list = byKey.get(key) || [];
+    list.push(entry);
+    byKey.set(key, list);
+  }
+
+  const rows: TutorRatingRow[] = [];
+  for (const [key, reviews] of byKey.entries()) {
+    const sorted = [...reviews].sort(
+      (a, b) =>
+        new Date(b.ratedAt).getTime() - new Date(a.ratedAt).getTime()
+    );
+    const first = sorted[0];
+    const tutor =
+      tutors.find(t => t.id === first.tutorId || t.userId === first.tutorId) ||
+      tutors.find(
+        t =>
+          t.name.trim().toLowerCase() ===
+          String(first.tutorName || '')
+            .trim()
+            .toLowerCase()
+      );
+
+    const reviewCount = sorted.length;
+    const likeCount = sorted.filter(r => r.liked).length;
+    const avgRating =
+      Math.round(
+        (sorted.reduce((a, r) => a + Number(r.rating || 0), 0) / reviewCount) *
+          10
+      ) / 10;
+
+    const tutorId = tutor?.id || first.tutorId || key;
+    rows.push({
+      tutorId,
+      tutorName: first.tutorName || tutor?.name || 'Tutor',
+      email: tutor?.email || '—',
+      expertise: tutor?.expertise || first.subject || 'General',
+      avgRating,
+      reviewCount,
+      likeCount,
+      decision:
+        decisions[tutorId] || (avgRating < 3.5 ? 'flagged' : 'active'),
+      recentReviews: sorted.map(r => ({
+        id: r.id || `${r.bookingId}-${r.ratedAt}`,
+        studentName: r.studentName || 'Student',
+        subject: r.subject || 'Session',
+        rating: Number(r.rating) || 0,
+        liked: Boolean(r.liked),
+        review: r.review,
+        ratedAt: r.ratedAt || new Date().toISOString(),
+      })),
+    });
+  }
+
+  return rows.sort((a, b) => b.reviewCount - a.reviewCount);
+};
+
+const demoReviewsFor = (
+  _tutor: PendingTutor,
+  _index: number
+): TutorReviewItem[] => [];
+
+/** Prefer live student ratings from the app; otherwise API rows. */
+export const buildTutorRatingRows = (
+  tutors: PendingTutor[],
+  apiRows?: TutorRatingRow[],
+  liveEntries?: LiveTutorRatingEntry[]
+): TutorRatingRow[] => {
+  const decisions = readRatingDecisions();
+
+  if (liveEntries && liveEntries.length > 0) {
+    return groupLiveRatings(liveEntries, tutors);
+  }
+
+  if (apiRows && apiRows.length > 0) {
+    return apiRows.map(row => ({
+      ...row,
+      decision: decisions[row.tutorId] || row.decision || 'active',
+    }));
+  }
+
+  // No live ratings yet — empty list (panel should show real student ratings only).
+  return [];
+};
+
+export const fetchTutorRatings = async (
+  tutors: PendingTutor[] = []
+): Promise<TutorRatingRow[]> => {
+  const live = await fetchLiveStudentRatings();
+  if (live.length > 0) {
+    return buildTutorRatingRows(tutors, undefined, live);
+  }
+
+  try {
+    const { data } = await api.get('/api/admin/tutors/ratings', {
+      params: { page: 1, limit: 50 },
+    });
+    const raw =
+      (data?.data as TutorRatingRow[]) ||
+      (Array.isArray(data) ? (data as TutorRatingRow[]) : []);
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return buildTutorRatingRows(tutors, undefined, live);
+    }
+    return buildTutorRatingRows(tutors, raw, live);
+  } catch {
+    return buildTutorRatingRows(tutors, undefined, live);
+  }
+};

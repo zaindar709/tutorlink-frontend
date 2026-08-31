@@ -86,6 +86,28 @@ export interface DashboardLesson {
   meetingLink?: string;
   canJoinRoom?: boolean;
   isNextSession?: boolean;
+  packageId?: string;
+  mode?: string;
+}
+
+export interface DashboardQuickAccessItem {
+  count: number;
+  label: string;
+}
+
+export interface DashboardAiSummary {
+  _id: string;
+  title: string;
+  subject: string;
+  excerpt: string;
+  createdAt: string;
+  /** Display name when backend populates tutor / tutorName. */
+  tutorName?: string;
+  /** Session calendar day (YYYY-MM-DD or ISO) when provided. */
+  sessionDate?: string;
+  icon?: string;
+  bookingId?: string;
+  sessionId?: string;
 }
 
 export interface DashboardData {
@@ -97,15 +119,18 @@ export interface DashboardData {
     currentLessons: DashboardLesson[];
   };
   quickAccess: {
-    assignments: { count: number; label: string };
-    quizzes: { count: number; label: string };
-    tests: { count: number; label: string };
+    assignments: DashboardQuickAccessItem;
+    quizzes: DashboardQuickAccessItem;
+    tests: DashboardQuickAccessItem;
   };
-  aiSummaries: unknown[];
+  aiSummaries: DashboardAiSummary[];
   notifications: {
     unreadCount: number;
     hasUnread: boolean;
   };
+  /** True when student has at least one accepted session/package with a tutor. */
+  hasActiveTutor?: boolean;
+  upcomingSessionCount?: number;
 }
 
 export type BookingStatus =
@@ -125,6 +150,8 @@ export interface RescheduleProposal {
   status: RescheduleProposalStatus;
 }
 
+export type BookingKind = 'package' | 'session' | string;
+
 export interface Booking {
   _id: string;
   student: ApiUser | string;
@@ -137,6 +164,15 @@ export interface Booking {
   hourlyRateAtBooking?: number;
   meetingLink?: string;
   mode?: string;
+  /** `package` = pending/accepted monthly parent; `session` = one weekday class. */
+  kind?: BookingKind;
+  /** Shared id when this session belongs to a monthly_weekdays package. */
+  packageId?: string;
+  parentBookingId?: string;
+  /** Calendar-day window for monthly_weekdays packages (usually 30). */
+  durationDays?: number;
+  /** 1..N index within an accepted monthly package. */
+  sessionIndex?: number;
   canReschedule?: boolean;
   rescheduleProposal?: RescheduleProposal | null;
   isNextSession?: boolean;
@@ -248,6 +284,13 @@ export interface CreateBookingPayload {
   startTime: string;
   endTime: string;
   studentId?: string;
+  /**
+   * `monthly_weekdays` = Mon–Fri classes for ~durationDays (Sat/Sun off).
+   * Backend expands to session bookings on tutor confirm.
+   */
+  mode?: 'monthly_weekdays' | 'single' | string;
+  /** Calendar-day window for monthly_weekdays (default 30). */
+  durationDays?: number;
 }
 
 export interface ConfirmBookingPayload {
@@ -258,10 +301,18 @@ export interface ConfirmBookingPayload {
 }
 
 export interface BookingMutationResult {
+  /** Primary booking: first generated session, or legacy single booking / package doc. */
   booking: Booking;
   sessionAmount?: number;
   escrowRefunded?: boolean;
   message?: string;
+  /** Present when tutor confirms a monthly_weekdays package. */
+  kind?: BookingKind;
+  packageId?: string;
+  sessionCount?: number;
+  escrowBookingId?: string;
+  sessions?: Booking[];
+  idempotent?: boolean;
 }
 
 export type BookingTab = 'active' | 'pending' | 'past';
@@ -291,6 +342,26 @@ export interface TutorBookingRelationFlags {
   hasPending: boolean;
   hasActive: boolean;
   canRequest: boolean;
+  hasPendingPackage?: boolean;
+  hasActivePackage?: boolean;
+}
+
+/** GET /api/bookings/with-tutor/:tutorId */
+export interface BookingsWithTutorResult {
+  tutorId: string;
+  hasPending: boolean;
+  hasActive: boolean;
+  canRequest: boolean;
+  hasPendingPackage?: boolean;
+  hasActivePackage?: boolean;
+  pendingBooking?: Booking | null;
+  activeBooking?: Booking | null;
+  pendingPackage?: Booking | null;
+  activePackage?: Booking | null;
+  nextSession?: Booking | null;
+  upcomingSessionCount?: number;
+  packageSessions?: Booking[];
+  openBookings?: Booking[];
 }
 
 export interface TutorProfile {

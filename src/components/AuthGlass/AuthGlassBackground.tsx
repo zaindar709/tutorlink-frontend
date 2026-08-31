@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,6 +6,9 @@ import {
   Platform,
   ScrollView,
   StatusBar,
+  Keyboard,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -25,6 +28,19 @@ const AuthGlassBackground = ({
   contentStyle,
   scroll = true,
 }: Props) => {
+  const scrollRef = useRef<ScrollView | null>(null);
+
+  useEffect(() => {
+      if (Platform.OS === 'android') {
+      // Do not force scrolling on keyboard show/hide. Forcing scrolls here
+      // caused the auth form to jump up/down unpredictably on many devices.
+      // Let the KeyboardAvoidingView + ScrollView handle focused input visibility.
+      return undefined;
+    }
+
+    return undefined;
+  }, []);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
@@ -39,13 +55,17 @@ const AuthGlassBackground = ({
         {scroll ? (
           <KeyboardAvoidingView
             style={styles.flex}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
           >
             <ScrollView
+              ref={scrollRef}
               contentContainerStyle={[styles.scroll, contentStyle]}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               showsVerticalScrollIndicator={false}
               bounces
+              contentInsetAdjustmentBehavior="automatic"
             >
               <Animated.View entering={FadeInDown.duration(420)}>
                 {children}

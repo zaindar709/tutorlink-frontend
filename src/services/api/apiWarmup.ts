@@ -2,9 +2,9 @@ import { API_BASE_URL } from '../../config/api';
 
 const LOG = '[ApiWarmup]';
 
-/** Render free tier sleeps after ~15 min idle — ping sooner than that. */
-const KEEP_ALIVE_INTERVAL_MS = 10 * 60 * 1000;
-const WARMUP_TIMEOUT_MS = 60_000;
+/** Render free tier sleeps after ~15 min idle — ping sooner to keep APIs warm. */
+const KEEP_ALIVE_INTERVAL_MS = 8 * 60 * 1000;
+const WARMUP_TIMEOUT_MS = 20_000;
 
 let keepAliveTimer: ReturnType<typeof setInterval> | null = null;
 let inFlight: Promise<boolean> | null = null;

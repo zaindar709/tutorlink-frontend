@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { validateEmail } from '../../../utils/validations/authValidation';
+import { useForgotPassword } from '../../../hooks/auth/useForgotPassword';
 import {
   AuthGlassBackground,
   AuthGlassHeader,
@@ -16,31 +16,28 @@ import {
 const ForgotPasswordScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { role = 'student' } = route.params || {};
+  const { role = 'student', email: presetEmail } = route.params || {};
   const roleLabel = role === 'tutor' ? 'Tutor' : 'Student';
+  const resetRole = role === 'tutor' ? 'tutor' : 'student';
 
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
+  const {
+    email,
+    error,
+    loading,
+    onChangeEmail,
+    sendResetLink,
+    canSubmit,
+  } = useForgotPassword(resetRole);
 
-  const handleSendCode = () => {
-    const validationError = validateEmail(email);
-    if (validationError) {
-      setError(validationError);
-      setCodeSent(false);
-      return;
-    }
-
-    setError('');
-    setCodeSent(true);
-    navigation.navigate('VerifyCodeScreen', { role, email });
-  };
+  useEffect(() => {
+    if (presetEmail) onChangeEmail(String(presetEmail));
+  }, [presetEmail, onChangeEmail]);
 
   return (
     <AuthGlassBackground>
       <AuthGlassHeader
         title="Forgot Password?"
-        subtitle="Enter your email to receive a 4-digit reset code"
+        subtitle="We'll email you a secure Firebase reset link"
         onBack={() => navigation.goBack()}
       />
 
@@ -49,10 +46,7 @@ const ForgotPasswordScreen = () => {
           label="Email Address"
           placeholder="your.email@example.com"
           value={email}
-          onChangeText={(text: string) => {
-            setEmail(text);
-            if (error) setError('');
-          }}
+          onChangeText={onChangeEmail}
           keyboardType="email-address"
           autoCapitalize="none"
           error={error}
@@ -73,25 +67,19 @@ const ForgotPasswordScreen = () => {
             style={{ marginRight: 10, marginTop: 2 }}
           />
           <Text style={styles.infoText}>
-            We'll send a 4-digit verification code to your email address. Please
-            check your inbox and spam folder.
+            Tap the link in your email. Firebase verifies it, then you create a
+            new password in the app. No OTP code is used.
           </Text>
         </View>
       </GlassCard>
 
       <View style={{ marginTop: 20 }}>
         <GlassPrimaryButton
-          title="Send Code"
-          onPress={handleSendCode}
-          disabled={!email.trim()}
+          title={loading ? 'Sending…' : 'Send reset link'}
+          onPress={() => void sendResetLink()}
+          disabled={!canSubmit}
+          loading={loading}
         />
-
-        {codeSent ? (
-          <Text style={styles.successText}>
-            A verification code has been sent to {email}.
-          </Text>
-        ) : null}
-
         <Text style={styles.roleText}>{roleLabel} reset password</Text>
       </View>
     </AuthGlassBackground>
@@ -114,12 +102,6 @@ const styles = StyleSheet.create({
     color: AUTH_GLASS.subtitle,
     fontSize: 13,
     lineHeight: 19,
-  },
-  successText: {
-    marginTop: 14,
-    textAlign: 'center',
-    color: '#BBF7D0',
-    fontSize: 13,
   },
   roleText: {
     marginTop: 20,

@@ -138,7 +138,7 @@ const ChatBubble = ({ message, onLongPress }: Props) => {
   // WhatsApp-style: sent = brand purple, received = solid white
   const bubbleBg = mine
     ? (colors.CHAT_BUBBLE_OUT as string)
-    : '#FFFFFF';
+    : (colors.CHAT_BUBBLE_IN as string) || '#FFFFFF';
   const textColor = mine
     ? (colors.WHITE_COLOR as string)
     : ((colors.TEXT_PRIMARY as string) || '#111827');
@@ -147,8 +147,8 @@ const ChatBubble = ({ message, onLongPress }: Props) => {
     : ((colors.TEXT_SECONDARY as string) || '#6B7280');
 
   return (
-    <Animated.View
-      entering={FadeInUp.springify().damping(16)}
+    <View
+     
       style={[
         styles.row,
         {
@@ -284,7 +284,7 @@ const ChatBubble = ({ message, onLongPress }: Props) => {
           </View>
         ) : null}
       </Pressable>
-    </Animated.View>
+    </View>
   );
 };
 

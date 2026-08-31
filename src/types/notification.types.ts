@@ -31,4 +31,4 @@ export type AppNotification = {
 export type PushNotificationData = Record<string, string | undefined>;
 
 export const NOTIFICATION_CHANNEL_ID = 'tutorlink_default';
-export const NOTIFICATION_CHANNEL_NAME = 'TutorLink';
+export const NOTIFICATION_CHANNEL_NAME = 'TutorLink Notifications';

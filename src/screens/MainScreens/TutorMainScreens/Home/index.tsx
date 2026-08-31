@@ -6,14 +6,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Linking,
   Pressable,
   Image,
   TouchableOpacity,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GlassScreen } from '../../../../components/Glass';
 import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
@@ -26,11 +25,18 @@ import {
   getDisplayName,
 } from '../../../../utils/api/bookingHelpers';
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
-import { canJoinMeeting } from '../../../../utils/bookings/bookingStatus';
+import {
+  canJoinMeeting,
+  normalizeBookingDateParam,
+} from '../../../../utils/bookings/bookingStatus';
 import { createConversationThunk } from '../../../../store/chat/chatSlice';
 import { useAppDispatch, useAppSelector } from '../../../../store/hooks';
 import { ApiUser } from '../../../../types/api.types';
 import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
+import { openClassroom } from '../../../../services/webrtc/openClassroom';
+import { fetchTutorSummariesThunk } from '../../../../store/summary/summarySlice';
+import { ensureSummarySocket } from '../../../../services/summaries/summarySocket';
+import { formatDateParam } from '../../../../utils/api/userId';
 
 export default function DashboardScreen() {
   const { colors, resp } = useUi();
@@ -43,13 +49,42 @@ export default function DashboardScreen() {
   const activeBookings = useBookings('active');
   const { cancelBooking } = useBookings('pending');
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
+  const tutorSummaryIds = useAppSelector(s => s.summary.tutorListIds);
+  const summariesById = useAppSelector(s => s.summary.byId);
+  const pendingSummaries = useMemo(
+    () =>
+      tutorSummaryIds
+        .map(id => summariesById[id])
+        .filter(
+          s =>
+            s &&
+            (s.status === 'generated' || s.status === 'under_review')
+        ),
+    [tutorSummaryIds, summariesById]
+  );
+
+  // Monthly packages create many future weekday rows; Active holds all of them.
+  // "Today's sessions" must only show bookings whose session date is today.
+  const todaysSessions = useMemo(() => {
+    const today = formatDateParam(new Date());
+    return activeBookings.bookings.filter(
+      b => normalizeBookingDateParam(b.date) === today
+    );
+  }, [activeBookings.bookings]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void ensureSummarySocket();
+      void dispatch(fetchTutorSummariesThunk({ page: 1, limit: 20 }));
+    }, [dispatch])
+  );
 
   const stats = useMemo(
     () => [
       {
         id: 'sessions',
-        label: 'Sessions',
-        value: String(activeBookings.bookings.length),
+        label: 'Today',
+        value: String(todaysSessions.length),
         icon: 'calendar-month-outline' as const,
         tint: '#EEF2FF',
         iconColor: GLASS.primary,
@@ -72,7 +107,7 @@ export default function DashboardScreen() {
       },
     ],
     [
-      activeBookings.bookings.length,
+      todaysSessions.length,
       pendingBookings.bookings.length,
       balance?.escrowBalance,
     ]
@@ -83,12 +118,15 @@ export default function DashboardScreen() {
       ? `${pendingBookings.bookings.length} new booking request${
           pendingBookings.bookings.length === 1 ? '' : 's'
         } waiting`
-      : activeBookings.bookings.length > 0
-        ? `${activeBookings.bookings.length} active session${
-            activeBookings.bookings.length === 1 ? '' : 's'
+      : todaysSessions.length > 0
+        ? `${todaysSessions.length} session${
+            todaysSessions.length === 1 ? '' : 's'
           } today`
-        : 'Your teaching dashboard is ready';
-
+        : activeBookings.bookings.length > 0
+          ? `${activeBookings.bookings.length} upcoming session${
+              activeBookings.bookings.length === 1 ? '' : 's'
+            }`
+          : 'Your teaching dashboard is ready';
   const handleAccept = (id: string) => {
     navigateHomeStack('TutorBookingRequestDetailsScreen', { bookingId: id });
   };
@@ -136,7 +174,7 @@ export default function DashboardScreen() {
   };
 
   const openEarnings = () => {
-    navigation.navigate('Earnings' as never);
+    navigateHomeStack('TutorEarningsScreen');
   };
 
   return (
@@ -249,6 +287,53 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>AI Summaries</Text>
+          <TouchableOpacity
+            onPress={() => navigateHomeStack('TutorSummariesScreen')}
+          >
+            <Text style={styles.viewAll}>View all</Text>
+          </TouchableOpacity>
+        </View>
+        {pendingSummaries.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons
+              name="star-four-points"
+              size={26}
+              color={GLASS.accent}
+            />
+            <Text style={styles.emptyTitle}>No summaries pending</Text>
+            <Text style={styles.emptySub}>
+              After a class ends, AI notes ready for review appear here.
+            </Text>
+          </View>
+        ) : (
+          pendingSummaries.slice(0, 2).map(item =>
+            item ? (
+              <TouchableOpacity
+                key={item._id}
+                style={styles.requestCard}
+                activeOpacity={0.9}
+                onPress={() =>
+                  navigateHomeStack('TutorSummaryReviewScreen', {
+                    summaryId: item._id,
+                    sessionId: item.sessionId,
+                  })
+                }
+              >
+                <Text style={styles.requestName}>AI Summary Ready</Text>
+                <Text style={styles.requestMeta}>
+                  {item.subject}
+                  {item.title ? ` · ${item.title}` : ''}
+                </Text>
+                <Text style={[styles.viewAll, { marginTop: 8 }]}>
+                  Review Summary ›
+                </Text>
+              </TouchableOpacity>
+            ) : null
+          )
+        )}
+
+        <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>New requests</Text>
           {pendingBookings.bookings.length > 0 ? (
             <View style={styles.badge}>
@@ -334,20 +419,22 @@ export default function DashboardScreen() {
 
         {activeBookings.loading ? (
           <ActivityIndicator color={GLASS.primary} style={{ marginVertical: 16 }} />
-        ) : activeBookings.bookings.length === 0 ? (
+        ) : todaysSessions.length === 0 ? (
           <View style={styles.emptyCard}>
             <MaterialCommunityIcons
               name="calendar-blank-outline"
               size={28}
               color={GLASS.textMuted}
             />
-            <Text style={styles.emptyTitle}>No sessions yet</Text>
+            <Text style={styles.emptyTitle}>No sessions today</Text>
             <Text style={styles.emptySub}>
-              Accepted bookings for today will appear here with join controls.
+              {activeBookings.bookings.length > 0
+                ? 'No class scheduled for today. Upcoming weekday sessions stay on Schedule.'
+                : 'Accepted bookings for today will appear here with join controls.'}
             </Text>
           </View>
         ) : (
-          activeBookings.bookings.map(booking => {
+          todaysSessions.map(booking => {
             const name = getBookingStudentName(booking);
             const avatar = getBookingStudentAvatar(booking);
             return (
@@ -390,14 +477,25 @@ export default function DashboardScreen() {
                   <TouchableOpacity
                     style={styles.joinBtnWrap}
                     onPress={() => {
-                      if (canJoinMeeting(booking)) {
-                        void Linking.openURL(booking.meetingLink!);
+                      // Allow force-start for tutors during development/testing.
+                      if (!canJoinMeeting(booking) && !__DEV__) {
+                        Alert.alert(
+                          'Classroom unavailable',
+                          'This session is not ready to join yet.'
+                        );
                         return;
                       }
-                      Alert.alert(
-                        'Meeting link unavailable',
-                        'Add a meeting link when accepting the booking.'
-                      );
+                      const opened = openClassroom(booking, {
+                        user: authUser,
+                        role: 'tutor',
+                        autoStart: true,
+                      });
+                      if (!opened) {
+                        Alert.alert(
+                          'Unable to start',
+                          'Could not open the TutorLink classroom.'
+                        );
+                      }
                     }}
                   >
                     <LinearGradient

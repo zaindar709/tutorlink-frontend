@@ -20,6 +20,8 @@ import PrivacySettingsPage from './settings/PrivacySettingsPage';
 import LinkedStudentsSettingsPage from './settings/LinkedStudentsSettingsPage';
 import AppearanceSettingsPage from './settings/AppearanceSettingsPage';
 import LanguageSettingsPage from './settings/LanguageSettingsPage';
+import LinkStudentGate from './auth/LinkStudentGate';
+import { resolveParentLink } from '../constants/linkCodes';
 
 export default function ParentDashboard() {
   const [activeNav, setActiveNav] = useState<ParentNavId>('overview');
@@ -29,12 +31,46 @@ export default function ParentDashboard() {
     data,
     toast,
     unreadCount,
+    prefillCode,
+    linkStudent,
+    unlinkStudent,
     markNotificationRead,
     markAllNotificationsRead,
     deleteNotification,
     updateSettings,
     updateProfile,
   } = useParentDashboard();
+
+  const handleLinkCode = (rawCode: string) => {
+    let studentNameOverride: string | undefined;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const fromUrl = String(params.get('student') || '').trim();
+      if (fromUrl) studentNameOverride = fromUrl;
+    } catch {
+      // ignore
+    }
+
+    const entry = resolveParentLink(rawCode, { studentNameOverride });
+    if (!entry) {
+      return {
+        ok: false as const,
+        error:
+          'Invalid code. Copy the full code from the student Profile (includes the student name).',
+      };
+    }
+    linkStudent(entry, { studentNameOverride: entry.studentName });
+    return { ok: true as const };
+  };
+
+  if (!data) {
+    return (
+      <>
+        <LinkStudentGate onLink={handleLinkCode} prefillCode={prefillCode} />
+        {toast ? <Toast message={toast} /> : null}
+      </>
+    );
+  }
 
   const handleNavigate = (nav: ParentNavId) => {
     setActiveNav(nav);
@@ -66,7 +102,12 @@ export default function ParentDashboard() {
           <PrivacySettingsPage settings={data.settings} onSave={updateSettings} />
         );
       case 'linked-students':
-        return <LinkedStudentsSettingsPage children={data.children} />;
+        return (
+          <LinkedStudentsSettingsPage
+            children={data.children}
+            onUnlink={unlinkStudent}
+          />
+        );
       case 'appearance':
         return (
           <AppearanceSettingsPage theme={theme} onThemeChange={setTheme} />

@@ -43,7 +43,9 @@ export const useStudentBookingOutcomeWatch = (enabled = true) => {
 
       for (const id of ids) {
         try {
-          const booking = await dispatch(fetchBookingByIdThunk(id)).unwrap();
+          const booking = await dispatch(
+            fetchBookingByIdThunk({ id, force: true })
+          ).unwrap();
           if (!booking) continue;
 
           if (booking.status === 'pending') {

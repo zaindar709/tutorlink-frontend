@@ -5,6 +5,7 @@ import {
   Link2,
   Settings,
   Shield,
+  Star,
   Wallet,
 } from 'lucide-react';
 import type { NavSectionId } from '../types/admin.types';
@@ -26,6 +27,12 @@ export const NAV_ITEMS: {
     label: 'Tutor Verification',
     icon: Shield,
     description: 'Review applications & approve tutors',
+  },
+  {
+    id: 'ratings',
+    label: 'Tutor Ratings',
+    icon: Star,
+    description: 'Student reviews — keep or remove tutors',
   },
   {
     id: 'links',
@@ -56,6 +63,7 @@ export const NAV_ITEMS: {
 export const PAGE_TITLES: Record<NavSectionId, string> = {
   overview: 'Overview',
   verification: 'Tutor Verification',
+  ratings: 'Tutor Ratings',
   links: 'Parent-Student Links',
   escrow: 'Escrow Management',
   ai: 'AI System Health',

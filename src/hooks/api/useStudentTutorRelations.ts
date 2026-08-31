@@ -11,8 +11,8 @@ import {
 import type { AppDispatch } from '../../store/store';
 
 /** Keep this small — Render cold starts make large fan-outs feel frozen. */
-const LOOKAHEAD_DAYS = 7;
-const LOOKBACK_DAYS = 1;
+const LOOKAHEAD_DAYS = 21;
+const LOOKBACK_DAYS = 7;
 const CACHE_TTL_MS = 45_000;
 const CONCURRENCY = 4;
 

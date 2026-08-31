@@ -24,6 +24,8 @@ import { logoutUser } from '../../../../services/auth/authService';
 import { useProfile } from '../../../../hooks/api/useProfile';
 import { getDisplayName } from '../../../../utils/api/bookingHelpers';
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
+import ConfirmLogoutModal from '../../../../components/ConfirmLogoutModal';
+import { openParentDashboard } from '../../../../config/parentDashboard';
 
 type MenuItem = {
   title: string;
@@ -81,6 +83,13 @@ const MENU_SECTIONS: MenuSection[] = [
         icon: 'history',
         iconColor: '#3B82F6',
         screen: 'StudentSessionHistoryScreen',
+      },
+      {
+        title: 'Learning Summaries',
+        description: 'AI notes reviewed by tutors',
+        icon: 'notebook-outline',
+        iconColor: '#F59E0B',
+        screen: 'StudentSummariesScreen',
       },
     ],
   },
@@ -161,6 +170,8 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
   const authUser = useSelector((state: any) => state.auth.user);
+  const role = useSelector((state: any) => state.auth.role);
+  const isParent = role === 'parent';
   const { profile, loading, refresh } = useProfile();
 
   useFocusEffect(
@@ -168,6 +179,24 @@ export default function ProfileScreen() {
       void refresh();
     }, [refresh])
   );
+
+  const [confirmVisible, setConfirmVisible] = React.useState(false);
+  const [loggingOut, setLoggingOut] = React.useState(false);
+
+  const performLogout = async () => {
+    setLoggingOut(true);
+    setConfirmVisible(false);
+    try {
+      await logoutUser();
+      dispatch(logout());
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AuthNavigator' }],
+      });
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const navigateTo = (screen: string) => {
     navigateHomeStack(screen);
@@ -218,9 +247,37 @@ export default function ProfileScreen() {
           avatarUri={displayAvatar}
         />
 
-        <ParentLinkCard
-          onGenerateCode={() => navigateTo('StudentLinkParentScreen')}
-        />
+        {isParent ? (
+          <TouchableOpacity
+            style={styles.parentLinkCta}
+            activeOpacity={0.88}
+            onPress={() => {
+              void openParentDashboard();
+            }}
+          >
+            <MaterialCommunityIcons
+              name="link-variant"
+              size={22}
+              color={GLASS.primary}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.parentLinkTitle}>Link student account</Text>
+              <Text style={styles.parentLinkSub}>
+                Opens the Parent web dashboard (auth is on the web)
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={22}
+              color={GLASS.textMuted}
+            />
+          </TouchableOpacity>
+        ) : (
+          <ParentLinkCard
+            studentName={displayName}
+            onOpenDetails={() => navigateTo('StudentLinkParentScreen')}
+          />
+        )}
 
         <View style={styles.menuWrapper}>
           {MENU_SECTIONS.map(section => (
@@ -244,18 +301,17 @@ export default function ProfileScreen() {
         <TouchableOpacity
           style={styles.logoutBtn}
           activeOpacity={0.75}
-          onPress={async () => {
-            await logoutUser();
-            dispatch(logout());
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'AuthNavigator' }],
-            });
-          }}
+          onPress={() => setConfirmVisible(true)}
         >
           <MaterialCommunityIcons name="logout" size={20} color="#DC2626" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
+        <ConfirmLogoutModal
+          visible={confirmVisible}
+          onCancel={() => setConfirmVisible(false)}
+          onConfirm={() => void performLogout()}
+          confirming={loggingOut}
+        />
         <Text style={styles.version}>TutorLink v1.1.0 · 2026</Text>
       </ScrollView>
     </GlassScreen>
@@ -277,6 +333,30 @@ const createStyles = (resp: any) =>
     menuWrapper: {
       paddingHorizontal: resp.dx(16),
       marginTop: resp.dy(18),
+    },
+    parentLinkCta: {
+      marginHorizontal: resp.dx(16),
+      marginTop: resp.dy(-20),
+      paddingVertical: 14,
+      paddingHorizontal: 14,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      backgroundColor: 'rgba(237,233,254,0.55)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    parentLinkTitle: {
+      color: GLASS.textPrimary,
+      fontWeight: '800',
+      fontSize: 15,
+    },
+    parentLinkSub: {
+      color: GLASS.textSecondary,
+      fontSize: 12,
+      marginTop: 2,
+      fontWeight: '600',
     },
     logoutBtn: {
       marginTop: resp.dy(4),

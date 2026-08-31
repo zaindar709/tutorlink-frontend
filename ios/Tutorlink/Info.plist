@@ -34,7 +34,11 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string/>
+	<string>TutorLink uses your location to find tutors near you.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>TutorLink needs camera access for live classroom video sessions.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TutorLink needs microphone access so you can speak during live classes.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -54,6 +58,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.tutorlink.reset-password</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>tutorlink</string>
+			</array>
+		</dict>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AntDesign.ttf</string>

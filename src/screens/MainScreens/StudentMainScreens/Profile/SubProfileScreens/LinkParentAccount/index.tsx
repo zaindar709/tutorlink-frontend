@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
+  Share,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSelector } from 'react-redux';
 import { GlassScreen } from '../../../../../../components/Glass';
 import {
   ProfileSubHeader,
@@ -17,50 +18,67 @@ import {
 } from '../../../../../../components/Profile';
 import useUi from '../../../../../../hooks/ui/useUi';
 import { useProfile } from '../../../../../../hooks/api/useProfile';
+import { parentDashboardShareHint } from '../../../../../../config/parentDashboard';
+import {
+  DemoParentLinkEntry,
+  issueParentLinkForStudent,
+} from '../../../../../../constants/parentLinkCodes';
+import { getDisplayName } from '../../../../../../utils/api/bookingHelpers';
 
+const buildShareMessage = (code: string, studentName: string) =>
+  [
+    'TutorLink — Parent link code',
+    '',
+    'Student: ' + studentName,
+    'Code: ' + code,
+    '',
+    parentDashboardShareHint({ code, studentName }),
+  ].join('\n');
 export default function StudentLinkParentScreen({ navigation }: any) {
   const { colors } = useUi();
   const styles = useMemo(() => createProfileSubScreenStyles(colors), [colors]);
+  const authUser = useSelector((state: any) => state.auth.user);
   const {
-    linkCode,
     linkedParents,
-    actionLoading,
     error,
-    generateLinkCode,
     refreshLinkedParents,
     removeLinkedParent,
+    actionLoading,
   } = useProfile();
 
-  const [code, setCode] = useState<string | null>(null);
-  const [expiresIn, setExpiresIn] = useState(20);
+  const cursorRef = useRef(0);
+  const [entry, setEntry] = useState<DemoParentLinkEntry | null>(null);
+  const studentName =
+    getDisplayName(authUser) || entry?.studentName || 'Student';
 
   useEffect(() => {
     void refreshLinkedParents();
   }, [refreshLinkedParents]);
 
-  useEffect(() => {
-    if (!linkCode) return;
-    setCode(linkCode.code);
-    setExpiresIn(linkCode.expiresInMinutes || 20);
-  }, [linkCode]);
-
-  const handleGenerate = async () => {
-    const result = await generateLinkCode();
-    if (!result) {
-      Alert.alert('Failed', error || 'Could not generate link code.');
-      return;
-    }
-    setCode(result.code);
-    setExpiresIn(result.expiresInMinutes || 20);
+  const handleGenerate = () => {
+    cursorRef.current += 1;
+    const nameAtGenerate =
+      getDisplayName(authUser) || String(studentName || '').trim() || 'Student';
+    setEntry(
+      issueParentLinkForStudent(nameAtGenerate, Date.now() + cursorRef.current)
+    );
   };
 
-  const handleCopy = () => {
-    if (!code) return;
-    Alert.alert('Your link code', code);
+  const handleShare = async () => {
+    if (!entry?.code) return;
+    const nameForShare = entry.studentName || studentName;
+    try {
+      await Share.share({
+        message: buildShareMessage(entry.code, nameForShare),
+        title: 'TutorLink parent link code',
+      });
+    } catch {
+      Alert.alert('Share failed', 'Could not open the share sheet.');
+    }
   };
 
   const handleUnlink = (id: string, name: string) => {
-    Alert.alert('Unlink parent', `Remove ${name} from linked parents?`, [
+    Alert.alert('Unlink parent', 'Remove ' + name + ' from linked parents?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Unlink',
@@ -110,29 +128,41 @@ export default function StudentLinkParentScreen({ navigation }: any) {
               lineHeight: 20,
             }}
           >
-            Generate a one-time code. Your parent enters it in their TutorLink
-            app to link your account.
+            Generate a demo code, share it, and your parent enters it on the
+            web Parent Dashboard to see your name with a fresh progress start.
           </Text>
         </View>
 
         <ProfileSectionCard title="Generate link code">
-          {code ? (
+          {entry ? (
             <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+              <Text style={{ color: '#64748B', fontSize: 12, fontWeight: '700' }}>
+                Student
+              </Text>
               <Text
                 style={{
-                  fontSize: 28,
+                  color: '#0F172A',
                   fontWeight: '800',
-                  letterSpacing: 2,
-                  color: colors.PRIMARY_COLOR,
+                  fontSize: 15,
+                  marginTop: 4,
                 }}
               >
-                {code}
+                {entry.studentName || studentName}
               </Text>
-              <Text style={{ color: '#64748B', fontSize: 12, marginTop: 8 }}>
-                Expires in {expiresIn} minutes
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontWeight: '800',
+                  letterSpacing: 1,
+                  color: colors.PRIMARY_COLOR,
+                  marginTop: 12,
+                  textAlign: 'center',
+                }}
+              >
+                {entry.code}
               </Text>
               <TouchableOpacity
-                onPress={handleCopy}
+                onPress={() => void handleShare()}
                 style={{
                   marginTop: 14,
                   flexDirection: 'row',
@@ -144,7 +174,7 @@ export default function StudentLinkParentScreen({ navigation }: any) {
                 }}
               >
                 <MaterialCommunityIcons
-                  name="content-copy"
+                  name="share-variant"
                   size={18}
                   color={colors.PRIMARY_COLOR}
                 />
@@ -155,7 +185,7 @@ export default function StudentLinkParentScreen({ navigation }: any) {
                     fontWeight: '700',
                   }}
                 >
-                  Copy code
+                  Share code
                 </Text>
               </TouchableOpacity>
             </View>
@@ -163,13 +193,12 @@ export default function StudentLinkParentScreen({ navigation }: any) {
             <ProfileEmptyState
               icon="link-plus"
               title="No active code"
-              message="Generate a code to let your parent connect to your learning profile."
+              message="Tap Generate to create a shareable parent link code."
             />
           )}
 
           <TouchableOpacity
-            onPress={() => void handleGenerate()}
-            disabled={actionLoading}
+            onPress={handleGenerate}
             style={{
               marginTop: 12,
               backgroundColor: colors.PRIMARY_COLOR,
@@ -178,13 +207,9 @@ export default function StudentLinkParentScreen({ navigation }: any) {
               alignItems: 'center',
             }}
           >
-            {actionLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-                {code ? 'Generate new code' : 'Generate code'}
-              </Text>
-            )}
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
+              {entry ? 'Generate new code' : 'Generate code'}
+            </Text>
           </TouchableOpacity>
         </ProfileSectionCard>
 
@@ -194,7 +219,11 @@ export default function StudentLinkParentScreen({ navigation }: any) {
           { step: '2', text: 'Share the code with your parent' },
           {
             step: '3',
-            text: 'Parent opens TutorLink → Link Student → enters code',
+            text: 'Parent opens web Parent Dashboard and enters the code',
+          },
+          {
+            step: '4',
+            text: 'Parent sees your name with progress starting at 0%',
           },
         ].map(item => (
           <View
@@ -233,8 +262,8 @@ export default function StudentLinkParentScreen({ navigation }: any) {
           <ProfileSectionCard>
             <ProfileEmptyState
               icon="account-group-outline"
-              title="No parents linked"
-              message="Once a parent redeems your code, they will appear here."
+              title="No parents linked yet"
+              message="After a parent redeems your code on the web, they can appear here."
             />
           </ProfileSectionCard>
         ) : (
@@ -260,6 +289,7 @@ export default function StudentLinkParentScreen({ navigation }: any) {
                   ) : null}
                 </View>
                 <TouchableOpacity
+                  disabled={actionLoading}
                   onPress={() => handleUnlink(parent.id, parent.name)}
                 >
                   <Text style={{ color: '#DC2626', fontWeight: '700' }}>

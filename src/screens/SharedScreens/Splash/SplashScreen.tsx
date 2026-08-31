@@ -21,6 +21,19 @@ import {
 } from '../../../utils/tutor/tutorNavigation';
 import { setUser } from '../../../store/auth/authSlice';
 import { GLASS } from '../../../theme/glass';
+import {
+  clearPendingPasswordReset,
+  loadPendingPasswordReset,
+} from '../../../services/auth/passwordResetService';
+import { openParentDashboard } from '../../../config/parentDashboard';
+import { clearAuthSession } from '../../../services/storage';
+import { warmupApi } from '../../../services/api/apiWarmup';
+
+/** Min splash time — auth restore runs in parallel during this window. */
+const SPLASH_MIN_MS = 1300;
+
+const waitMs = (ms: number) =>
+  new Promise<void>(resolve => setTimeout(resolve, ms));
 
 export default function SplashScreen() {
   type RootStackParamList = {
@@ -47,7 +60,50 @@ export default function SplashScreen() {
     let isMounted = true;
 
     const navigateAfterSplash = async () => {
+      const startedAt = Date.now();
+      // Warm API while splash shows — reduces first-call cold-start lag.
+      void warmupApi();
+
+      const pendingReset = await loadPendingPasswordReset();
+      if (!isMounted) return;
+
+      // Password-reset App Link must win over restoring a logged-in session.
+      if (pendingReset?.oobCode) {
+        await clearPendingPasswordReset();
+        if (!isMounted) return;
+        const waitLeft = SPLASH_MIN_MS - (Date.now() - startedAt);
+        if (waitLeft > 0) await waitMs(waitLeft);
+        if (!isMounted) return;
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'AuthNavigator',
+              state: {
+                index: 0,
+                routes: [
+                  {
+                    name: 'NewPasswordScreen',
+                    params: {
+                      oobCode: pendingReset.oobCode,
+                      email: pendingReset.email || '',
+                      role: pendingReset.role || 'student',
+                    },
+                  },
+                ],
+              },
+            } as any,
+          ],
+        });
+        return;
+      }
+
+      // Auth restore runs during splash (not after a fixed delay).
       const session = await restoreAuthSession();
+      if (!isMounted) return;
+
+      const waitLeft = SPLASH_MIN_MS - (Date.now() - startedAt);
+      if (waitLeft > 0) await waitMs(waitLeft);
       if (!isMounted) return;
 
       if (session) {
@@ -88,6 +144,17 @@ export default function SplashScreen() {
           }
         }
 
+        // Parent uses web dashboard only — never land in app tabs.
+        if (session.role === 'parent') {
+          await clearAuthSession();
+          void openParentDashboard({ silent: true });
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'AuthNavigator' }],
+          });
+          return;
+        }
+
         navigation.reset({
           index: 0,
           routes: [
@@ -106,11 +173,10 @@ export default function SplashScreen() {
       });
     };
 
-    const timer = setTimeout(navigateAfterSplash, 2200);
+    void navigateAfterSplash();
 
     return () => {
       isMounted = false;
-      clearTimeout(timer);
     };
   }, [dispatch, navigation]);
 

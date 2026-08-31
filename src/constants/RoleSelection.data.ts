@@ -16,8 +16,8 @@ export const roles = [
   {
     id: 'parent',
     title: 'Parents',
-    subtitle: 'Find best tutors',
+    subtitle: 'Monitor progress on the web dashboard',
     icon: '👨‍👩‍👧',
-    description: 'Support your child',
+    description: 'Opens Parent web app',
   },
 ];

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   approveTutor,
+  buildTutorRatingRows,
   fetchDashboardData,
   getMockDashboardData,
   mergeTutorLists,
@@ -8,12 +9,17 @@ import {
   removeApprovedTutor,
   resolveDispute,
   revokeParentLink,
+  saveRatingDecision,
   scheduleTutorInterview,
   updateDisputeStatus,
   updateLinkStatus,
   updateTutorStatus,
 } from '../api/admin.api';
-import type { AdminDashboardData, AdminSettings } from '../types/admin.types';
+import type {
+  AdminDashboardData,
+  AdminSettings,
+  TutorRatingRow,
+} from '../types/admin.types';
 
 export function useAdminDashboard() {
   const [data, setData] = useState<AdminDashboardData | null>(null);
@@ -225,7 +231,67 @@ export function useAdminDashboard() {
     showToast('Settings updated locally. Connect API to persist.');
   };
 
-  const dashboard = data ?? getMockDashboardData();
+  const patchRatingDecision = (
+    tutorId: string,
+    decision: TutorRatingRow['decision']
+  ) => {
+    saveRatingDecision(tutorId, decision);
+    setData(prev => {
+      if (!prev) return prev;
+      const rows =
+        prev.tutorRatings ??
+        buildTutorRatingRows(prev.pendingTutors);
+      return {
+        ...prev,
+        tutorRatings: rows.map(r =>
+          r.tutorId === tutorId ? { ...r, decision } : r
+        ),
+      };
+    });
+  };
+
+  const handleKeepTutor = async (tutorId: string) => {
+    setActionLoading(tutorId);
+    const name =
+      data?.tutorRatings?.find(r => r.tutorId === tutorId)?.tutorName ||
+      data?.pendingTutors.find(t => t.id === tutorId)?.name ||
+      'Tutor';
+    patchRatingDecision(tutorId, 'active');
+    showToast(`${name} kept on the platform.`);
+    setActionLoading(null);
+  };
+
+  const handleRemoveRatedTutor = async (tutorId: string) => {
+    setActionLoading(tutorId);
+    const name =
+      data?.tutorRatings?.find(r => r.tutorId === tutorId)?.tutorName ||
+      data?.pendingTutors.find(t => t.id === tutorId)?.name ||
+      'Tutor';
+    try {
+      await rejectTutor(tutorId, 'Removed by admin due to student ratings');
+    } catch {
+      // Local decision still applies for panel demo
+    }
+    patchRatingDecision(tutorId, 'removed');
+    setData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        pendingTutors: removeApprovedTutor(prev.pendingTutors, tutorId),
+      };
+    });
+    showToast(`${name} removed from active tutors.`);
+    setActionLoading(null);
+  };
+
+  const dashboard: AdminDashboardData = (() => {
+    const base = data ?? getMockDashboardData();
+    if (base.tutorRatings && base.tutorRatings.length > 0) return base;
+    return {
+      ...base,
+      tutorRatings: buildTutorRatingRows(base.pendingTutors),
+    };
+  })();
 
   return {
     dashboard,
@@ -241,5 +307,7 @@ export function useAdminDashboard() {
     handleResolveDispute,
     handleRevokeLink,
     handleUpdateSettings,
+    handleKeepTutor,
+    handleRemoveRatedTutor,
   };
 }

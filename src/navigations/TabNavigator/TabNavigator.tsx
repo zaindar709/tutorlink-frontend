@@ -1,3 +1,4 @@
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Image, Pressable, Text } from 'react-native';
 import {
   createBottomTabNavigator,
@@ -11,14 +12,19 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CustomCenterButton } from '../../components/CustomCenterButton/CustomCenterButton';
-import TutorProfileTabTip from '../../components/Profile/TutorProfileTabTip';
+import ProfileCompletionTooltip from '../../components/ProfileCompletionTooltip';
 import Images from '../../assets/images';
 import { GLASS } from '../../theme/glass';
 import GlassPillTabBar from './GlassPillTabBar';
 import { useAppSelector } from '../../store/hooks';
 import { selectUnreadTotal } from '../../store/chat/chatSelectors';
+import { isProfileSuggestionNeeded } from '../../services/profile/profileSuggestionStore';
+import {
+  hasProfileHintBeenShown,
+  markProfileHintAsShown,
+} from '../../services/profile/profileCompletionHintStore';
 
-import FirstTimeHome from '../../screens/MainScreens/StudentMainScreens/Home/HomeScreen/FirstTimeHome';
+import StudentHome from '../../screens/MainScreens/StudentMainScreens/Home/HomeScreen';
 import SearchScreen from '../../screens/MainScreens/StudentMainScreens/SearchScreen';
 import BookingsScreen from '../../screens/MainScreens/StudentMainScreens/BookingScreen';
 import ProfileScreen from '../../screens/MainScreens/StudentMainScreens/ProfileScreen';
@@ -82,6 +88,7 @@ const GlassTabButton = (props: BottomTabBarButtonProps) => {
       onPressOut={() => {
         scale.value = withSpring(1, { damping: 14, stiffness: 280 });
       }}
+      onLayout={props.onLayout}
       style={[props.style, animStyle, styles.tabBtn]}
       accessibilityRole={props.accessibilityRole}
       accessibilityState={props.accessibilityState}
@@ -98,13 +105,122 @@ interface Props {
 }
 
 export const MyTabs = ({ role }: Props) => {
-  const isTutor = role === 'tutor';
+  const authUser = useAppSelector((state: any) => state.auth.user);
+  const userId = String(
+    authUser?.uid || authUser?.firebaseUid || authUser?.id || authUser?._id || ''
+  );
+  const [profileTabLayout, setProfileTabLayout] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const [showProfileHint, setShowProfileHint] = useState(false);
+
+  const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const captureProfileTabLayout = (eventOrLayout: any) => {
+    const layout = eventOrLayout?.nativeEvent?.layout || eventOrLayout;
+    if (!layout || typeof layout.x !== 'number') {
+      return;
+    }
+
+    const { x, y, width, height } = layout;
+    // Avoid updating state with an identical layout object to prevent
+    // triggering continuous re-renders when onLayout fires repeatedly.
+    setProfileTabLayout(prev => {
+      if (
+        prev &&
+        prev.x === x &&
+        prev.y === y &&
+        prev.width === width &&
+        prev.height === height
+      ) {
+        return prev;
+      }
+      return { x, y, width, height };
+    });
+  };
+
+  const dismissProfileHint = async () => {
+    if (showTimerRef.current) {
+      clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    setShowProfileHint(false);
+    if (userId) {
+      await markProfileHintAsShown(userId);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (showTimerRef.current) clearTimeout(showTimerRef.current);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!userId || role === 'parent' || role === null) {
+      setShowProfileHint(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      if (!profileTabLayout) {
+        return;
+      }
+
+      const alreadySeen = await hasProfileHintBeenShown(userId);
+      const needed = await isProfileSuggestionNeeded(role, userId);
+
+      if (cancelled || alreadySeen || !needed || !profileTabLayout) {
+        return;
+      }
+
+      // Wait ~1.5s after navigation, then show the tooltip for exactly 4s.
+      showTimerRef.current = setTimeout(async () => {
+        if (cancelled) return;
+
+        setShowProfileHint(true);
+
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = setTimeout(async () => {
+          setShowProfileHint(false);
+          if (userId) await markProfileHintAsShown(userId);
+        }, 4000);
+      }, 1500);
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+      if (showTimerRef.current) {
+        clearTimeout(showTimerRef.current);
+        showTimerRef.current = null;
+      }
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+    };
+  }, [role, userId, profileTabLayout]);
 
   return (
     <View style={styles.root}>
       <Tab.Navigator
         initialRouteName="Home"
-        tabBar={props => <GlassPillTabBar {...props} />}
+        tabBar={props => (
+          <GlassPillTabBar {...props} onProfileTabLayout={captureProfileTabLayout} />
+        )}
         screenOptions={{
           headerShown: false,
           tabBarShowLabel: true,
@@ -154,7 +270,7 @@ export const MyTabs = ({ role }: Props) => {
 
             <Tab.Screen
               name="Home"
-              component={FirstTimeHome}
+              component={StudentHome}
               options={{
                 title: 'Home',
                 tabBarLabel: () => null,
@@ -186,6 +302,15 @@ export const MyTabs = ({ role }: Props) => {
                 tabBarLabel: 'Profile',
                 tabBarIcon: ({ focused }) => (
                   <TabIcon source={Images.UserIcon} focused={focused} />
+                ),
+                tabBarButton: (props: BottomTabBarButtonProps) => (
+                  <GlassTabButton
+                    {...props}
+                    onPress={event => {
+                      void dismissProfileHint();
+                      props.onPress?.(event);
+                    }}
+                  />
                 ),
               }}
             />
@@ -251,13 +376,29 @@ export const MyTabs = ({ role }: Props) => {
                 tabBarIcon: ({ focused }) => (
                   <TabIcon source={Images.UserIcon} focused={focused} />
                 ),
+                tabBarButton: (props: BottomTabBarButtonProps) => (
+                  <GlassTabButton
+                    {...props}
+                    onPress={event => {
+                      void dismissProfileHint();
+                      props.onPress?.(event);
+                    }}
+                  />
+                ),
               }}
             />
           </>
         )}
       </Tab.Navigator>
 
-      {isTutor ? <TutorProfileTabTip enabled /> : null}
+      <ProfileCompletionTooltip
+        visible={showProfileHint}
+        role={role}
+        targetLayout={profileTabLayout}
+        onDismiss={() => {
+          void dismissProfileHint();
+        }}
+      />
     </View>
   );
 };
@@ -266,7 +407,8 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#f6f7fc',
-    height: '0%',
+    // do not force a zero height; allow normal layout so tab measurements
+    // are stable and do not trigger repeated onLayout events.
   },
   tabBtn: {
     flex: 1,

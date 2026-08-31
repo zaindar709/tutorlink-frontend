@@ -130,11 +130,17 @@ const persistSession = async (
   setCachedAuthToken(idToken);
   await saveAuthSession(session);
 
-  if (options?.suggestCompleteProfile && role === 'tutor') {
+  if (options?.suggestCompleteProfile) {
     const suggestionId =
       firebaseUid ||
       String(session.user.uid || session.user.id || session.user._id || '');
-    void markProfileSuggestionNeeded('tutor', suggestionId);
+    const normalizedRole = role === 'parent' ? 'student' : role;
+    void markProfileSuggestionNeeded(
+      normalizedRole === 'student' || normalizedRole === 'tutor'
+        ? normalizedRole
+        : 'student',
+      suggestionId
+    );
   }
 
   void import('../notifications/pushNotificationService')

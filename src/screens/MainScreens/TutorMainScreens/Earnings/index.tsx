@@ -1,700 +1,534 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  FlatList,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { GlassScreen, GlassCard } from '../../../../components/Glass';
+import LinearGradient from 'react-native-linear-gradient';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { IconButton } from 'react-native-paper';
+import { GlassScreen } from '../../../../components/Glass';
 import { GLASS } from '../../../../theme/glass';
 import useUi from '../../../../hooks/ui/useUi';
-import LinearGradient from 'react-native-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { useWallet } from '../../../../hooks/api/useWallet';
+import { WalletTransaction } from '../../../../types/api.types';
+import { navigateHomeStack } from '../../../../navigation/navigationRef';
 
-const stats = [
-  {
-    id: '1',
-    title: 'In\nEscrow',
-    amount: 'Rs. 8,200',
-    subtitle: 'From ongoing\nsessions',
-    icon: 'clock-outline',
-    bg: '#FFF7ED',
-    border: '#fcbd76',
-    iconBg: '#FB923C',
-    iconColor: '#FFFFFF',
-    titleColor: '#B45309',
-    amountColor: '#92400E',
-    subtitleColor: '#D97706',
-  },
-  {
-    id: '2',
-    title: 'This\nMonth',
-    amount: 'Rs.\n45,300',
-    subtitle: 'Total earnings',
-    icon: 'trending-up',
-    bg: '#ECFDF5',
-    border: '#54ffaf',
-    iconBg: '#10B981',
-    iconColor: '#FFFFFF',
-    titleColor: '#047857',
-    amountColor: '#065F46',
-    subtitleColor: '#10B981',
-  },
-];
+const formatRs = (value?: number | null) =>
+  `Rs. ${Math.max(0, Number(value) || 0).toLocaleString()}`;
 
-const chartData = [
-  { label: 'Week 1', value: 8000 },
-  { label: 'Week 2', value: 12500 },
-  { label: 'Week 3', value: 15500 },
-  { label: 'Week 4', value: 24500 },
-];
-const transactions = [
-  {
-    id: '1',
-    title: 'Session Completed',
-    name: 'Ahmed Raza',
-    amount: '+Rs. 2,000',
-    date: 'Today, 3:00 PM',
-    status: 'Completed',
-    icon: 'trending-up',
-    iconBg: '#ECFDF5',
-    iconColor: '#16A34A',
-    amountColor: '#16A34A',
-    statusBg: '#DCFCE7',
-    statusColor: '#15803D',
-    borderColor: '#BBF7D0',
-  },
-
-  {
-    id: '2',
-    title: 'Withdrawn to JazzCash',
-    name: '',
-    amount: '-Rs. 15,000',
-    date: 'Yesterday',
-    status: 'Processing',
-    icon: 'download',
-    iconBg: '#EFF6FF',
-    iconColor: '#2563EB',
-    amountColor: '#2563EB',
-    statusBg: '#DBEAFE',
-    statusColor: '#2563EB',
-    borderColor: '#BFDBFE',
-  },
-];
-
-const TransactionCard = ({ item, colors, resp }: any) => {
-  return (
-    <GlassCard style={styles(colors, resp).transactionCard}>
-      <View style={{ flexDirection: 'row' }}>
-        <View
-          style={[
-            styles(colors, resp).transactionIcon,
-            {
-              backgroundColor: item.iconBg,
-              borderWidth: 1,
-              borderColor: item.borderColor,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={item.icon}
-            size={18}
-            color={item.iconColor}
-          />
-        </View>
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles(colors, resp).transactionTitle}>
-            {item.title}
-          </Text>
-
-          {!!item.name && (
-            <Text style={styles(colors, resp).transactionName}>
-              {item.name}
-            </Text>
-          )}
-        </View>
-
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text
-            style={[
-              styles(colors, resp).transactionAmount,
-              { color: item.amountColor },
-            ]}
-          >
-            {item.amount}
-          </Text>
-
-          <Text style={styles(colors, resp).transactionDate}>{item.date}</Text>
-        </View>
-      </View>
-
-      <View
-        style={[
-          styles(colors, resp).statusBadge,
-          {
-            backgroundColor: item.statusBg,
-            borderColor: item.statusColor + '30',
-          },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={
-            item.status === 'Completed'
-              ? 'check-circle-outline'
-              : 'progress-clock'
-          }
-          size={14}
-          color={item.statusColor}
-        />
-
-        <Text
-          style={[styles(colors, resp).statusText, { color: item.statusColor }]}
-        >
-          {item.status}
-        </Text>
-      </View>
-    </GlassCard>
-  );
+const formatTxnDate = (iso?: string) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const today = new Date();
+  const sameDay =
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate();
+  if (sameDay) {
+    return `Today, ${d.toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    })}`;
+  }
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 };
 
-const HeaderCard = ({ colors, resp }: any) => {
-  const navigation = useNavigation<any>();
-  return (
-    <LinearGradient
-      colors={[...GLASS.buttonGradient]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles(colors, resp).headerCard}
-    >
-      {/* Existing Content */}
-
-      <View style={styles(colors, resp).topRow}>
-        <View>
-          <Text style={styles(colors, resp).balanceLabel}>
-            Available Balance
-          </Text>
-
-          <Text style={styles(colors, resp).balanceAmount}>Rs. 24,500</Text>
-
-          <Text style={styles(colors, resp).growthText}>
-            ↗ +18.2% this month
-          </Text>
-        </View>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles(colors, resp).iconButton}
-        >
-          <MaterialCommunityIcons name="wallet" size={22} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles(colors, resp).bottomRow}>
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate('HomeNavigator', {
-              screen: 'WithdrawMoneyScreen',
-            })
-          }
-          activeOpacity={0.8}
-          style={styles(colors, resp).withdrawBtn}
-        >
-          <MaterialCommunityIcons name="phone" size={16} color="#444343" />
-
-          <Text style={styles(colors, resp).withdrawText}>
-            Withdraw to JazzCash
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles(colors, resp).eyeBtn}
-        >
-          <MaterialCommunityIcons name="eye-outline" size={18} color="#fff" />
-        </TouchableOpacity>
-      </View>
-    </LinearGradient>
-  );
-};
-
-const StatCard = ({ item, colors, resp }: any) => {
-  return (
-    <View
-      style={[
-        styles(colors, resp).statCard,
-        {
-          backgroundColor: item.bg,
-          borderColor: item.border,
-        },
-      ]}
-    >
-      <View
-        style={[
-          styles(colors, resp).statIcon,
-          {
-            backgroundColor: item.iconBg,
-          },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={item.icon}
-          size={18}
-          color={item.iconColor}
-        />
-      </View>
-
-      <Text
-        style={[styles(colors, resp).statTitle, { color: item.titleColor }]}
-      >
-        {item.title}
-      </Text>
-
-      <Text
-        style={[styles(colors, resp).statAmount, { color: item.amountColor }]}
-      >
-        {item.amount}
-      </Text>
-
-      <Text
-        style={[
-          styles(colors, resp).statSubtitle,
-          { color: item.subtitleColor },
-        ]}
-      >
-        {item.subtitle}
-      </Text>
-    </View>
-  );
-};
-
-const EarningsChart = ({ colors, resp }: any) => {
-  const maxValue = Math.max(...chartData.map(i => i.value));
-  const navigation = useNavigation<any>();
-
-  return (
-    <View style={styles(colors, resp).chartContainer}>
-      <View style={styles(colors, resp).chartHeader}>
-        <Text style={styles(colors, resp).chartTitle}>Earnings Growth</Text>
-        <TouchableOpacity
-          onPress={() =>
-            navigation.navigate('HomeNavigator', {
-              screen: 'EarningAnalyticsScreen',
-            })
-          }
-          activeOpacity={0.7}
-        >
-          <Text style={styles(colors, resp).analyticsText}>
-            View Analytics ↗
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles(colors, resp).chartArea}>
-        {/* Y Axis */}
-        <View style={styles(colors, resp).yAxis}>
-          <Text style={styles(colors, resp).axisLabel}>26k</Text>
-          <Text style={styles(colors, resp).axisLabel}>19.5k</Text>
-          <Text style={styles(colors, resp).axisLabel}>13k</Text>
-          <Text style={styles(colors, resp).axisLabel}>6.5k</Text>
-          <Text style={styles(colors, resp).axisLabel}>0k</Text>
-        </View>
-
-        {/* Graph */}
-        <View style={styles(colors, resp).graphWrapper}>
-          {/* Grid */}
-          {[1, 2, 3, 4].map(item => (
-            <View key={item} style={styles(colors, resp).horizontalLine} />
-          ))}
-
-          {/* Graph Line */}
-          <View style={styles(colors, resp).lineContainer}>
-            {chartData.map((item, index) => {
-              const height = (item.value / maxValue) * 140;
-
-              return (
-                <View
-                  key={item.label}
-                  style={styles(colors, resp).pointWrapper}
-                >
-                  <View
-                    style={[
-                      styles(colors, resp).lineBar,
-                      {
-                        height,
-                      },
-                    ]}
-                  />
-
-                  <View style={styles(colors, resp).dot} />
-
-                  <Text style={styles(colors, resp).weekLabel}>
-                    {item.label}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-    </View>
-  );
+const isCredit = (txn: WalletTransaction) => {
+  const title = String(txn.title || '').toLowerCase();
+  if (title.includes('withdraw') || title.includes('payout')) return false;
+  if (Number(txn.amount) < 0) return false;
+  return true;
 };
 
 export default function TutorEarningsScreen() {
-  const { colors, resp } = useUi();
+  const { resp } = useUi();
   const navigation = useNavigation<any>();
+  const styles = useMemo(() => createStyles(resp), [resp]);
+  const { balance, transactions, loading, error, refresh } = useWallet();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh])
+  );
+
+  const available = Number(balance?.totalBalance) || 0;
+  const escrow = Number(balance?.escrowBalance) || 0;
+  const recent = transactions.slice(0, 6);
 
   return (
-    <GlassScreen scroll={false}>
+    <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
+      <View style={styles.header}>
+        <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Earnings</Text>
+          <Text style={styles.headerSub}>Balance, escrow & withdrawals</Text>
+        </View>
+        <View style={{ width: 48 }} />
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles(colors, resp).content}
-      >
-        <View style={styles(colors, resp).headerText}>
-          <Text style={styles(colors, resp).screenTitle}>Earnings</Text>
-          <Text style={styles(colors, resp).screenSubtitle}>
-            Track your Incomes and withdrawals
-          </Text>
-        </View>
-        <HeaderCard colors={colors} resp={resp} />
-
-        <View style={styles(colors, resp).statsRow}>
-          {stats.map(item => (
-            <StatCard key={item.id} item={item} colors={colors} resp={resp} />
-          ))}
-        </View>
-
-        <EarningsChart colors={colors} resp={resp} />
-        <View style={{ marginTop: 24 }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginBottom: 16,
-            }}
-          >
-            <Text style={styles(colors, resp).sectionHeading}>
-              Recent Transactions
-            </Text>
-
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('HomeNavigator', {
-                  screen: 'TransactionHistoryScreen',
-                })
-              }
-            >
-              <Text style={styles(colors, resp).viewAllLink}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={transactions}
-            keyExtractor={item => item.id}
-            scrollEnabled={false}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TransactionCard item={item} colors={colors} resp={resp} />
-            )}
-            ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading && !!balance}
+            onRefresh={() => void refresh()}
+            tintColor={GLASS.primary}
           />
-        </View>
+        }
+      >
+        {loading && !balance ? (
+          <ActivityIndicator
+            color={GLASS.primary}
+            style={{ marginTop: 40 }}
+          />
+        ) : (
+          <>
+            <LinearGradient
+              colors={[...GLASS.buttonGradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroCard}
+            >
+              <View style={styles.heroOrb} />
+              <View style={styles.heroTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.balanceLabel}>Available balance</Text>
+                  <Text style={styles.balanceAmount}>
+                    {balance?.displayTotalBalance || formatRs(available)}
+                  </Text>
+                  <Text style={styles.escrowLine}>
+                    Escrow held ·{' '}
+                    {balance?.displayEscrowBalance || formatRs(escrow)}
+                  </Text>
+                </View>
+                <View style={styles.walletIcon}>
+                  <MaterialCommunityIcons
+                    name="wallet-outline"
+                    size={24}
+                    color="#FDE68A"
+                  />
+                </View>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.88}
+                style={styles.withdrawBtn}
+                onPress={() => navigateHomeStack('WithdrawMoneyScreen')}
+              >
+                <MaterialCommunityIcons
+                  name="cash-fast"
+                  size={18}
+                  color={GLASS.primary}
+                />
+                <Text style={styles.withdrawText}>Withdraw</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={() => void refresh()}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, styles.statEscrow]}>
+                <View style={[styles.statIcon, { backgroundColor: '#FFF7ED' }]}>
+                  <MaterialCommunityIcons
+                    name="shield-check-outline"
+                    size={18}
+                    color={GLASS.warning}
+                  />
+                </View>
+                <Text style={styles.statLabel}>In escrow</Text>
+                <Text style={styles.statValue} numberOfLines={1}>
+                  {formatRs(escrow)}
+                </Text>
+                <Text style={styles.statHint}>Ongoing sessions</Text>
+              </View>
+
+              <View style={[styles.statCard, styles.statAvailable]}>
+                <View style={[styles.statIcon, { backgroundColor: '#ECFDF3' }]}>
+                  <MaterialCommunityIcons
+                    name="trending-up"
+                    size={18}
+                    color={GLASS.success}
+                  />
+                </View>
+                <Text style={styles.statLabel}>Ready to withdraw</Text>
+                <Text style={styles.statValue} numberOfLines={1}>
+                  {formatRs(available)}
+                </Text>
+                <Text style={styles.statHint}>Released after class</Text>
+              </View>
+            </View>
+
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.actionChip}
+                activeOpacity={0.85}
+                onPress={() => navigateHomeStack('EarningAnalyticsScreen')}
+              >
+                <MaterialCommunityIcons
+                  name="chart-line"
+                  size={18}
+                  color={GLASS.primary}
+                />
+                <Text style={styles.actionChipText}>Analytics</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.actionChip}
+                activeOpacity={0.85}
+                onPress={() => navigateHomeStack('TransactionHistoryScreen')}
+              >
+                <MaterialCommunityIcons
+                  name="history"
+                  size={18}
+                  color={GLASS.primary}
+                />
+                <Text style={styles.actionChipText}>History</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent transactions</Text>
+              <TouchableOpacity
+                onPress={() => navigateHomeStack('TransactionHistoryScreen')}
+              >
+                <Text style={styles.viewAll}>View all</Text>
+              </TouchableOpacity>
+            </View>
+
+            {recent.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <MaterialCommunityIcons
+                  name="receipt-text-outline"
+                  size={28}
+                  color={GLASS.textMuted}
+                />
+                <Text style={styles.emptyTitle}>No transactions yet</Text>
+                <Text style={styles.emptySub}>
+                  Completed sessions and withdrawals will show up here.
+                </Text>
+              </View>
+            ) : (
+              recent.map(txn => {
+                const credit = isCredit(txn);
+                const amount = Math.abs(Number(txn.amount) || 0);
+                return (
+                  <View key={txn._id || txn.transactionId} style={styles.txnRow}>
+                    <View
+                      style={[
+                        styles.txnIcon,
+                        {
+                          backgroundColor: credit ? '#ECFDF3' : '#EEF2FF',
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons
+                        name={credit ? 'trending-up' : 'cash-minus'}
+                        size={18}
+                        color={credit ? GLASS.success : GLASS.primary}
+                      />
+                    </View>
+                    <View style={styles.txnBody}>
+                      <Text style={styles.txnTitle} numberOfLines={1}>
+                        {txn.title || (credit ? 'Session payout' : 'Withdrawal')}
+                      </Text>
+                      <Text style={styles.txnMeta} numberOfLines={1}>
+                        {txn.recipientName ||
+                          txn.phoneNumber ||
+                          formatTxnDate(txn.createdAt)}
+                      </Text>
+                    </View>
+                    <View style={styles.txnRight}>
+                      <Text
+                        style={[
+                          styles.txnAmount,
+                          { color: credit ? GLASS.success : GLASS.primaryDeep },
+                        ]}
+                      >
+                        {credit ? '+' : '-'}
+                        {formatRs(amount)}
+                      </Text>
+                      <Text style={styles.txnDate}>
+                        {formatTxnDate(txn.createdAt)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </>
+        )}
       </ScrollView>
     </GlassScreen>
   );
 }
 
-const styles = (colors: any, resp: any) =>
+const createStyles = (resp: {
+  dx: (n: number) => number;
+  dy: (n: number) => number;
+}) =>
   StyleSheet.create({
-    content: {
-      padding: resp.dx(GLASS.space.lg),
-      paddingBottom: resp.dy(30),
-    },
-    headerText: {
-      marginBottom: resp.dy(20),
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      // Match GlassScreen bg — no nested white header strip
+      backgroundColor: 'transparent',
       paddingHorizontal: resp.dx(4),
+      paddingBottom: resp.dy(4),
     },
-    screenTitle: {
+    headerCenter: { flex: 1, alignItems: 'center' },
+    headerTitle: {
       color: GLASS.textPrimary,
-      fontSize: 24,
-      fontWeight: '600',
+      fontSize: 17,
+      fontWeight: '800',
     },
-    screenSubtitle: {
+    headerSub: {
       color: GLASS.textSecondary,
-    },
-    sectionHeading: {
-      color: GLASS.textPrimary,
-      fontSize: 18,
+      fontSize: 12,
       fontWeight: '600',
+      marginTop: 2,
     },
-    viewAllLink: {
-      color: GLASS.primary,
-      fontSize: 14,
-      fontWeight: '500',
+    content: {
+      paddingHorizontal: resp.dx(20),
+      paddingBottom: resp.dy(40),
+      paddingTop: resp.dy(8),
     },
-
-    headerCard: {
-      borderRadius: resp.dx(GLASS.radius.xxl),
+    heroCard: {
+      borderRadius: GLASS.radius.xxl,
       padding: resp.dy(18),
+      overflow: 'hidden',
       ...GLASS.shadow.medium,
     },
-
-    topRow: {
+    heroOrb: {
+      position: 'absolute',
+      width: 140,
+      height: 140,
+      borderRadius: 70,
+      backgroundColor: 'rgba(255,255,255,0.1)',
+      top: -40,
+      right: -20,
+    },
+    heroTop: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'flex-start',
+      gap: 12,
     },
-
     balanceLabel: {
-      color: '#E5E7EB',
-      fontSize: resp.dx(12),
-      fontWeight: '500',
-      marginBottom: resp.dy(8),
+      color: 'rgba(255,255,255,0.78)',
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 6,
     },
-
     balanceAmount: {
       color: '#fff',
-      fontSize: resp.dx(38),
+      fontSize: 34,
       fontWeight: '800',
     },
-
-    growthText: {
+    escrowLine: {
       color: '#BBF7D0',
-      fontSize: resp.dx(13),
+      fontSize: 13,
       fontWeight: '600',
-      marginTop: resp.dy(6),
+      marginTop: 6,
     },
-
-    iconButton: {
-      width: resp.dx(42),
-      height: resp.dy(42),
-      borderRadius: resp.dx(14),
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.15)',
-    },
-
-    bottomRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginTop: resp.dy(22),
-    },
-
-    withdrawBtn: {
-      flex: 1,
-      height: resp.dy(48),
-      backgroundColor: '#fff',
-      borderRadius: resp.dx(14),
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-
-    withdrawText: {
-      color: '#111827',
-      fontSize: resp.dx(14),
-      fontWeight: '700',
-      marginLeft: resp.dx(8),
-    },
-
-    eyeBtn: {
-      width: resp.dx(48),
-      height: resp.dy(48),
-      borderRadius: resp.dx(14),
-      backgroundColor: 'rgba(255,255,255,0.12)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginLeft: resp.dx(12),
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.12)',
-    },
-
-    // STATS
-
-    statsRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginTop: resp.dy(18),
-    },
-
-    statCard: {
-      width: '48%',
-      borderRadius: resp.dx(GLASS.radius.lg),
-      padding: resp.dy(16),
-      borderWidth: 1,
-      borderColor: GLASS.cardBorder,
-      ...GLASS.shadow.soft,
-    },
-    statIcon: {
-      width: resp.dx(36),
-      height: resp.dy(36),
-      borderRadius: resp.dx(12),
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: resp.dy(14),
-    },
-    statTitle: {
-      fontSize: resp.dx(18),
-      fontWeight: '700',
-      lineHeight: resp.dy(24),
-    },
-    statAmount: {
-      fontSize: resp.dx(20),
-      fontWeight: '800',
-      marginTop: resp.dy(18),
-      lineHeight: resp.dy(28),
-    },
-    statSubtitle: {
-      fontSize: resp.dx(12),
-      fontWeight: '600',
-      marginTop: resp.dy(14),
-      lineHeight: resp.dy(18),
-    },
-    // CHART
-    chartContainer: {
-      marginTop: resp.dy(20),
-      backgroundColor: GLASS.cardBg,
-      borderRadius: resp.dx(GLASS.radius.xl),
-      padding: resp.dy(16),
-      ...GLASS.shadow.soft,
-      borderWidth: 1,
-      borderColor: GLASS.cardBorder,
-    },
-
-    chartHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: resp.dy(24),
-    },
-
-    chartTitle: {
-      color: GLASS.textPrimary,
-      fontWeight: '700',
-    },
-
-    analyticsText: {
-      color: GLASS.primary,
-      fontWeight: '600',
-    },
-
-    chartArea: {
-      flexDirection: 'row',
-      height: resp.dy(180),
-    },
-
-    yAxis: {
-      justifyContent: 'space-between',
-      marginRight: resp.dx(10),
-    },
-
-    axisLabel: {
-      color: GLASS.textMuted,
-      fontSize: resp.dx(11),
-    },
-
-    graphWrapper: {
-      flex: 1,
-      position: 'relative',
-    },
-
-    horizontalLine: {
-      borderTopWidth: 1,
-      borderColor: 'rgba(34, 34, 34, 0.05)05)',
-      flex: 1,
-    },
-
-    lineContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      top: 0,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-end',
-      paddingHorizontal: resp.dx(6),
-    },
-
-    pointWrapper: {
-      alignItems: 'center',
-      justifyContent: 'flex-end',
-      flex: 1,
-    },
-
-    lineBar: {
-      width: 3,
-      backgroundColor: GLASS.primary,
-      borderRadius: 10,
-    },
-
-    dot: {
-      width: resp.dx(10),
-      height: resp.dx(10),
-      borderRadius: resp.dx(5),
-      backgroundColor: GLASS.primaryDeep,
-      marginTop: -2,
-      marginBottom: resp.dy(10),
-    },
-
-    weekLabel: {
-      color: GLASS.textMuted,
-      fontSize: resp.dx(11),
-      marginTop: resp.dy(4),
-    },
-    transactionCard: {
-      marginBottom: 14,
-    },
-
-    transactionIcon: {
+    walletIcon: {
       width: 44,
       height: 44,
       borderRadius: 14,
-      justifyContent: 'center',
+      backgroundColor: 'rgba(255,255,255,0.14)',
       alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.18)',
     },
-
-    transactionTitle: {
-      color: GLASS.textPrimary,
-      fontSize: 15,
-      fontWeight: '700',
+    withdrawBtn: {
+      marginTop: 18,
+      height: 48,
+      borderRadius: 14,
+      backgroundColor: 'rgba(255,255,255,0.94)',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
     },
-
-    transactionName: {
-      color: GLASS.textSecondary,
-      fontSize: 12,
-      marginTop: 4,
-    },
-
-    transactionAmount: {
+    withdrawText: {
+      color: GLASS.primary,
       fontSize: 15,
       fontWeight: '800',
     },
-
-    transactionDate: {
-      color: GLASS.textMuted,
-      fontSize: 11,
-      marginTop: 6,
-    },
-
-    statusBadge: {
-      alignSelf: 'flex-start',
-      marginTop: 12,
-      borderRadius: 8,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+    errorBanner: {
+      marginTop: 14,
+      borderRadius: GLASS.radius.lg,
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.25)',
+      backgroundColor: 'rgba(254,226,226,0.55)',
+      padding: 12,
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    errorText: {
+      flex: 1,
+      color: GLASS.error,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    retryText: { color: GLASS.primary, fontWeight: '800', fontSize: 13 },
+    statsRow: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 16,
+    },
+    statCard: {
+      flex: 1,
+      borderRadius: GLASS.radius.lg,
+      padding: 14,
       borderWidth: 1,
     },
-
-    statusText: {
+    statEscrow: {
+      backgroundColor: 'rgba(255,247,237,0.7)',
+      borderColor: 'rgba(251,146,60,0.28)',
+    },
+    statAvailable: {
+      backgroundColor: 'rgba(236,253,245,0.7)',
+      borderColor: 'rgba(34,197,94,0.25)',
+    },
+    statIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 10,
+    },
+    statLabel: {
+      color: GLASS.textSecondary,
       fontSize: 12,
       fontWeight: '700',
-      marginLeft: 5,
+    },
+    statValue: {
+      color: GLASS.textPrimary,
+      fontSize: 18,
+      fontWeight: '800',
+      marginTop: 6,
+    },
+    statHint: {
+      color: GLASS.textMuted,
+      fontSize: 11,
+      fontWeight: '600',
+      marginTop: 6,
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+    },
+    actionChip: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      height: 44,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      backgroundColor: 'rgba(237,233,254,0.45)',
+    },
+    actionChipText: {
+      color: GLASS.primary,
+      fontWeight: '800',
+      fontSize: 13,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 22,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      color: GLASS.textPrimary,
+      fontSize: 17,
+      fontWeight: '800',
+    },
+    viewAll: {
+      color: GLASS.primary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    emptyCard: {
+      alignItems: 'center',
+      paddingVertical: 28,
+      paddingHorizontal: 16,
+      borderRadius: GLASS.radius.xl,
+      borderWidth: 1,
+      borderColor: GLASS.cardBorder,
+      backgroundColor: 'rgba(237,233,254,0.28)',
+    },
+    emptyTitle: {
+      marginTop: 10,
+      color: GLASS.textPrimary,
+      fontWeight: '800',
+      fontSize: 15,
+    },
+    emptySub: {
+      marginTop: 6,
+      color: GLASS.textMuted,
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    txnRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(117,72,245,0.08)',
+      gap: 12,
+    },
+    txnIcon: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    txnBody: { flex: 1, minWidth: 0 },
+    txnTitle: {
+      color: GLASS.textPrimary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    txnMeta: {
+      color: GLASS.textSecondary,
+      fontSize: 12,
+      marginTop: 3,
+    },
+    txnRight: { alignItems: 'flex-end' },
+    txnAmount: { fontSize: 14, fontWeight: '800' },
+    txnDate: {
+      color: GLASS.textMuted,
+      fontSize: 11,
+      marginTop: 4,
+      fontWeight: '600',
     },
   });

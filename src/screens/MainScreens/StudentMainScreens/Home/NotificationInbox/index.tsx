@@ -109,6 +109,8 @@ const StudentNotificationInboxScreen = ({ navigation }: any) => {
       title: item.title,
       body: item.body,
       bookingId: item.data?.bookingId,
+      summaryId: item.data?.summaryId,
+      sessionId: item.data?.sessionId,
       screen: item.data?.screen,
     });
   };

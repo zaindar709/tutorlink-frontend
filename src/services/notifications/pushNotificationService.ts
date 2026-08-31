@@ -7,6 +7,11 @@ import {
 import messaging, {
   FirebaseMessagingTypes,
 } from '@react-native-firebase/messaging';
+import notifee, {
+  AndroidImportance,
+  AndroidVisibility,
+  EventType,
+} from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   registerDeviceTokenAPI,
@@ -16,6 +21,8 @@ import { navigationRef } from '../../navigation/navigationRef';
 import { getAuthSession } from '../storage';
 import {
   AppNotification,
+  NOTIFICATION_CHANNEL_ID,
+  NOTIFICATION_CHANNEL_NAME,
   PushNotificationData,
 } from '../../types/notification.types';
 import { upsertNotification } from './notificationInboxStore';
@@ -23,10 +30,12 @@ import { getUserId } from '../../utils/api/userId';
 
 const LOG = '[Push]';
 const TOKEN_KEY = '@TutorLink:fcmDeviceToken';
+const SMALL_ICON = 'ic_notification';
 
 /** Avoid racing permission dialogs with Alert/navigation after login. */
 let registerTimer: ReturnType<typeof setTimeout> | null = null;
 let registerInFlight: Promise<string | null> | null = null;
+let channelReady = false;
 
 export type { PushNotificationData };
 
@@ -34,6 +43,63 @@ const getStoredToken = async () => AsyncStorage.getItem(TOKEN_KEY);
 const storeToken = async (token: string) =>
   AsyncStorage.setItem(TOKEN_KEY, token);
 const clearStoredToken = async () => AsyncStorage.removeItem(TOKEN_KEY);
+
+const toStringData = (
+  data?: Record<string, unknown> | null
+): Record<string, string> => {
+  if (!data) return {};
+  return Object.fromEntries(
+    Object.entries(data).map(([k, v]) => [k, v == null ? '' : String(v)])
+  );
+};
+
+/** Android 8+ channel — HIGH importance + default sound (lock screen / heads-up). */
+export const ensureAndroidNotificationChannel = async (): Promise<string> => {
+  if (Platform.OS !== 'android') return NOTIFICATION_CHANNEL_ID;
+  if (channelReady) return NOTIFICATION_CHANNEL_ID;
+
+  await notifee.createChannel({
+    id: NOTIFICATION_CHANNEL_ID,
+    name: NOTIFICATION_CHANNEL_NAME,
+    importance: AndroidImportance.HIGH,
+    sound: 'default',
+    vibration: true,
+    visibility: AndroidVisibility.PUBLIC,
+  });
+  channelReady = true;
+  return NOTIFICATION_CHANNEL_ID;
+};
+
+/**
+ * Display a real Android system notification via Notifee.
+ * Used for foreground FCM and data-only background messages (never duplicate
+ * when FCM already showed a notification+data tray item).
+ */
+export const displaySystemNotification = async (
+  notification: AppNotification
+): Promise<void> => {
+  try {
+    await ensureAndroidNotificationChannel();
+    const data = toStringData(notification.data);
+
+    await notifee.displayNotification({
+      id: notification.id,
+      title: notification.title || 'TutorLink',
+      body: notification.body || 'You have a new notification',
+      data,
+      android: {
+        channelId: NOTIFICATION_CHANNEL_ID,
+        importance: AndroidImportance.HIGH,
+        sound: 'default',
+        pressAction: { id: 'default' },
+        smallIcon: SMALL_ICON,
+        visibility: AndroidVisibility.PUBLIC,
+      },
+    });
+  } catch (error) {
+    console.warn(LOG, 'displaySystemNotification failed', error);
+  }
+};
 
 export const parseRemoteToAppNotification = (
   remote: {
@@ -79,10 +145,17 @@ export const parseRemoteToAppNotification = (
   };
 };
 
-/** Persist to Notification Center only (Notifee skipped for now). */
+/** Persist to Notification Center; optionally show Android system tray (Notifee). */
 export const presentNotification = async (
-  notification: AppNotification
-): Promise<AppNotification> => upsertNotification(notification);
+  notification: AppNotification,
+  options?: { showSystemTray?: boolean }
+): Promise<AppNotification> => {
+  const saved = await upsertNotification(notification);
+  if (options?.showSystemTray) {
+    await displaySystemNotification(saved);
+  }
+  return saved;
+};
 
 export const requestPushPermission = async (): Promise<boolean> => {
   try {
@@ -246,7 +319,10 @@ export const handleNotificationNavigation = (
   try {
     if (
       screen === 'ChatScreen' ||
-      ((type === 'chat' || type === 'message') && chatId)
+      ((type === 'chat' ||
+        type === 'message' ||
+        type === 'new_message') &&
+        chatId)
     ) {
       navigationRef.navigate('HomeNavigator' as never, {
         screen: 'ChatScreen',
@@ -275,7 +351,8 @@ export const handleNotificationNavigation = (
 
     if (
       type === 'booking_request' ||
-      screen === 'Request'
+      screen === 'Request' ||
+      screen === 'TutorRequests'
     ) {
       navigationRef.navigate('MyTabs' as never, {
         screen: 'Request',
@@ -323,6 +400,43 @@ export const handleNotificationNavigation = (
       return;
     }
 
+    const summaryId = data.summaryId;
+    // Backend contract uses ai_summary*; also accept common aliases.
+    const isTutorSummaryNotif =
+      type === 'ai_summary_review' ||
+      type === 'ai_summary_failed' ||
+      screen === 'TutorSummaryReviewScreen';
+    const isStudentSummaryNotif =
+      type === 'ai_summary' ||
+      type === 'summary_ready' ||
+      screen === 'StudentSummaryDetailScreen' ||
+      screen === 'StudentSummariesScreen';
+
+    if (isTutorSummaryNotif) {
+      navigationRef.navigate('HomeNavigator' as never, {
+        screen: 'TutorSummaryReviewScreen',
+        params: {
+          summaryId,
+          sessionId: data.sessionId,
+        },
+      } as never);
+      return;
+    }
+
+    if (isStudentSummaryNotif) {
+      if (summaryId) {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'StudentSummaryDetailScreen',
+          params: { summaryId },
+        } as never);
+      } else {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'StudentSummariesScreen',
+        } as never);
+      }
+      return;
+    }
+
     if (screen) {
       if (
         [
@@ -348,6 +462,7 @@ export const handleNotificationNavigation = (
     switch (type) {
       case 'chat':
       case 'message':
+      case 'new_message':
         navigationRef.navigate('MyTabs' as never, {
           screen: 'Messages',
         } as never);
@@ -391,7 +506,8 @@ export const handleNotificationNavigation = (
 };
 
 const ingestRemoteMessage = async (
-  remoteMessage: FirebaseMessagingTypes.RemoteMessage
+  remoteMessage: FirebaseMessagingTypes.RemoteMessage,
+  options?: { showSystemTray?: boolean }
 ) => {
   const session = await getAuthSession();
   const recipientUserId = getUserId(session?.user as any);
@@ -400,11 +516,19 @@ const ingestRemoteMessage = async (
     'push',
     recipientUserId
   );
-  await presentNotification(appNotification);
+  await presentNotification(appNotification, options);
   return appNotification;
 };
 
-/** Local inbox item for QA (no system tray — Notifee skipped). */
+/** True when FCM included a visible `notification` block (OS will tray it in bg/quit). */
+const hasFcmNotificationPayload = (
+  remoteMessage: FirebaseMessagingTypes.RemoteMessage
+): boolean => {
+  const n = remoteMessage.notification;
+  return Boolean(n && (n.title || n.body));
+};
+
+/** Local QA: inbox + real system tray notification. */
 export const sendTestSystemNotification = async () => {
   const now = new Date().toISOString();
   const session = await getAuthSession();
@@ -431,33 +555,50 @@ export const sendTestSystemNotification = async () => {
   ];
   const sample = samples[Math.floor(Date.now() / 1000) % samples.length];
 
-  return presentNotification({
-    id: `test-${Date.now()}`,
-    title: sample.title,
-    body: sample.body,
-    type: sample.type,
-    createdAt: now,
-    read: false,
-    recipientUserId: recipientUserId ? String(recipientUserId) : undefined,
-    data: {
-      ...sample.data,
+  return presentNotification(
+    {
+      id: `test-${Date.now()}`,
+      title: sample.title,
+      body: sample.body,
+      type: sample.type,
       createdAt: now,
-      recipientUserId: recipientUserId ? String(recipientUserId) : '',
+      read: false,
+      recipientUserId: recipientUserId ? String(recipientUserId) : undefined,
+      data: {
+        ...sample.data,
+        createdAt: now,
+        recipientUserId: recipientUserId ? String(recipientUserId) : '',
+      },
+      source: 'test',
     },
-    source: 'test',
-  });
+    { showSystemTray: true }
+  );
 };
 
 let listenersReady = false;
+
+const handleNotifeePress = (data?: Record<string, string> | null) => {
+  if (!data) return;
+  void upsertNotification({
+    ...parseRemoteToAppNotification(
+      { data, notification: { title: data.title, body: data.body } },
+      'push'
+    ),
+    read: true,
+  });
+  handleNotificationNavigation(data as PushNotificationData);
+};
 
 export const initPushListeners = () => {
   if (listenersReady) return () => undefined;
   listenersReady = true;
 
-  // Foreground FCM → Notification Center only (no Notifee tray for now)
+  void ensureAndroidNotificationChannel();
+
+  // Foreground FCM → inbox + Notifee system tray (FCM does not auto-display when open)
   const unsubOnMessage = messaging().onMessage(async remoteMessage => {
     console.log(LOG, 'foreground message', remoteMessage.messageId);
-    await ingestRemoteMessage(remoteMessage);
+    await ingestRemoteMessage(remoteMessage, { showSystemTray: true });
   });
 
   const unsubOpened = messaging().onNotificationOpenedApp(remoteMessage => {
@@ -488,6 +629,13 @@ export const initPushListeners = () => {
     }
   });
 
+  // Notifee press while app is foreground / backgrounded-but-alive
+  const unsubNotifeeFg = notifee.onForegroundEvent(({ type, detail }) => {
+    if (type !== EventType.PRESS) return;
+    console.log(LOG, 'opened from Notifee (foreground event)');
+    handleNotifeePress(detail.notification?.data as Record<string, string>);
+  });
+
   void messaging()
     .getInitialNotification()
     .then(remoteMessage => {
@@ -502,25 +650,64 @@ export const initPushListeners = () => {
       }, 700);
     });
 
+  // Cold start from a Notifee-displayed notification (foreground / data-only path)
+  void notifee.getInitialNotification().then(initial => {
+    if (!initial?.notification?.data) return;
+    console.log(LOG, 'opened from quit (Notifee)');
+    setTimeout(() => {
+      handleNotifeePress(
+        initial.notification?.data as Record<string, string>
+      );
+    }, 700);
+  });
+
   return () => {
     unsubOnMessage();
     unsubOpened();
     unsubTokenRefresh();
+    unsubNotifeeFg();
     listenersReady = false;
   };
 };
 
 /**
  * Must be registered in index.js before AppRegistry.
- * Background FCM: OS shows notification+data; we persist data-only / all to inbox when JS runs.
+ * Background FCM: if payload has `notification`, OS shows the tray — only inbox here.
+ * Data-only: show one Notifee system notification (no FCM duplicate).
  */
 export const registerBackgroundMessageHandler = () => {
   messaging().setBackgroundMessageHandler(async remoteMessage => {
     console.log(LOG, 'background message', remoteMessage.messageId);
     try {
-      await ingestRemoteMessage(remoteMessage);
+      const osWillDisplay = hasFcmNotificationPayload(remoteMessage);
+      await ingestRemoteMessage(remoteMessage, {
+        // Avoid FCM tray + Notifee tray for the same message.
+        showSystemTray: !osWillDisplay,
+      });
     } catch (error) {
       console.warn(LOG, 'background ingest failed', error);
+    }
+  });
+};
+
+/**
+ * Notifee background press — register once from index.js (before AppRegistry).
+ */
+export const registerNotifeeBackgroundEvents = () => {
+  notifee.onBackgroundEvent(async ({ type, detail }) => {
+    if (type !== EventType.PRESS) return;
+    console.log(LOG, 'Notifee background press');
+    const data = detail.notification?.data as Record<string, string> | undefined;
+    if (!data) return;
+    // Navigation runs when JS UI is up; persist read state here.
+    try {
+      const parsed = parseRemoteToAppNotification(
+        { data, notification: { title: data.title, body: data.body } },
+        'push'
+      );
+      await upsertNotification({ ...parsed, read: true });
+    } catch (error) {
+      console.warn(LOG, 'Notifee background press ingest failed', error);
     }
   });
 };

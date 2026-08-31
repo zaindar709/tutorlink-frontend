@@ -73,9 +73,19 @@
 -keep class com.imagepicker.** { *; }
 -keep class com.reactnativedocumentpicker.** { *; }
 
-# Socket / WebRTC leftovers (if still linked)
+# Notifee (Android system notifications)
+-keep class io.invertase.notifee.** { *; }
+-dontwarn io.invertase.notifee.**
+
+# react-native-webrtc (required for classroom — keep native module + org.webrtc)
+-keep class com.oney.WebRTCModule.** { *; }
+-keep class org.webrtc.** { *; }
 -dontwarn org.webrtc.**
--dontwarn com.oney.webrtc.**
+-dontwarn com.oney.WebRTCModule.**
+
+# react-native-incall-manager (speaker / proximity during calls)
+-keep class com.zxcpoiu.incallmanager.** { *; }
+-dontwarn com.zxcpoiu.incallmanager.**
 
 # Kotlin
 -dontwarn kotlin.**

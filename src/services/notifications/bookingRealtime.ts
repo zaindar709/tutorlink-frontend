@@ -39,7 +39,7 @@ const onBookingUpdated = (payload: BookingUpdatedPayload) => {
   invalidateStudentTutorRelationsCache();
 
   if (bookingId) {
-    void store.dispatch(fetchBookingByIdThunk(bookingId));
+    void store.dispatch(fetchBookingByIdThunk({ id: bookingId, force: true }));
   }
 };
 

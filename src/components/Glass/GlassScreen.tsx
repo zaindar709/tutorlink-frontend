@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   ViewStyle,
   StyleProp,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -27,6 +29,8 @@ const GlassScreen = ({
   contentStyle,
   edges = ['top', 'bottom'],
 }: Props) => {
+  const scrollRef = useRef<ScrollView | null>(null);
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
@@ -39,15 +43,24 @@ const GlassScreen = ({
 
       <SafeAreaView style={styles.safe} edges={edges}>
         {scroll ? (
-          <ScrollView
-            contentContainerStyle={[styles.scroll, contentStyle]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
           >
-            <Animated.View entering={FadeInDown.duration(360)}>
-              {children}
-            </Animated.View>
-          </ScrollView>
+            <ScrollView
+              ref={scrollRef}
+              contentContainerStyle={[styles.scroll, contentStyle]}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+              contentInsetAdjustmentBehavior="automatic"
+            >
+              <Animated.View entering={FadeInDown.duration(360)}>
+                {children}
+              </Animated.View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         ) : (
           <Animated.View
             entering={FadeInDown.duration(360)}
