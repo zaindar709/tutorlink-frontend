@@ -192,6 +192,8 @@ const styles = StyleSheet.create({
   },
   ctaBlock: {
     marginTop: 20,
+    width: '100%',
+    flexGrow: 0,
   },
 });
 

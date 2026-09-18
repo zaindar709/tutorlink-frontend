@@ -91,7 +91,8 @@ export default function NotificationPreferencesPage({
         <div className="flex items-start gap-3">
           <Mail className="mt-0.5 h-5 w-5 text-tl-primary" />
           <p className="text-sm text-tl-text-muted">
-            Notification preferences are saved locally. Backend push and email delivery will connect when parent APIs are ready.
+            Notification preferences are saved to your parent account and used
+            for email, SMS, and in-app alerts.
           </p>
         </div>
       </GlassCard>

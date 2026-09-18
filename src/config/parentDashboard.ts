@@ -51,33 +51,49 @@ export const openParentDashboard = async (opts?: {
   }
 };
 
-/** Deep link so parent web can show this student's name after entering the code. */
+/** Deep link so parent web can open this student's dashboard after the code. */
 export const buildParentLinkShareUrl = (opts: {
   code: string;
   studentName: string;
+  studentId?: string;
 }): string => {
   const url = new URL(PARENT_DASHBOARD_URL);
   // Keep packed codes intact (e.g. TL7K2M~Afifa) — do not uppercase the name part
   url.searchParams.set('code', opts.code.trim());
   url.searchParams.set('student', opts.studentName.trim());
+  if (opts.studentId?.trim()) {
+    url.searchParams.set('studentId', opts.studentId.trim());
+  }
   return url.toString();
+};
+
+/** Unused codes last 7 days; after a parent opens one it stays until regenerate. */
+export const unusedCodeExpiryHint = (expiresInMinutes?: number) => {
+  const days =
+    expiresInMinutes && expiresInMinutes >= 1440
+      ? Math.round(expiresInMinutes / 1440)
+      : 7;
+  return `Unused codes last ${days} day${days === 1 ? '' : 's'}. After a parent opens it, it stays valid until you generate a new one.`;
 };
 
 export const parentDashboardShareHint = (opts?: {
   code?: string;
   studentName?: string;
+  studentId?: string;
 }) => {
   const link =
     opts?.code && opts?.studentName
       ? buildParentLinkShareUrl({
           code: opts.code,
           studentName: opts.studentName,
+          studentId: opts.studentId,
         })
       : PARENT_DASHBOARD_URL;
   return [
     'Open the TutorLink Parent Dashboard on the web:',
     link,
     '',
-    'Enter this code on the parent site to link your child (progress starts at 0%).',
+    'Enter this code on the parent site to see this student’s sessions and progress.',
+    unusedCodeExpiryHint(),
   ].join('\n');
 };

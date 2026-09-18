@@ -67,7 +67,10 @@ const AuthGlassBackground = ({
               bounces
               contentInsetAdjustmentBehavior="automatic"
             >
-              <Animated.View entering={FadeInDown.duration(420)}>
+              <Animated.View
+                entering={FadeInDown.duration(420)}
+                style={styles.scrollInner}
+              >
                 {children}
               </Animated.View>
             </ScrollView>
@@ -113,6 +116,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingTop: 8,
     paddingBottom: 36,
+  },
+  scrollInner: {
+    width: '100%',
+    flexGrow: 0,
   },
 });
 

@@ -4,8 +4,6 @@ import {
   Globe,
   Lock,
   Palette,
-  Shield,
-  User,
   Users,
 } from 'lucide-react';
 import { SETTINGS_ITEMS } from '../../constants/nav';
@@ -13,8 +11,6 @@ import type { SettingsViewId } from '../../types/parent.types';
 import GlassCard from '../shared/GlassCard';
 
 const iconMap = {
-  user: User,
-  shield: Shield,
   bell: Bell,
   lock: Lock,
   users: Users,

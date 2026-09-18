@@ -9,9 +9,14 @@ import AiRecommendationCard from '../widgets/AiRecommendationCard';
 interface OverviewPageProps {
   data: ParentDashboardData;
   onNavigate: (section: 'sessions' | 'children' | 'progress') => void;
+  onSelectChild?: (studentId: string) => void;
 }
 
-export default function OverviewPage({ data, onNavigate }: OverviewPageProps) {
+export default function OverviewPage({
+  data,
+  onNavigate,
+  onSelectChild,
+}: OverviewPageProps) {
   const stats = [
     {
       title: 'Linked Children',
@@ -112,7 +117,10 @@ export default function OverviewPage({ data, onNavigate }: OverviewPageProps) {
               <button
                 key={child.id}
                 type="button"
-                onClick={() => onNavigate('children')}
+                onClick={() => {
+                  onSelectChild?.(child.id);
+                  onNavigate('children');
+                }}
                 className="flex w-full items-center gap-3 rounded-xl border border-tl-border p-3 text-left transition hover:border-violet-300 dark:hover:border-violet-700"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-tl-primary-dark to-tl-primary-light text-xs font-bold text-white">

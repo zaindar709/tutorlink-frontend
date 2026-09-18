@@ -5,7 +5,7 @@ export const getUserId = (user?: ApiUser | null): string | null => {
     return null;
   }
 
-  return user.id || user._id || null;
+  return user.userId || user.id || user._id || null;
 };
 
 export const formatDateParam = (date: Date): string => {

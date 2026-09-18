@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -11,46 +11,85 @@ import { Icon } from 'react-native-paper';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { GLASS } from '../../../theme/glass';
+import { generateParentLinkCode } from '../../../services/profile/profileService';
 import {
   PARENT_DASHBOARD_URL,
   parentDashboardShareHint,
+  unusedCodeExpiryHint,
 } from '../../../config/parentDashboard';
-import {
-  DemoParentLinkEntry,
-  issueParentLinkForStudent,
-} from '../../../constants/parentLinkCodes';
 
 type Props = {
   /** Logged-in student display name (shown in share text). */
   studentName?: string;
+  /** Mongo / auth user id — parent dashboard uses this to load this child. */
+  studentId?: string;
   onOpenDetails?: () => void;
 };
 
-const buildShareMessage = (code: string, studentName: string) =>
+const buildShareMessage = (
+  code: string,
+  studentName: string,
+  studentId?: string
+) =>
   [
     'TutorLink — Parent link code',
     '',
     `Student: ${studentName}`,
     `Code: ${code}`,
     '',
-    parentDashboardShareHint({ code, studentName }),
+    parentDashboardShareHint({ code, studentName, studentId }),
   ].join('\n');
 
-export default function ParentLinkCard({ studentName, onOpenDetails }: Props) {
-  const cursorRef = useRef(0);
-  const [entry, setEntry] = useState<DemoParentLinkEntry | null>(null);
+export default function ParentLinkCard({
+  studentName,
+  studentId,
+  onOpenDetails,
+}: Props) {
+  const [entry, setEntry] = useState<{
+    code: string;
+    studentName: string;
+    studentId?: string;
+  } | null>(null);
   const [showCodeUi, setShowCodeUi] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const resolvedName =
     String(studentName || '').trim() || entry?.studentName || 'Student';
 
-  const handleGenerate = () => {
-    cursorRef.current += 1;
+  const runGenerate = async () => {
     const nameAtGenerate = String(studentName || '').trim() || 'Student';
-    setEntry(
-      issueParentLinkForStudent(nameAtGenerate, Date.now() + cursorRef.current)
-    );
-    setShowCodeUi(true);
+    setGenerating(true);
+    try {
+      const code = await generateParentLinkCode();
+      setEntry({
+        code: code.code,
+        studentName: code.studentName || nameAtGenerate,
+        studentId: code.studentId || studentId,
+      });
+      setShowCodeUi(true);
+    } catch {
+      Alert.alert(
+        'Could not generate code',
+        'Check your connection and try again.'
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleGenerate = () => {
+    if (showCodeUi && entry?.code) {
+      Alert.alert(
+        'Generate a new code?',
+        'This will disconnect any parent using the current code.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Generate', onPress: () => void runGenerate() },
+        ]
+      );
+      return;
+    }
+    void runGenerate();
   };
 
   const handleShare = async () => {
@@ -58,7 +97,11 @@ export default function ParentLinkCard({ studentName, onOpenDetails }: Props) {
     const nameForShare = entry.studentName || resolvedName;
     try {
       await Share.share({
-        message: buildShareMessage(entry.code, nameForShare),
+        message: buildShareMessage(
+          entry.code,
+          nameForShare,
+          entry.studentId || studentId
+        ),
         title: 'TutorLink parent link code',
       });
     } catch {
@@ -89,11 +132,12 @@ export default function ParentLinkCard({ studentName, onOpenDetails }: Props) {
 
         <TouchableOpacity
           style={styles.btn}
-          onPress={handleGenerate}
+          onPress={() => void handleGenerate()}
+          disabled={generating}
           activeOpacity={0.85}
         >
           <Text style={styles.btnText}>
-            {showCodeUi ? 'New code' : 'Generate'}
+            {generating ? '…' : showCodeUi ? 'New code' : 'Generate'}
           </Text>
         </TouchableOpacity>
       </LinearGradient>
@@ -107,7 +151,8 @@ export default function ParentLinkCard({ studentName, onOpenDetails }: Props) {
           <Text style={styles.codeValue}>{entry.code}</Text>
           <Text style={styles.codeHint}>
             Parent enters this exact code on the web dashboard to see{' '}
-            {entry.studentName || resolvedName} with 0% progress.
+            {entry.studentName || resolvedName}'s sessions and progress.{' '}
+            {unusedCodeExpiryHint()}
           </Text>
           <Text style={styles.urlHint} numberOfLines={1}>
             {PARENT_DASHBOARD_URL}

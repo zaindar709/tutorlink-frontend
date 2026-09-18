@@ -165,17 +165,19 @@ Compute `quickAccess` counts for the authenticated student:
 
 Until content modules ship, return `count: 0` and labels `"0 new"` / `"0 pending"` / `"0 upcoming"`.
 
-### 4.2 Future list endpoints (recommended)
+### 4.2 List endpoints
+
+**Implemented in the app as a single assessments module.** Do not add separate `/api/student/assignments|quizzes|tests` routes unless they proxy the same data.
+
+See **`docs/BACKEND_QUIZ_ASSIGNMENT_ASSESSMENTS.md`**.
 
 ```http
-GET /api/student/assignments?status=new|pending|done
-GET /api/student/quizzes?status=pending|completed
-GET /api/student/tests?status=upcoming|past
+GET /api/assessments/student?type=assignment|quiz|test
 ```
 
-Each item should include: `_id`, `title`, `subject`, `tutor`, `dueAt` / `scheduledAt`, `status`, `bookingId` / `packageId`.
+Each item: `_id`, `title`, `subject`, `tutor`, `dueAt`, `studentStatus`, `lastAttemptId`, marks, attempts.
 
-Not required for the Home UI shell to render — only counts are required on `/api/home/dashboard` for now.
+Home tiles only need real `quickAccess` counts on `/api/home/dashboard` (see that spec §10).
 
 ---
 

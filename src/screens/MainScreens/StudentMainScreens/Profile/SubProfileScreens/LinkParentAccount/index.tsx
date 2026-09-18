@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -18,21 +18,22 @@ import {
 } from '../../../../../../components/Profile';
 import useUi from '../../../../../../hooks/ui/useUi';
 import { useProfile } from '../../../../../../hooks/api/useProfile';
-import { parentDashboardShareHint } from '../../../../../../config/parentDashboard';
-import {
-  DemoParentLinkEntry,
-  issueParentLinkForStudent,
-} from '../../../../../../constants/parentLinkCodes';
+import { parentDashboardShareHint, unusedCodeExpiryHint } from '../../../../../../config/parentDashboard';
 import { getDisplayName } from '../../../../../../utils/api/bookingHelpers';
+import { getUserId } from '../../../../../../utils/api/userId';
 
-const buildShareMessage = (code: string, studentName: string) =>
+const buildShareMessage = (
+  code: string,
+  studentName: string,
+  studentId?: string
+) =>
   [
     'TutorLink — Parent link code',
     '',
     'Student: ' + studentName,
     'Code: ' + code,
     '',
-    parentDashboardShareHint({ code, studentName }),
+    parentDashboardShareHint({ code, studentName, studentId }),
   ].join('\n');
 export default function StudentLinkParentScreen({ navigation }: any) {
   const { colors } = useUi();
@@ -43,25 +44,56 @@ export default function StudentLinkParentScreen({ navigation }: any) {
     error,
     refreshLinkedParents,
     removeLinkedParent,
+    generateLinkCode,
     actionLoading,
   } = useProfile();
 
-  const cursorRef = useRef(0);
-  const [entry, setEntry] = useState<DemoParentLinkEntry | null>(null);
+  const [entry, setEntry] = useState<{
+    code: string;
+    studentName: string;
+    studentId?: string;
+    expiresInMinutes?: number;
+  } | null>(null);
   const studentName =
     getDisplayName(authUser) || entry?.studentName || 'Student';
+  const studentId = getUserId(authUser) || undefined;
 
   useEffect(() => {
     void refreshLinkedParents();
   }, [refreshLinkedParents]);
 
-  const handleGenerate = () => {
-    cursorRef.current += 1;
+  const runGenerate = async () => {
     const nameAtGenerate =
       getDisplayName(authUser) || String(studentName || '').trim() || 'Student';
-    setEntry(
-      issueParentLinkForStudent(nameAtGenerate, Date.now() + cursorRef.current)
-    );
+    const code = await generateLinkCode();
+    if (!code?.code) {
+      Alert.alert(
+        'Could not generate code',
+        error || 'Check your connection and try again.'
+      );
+      return;
+    }
+    setEntry({
+      code: code.code,
+      studentName: code.studentName || nameAtGenerate,
+      studentId: code.studentId || studentId,
+      expiresInMinutes: code.expiresInMinutes,
+    });
+  };
+
+  const handleGenerate = () => {
+    if (entry?.code) {
+      Alert.alert(
+        'Generate a new code?',
+        'This will disconnect any parent using the current code.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Generate', onPress: () => void runGenerate() },
+        ]
+      );
+      return;
+    }
+    void runGenerate();
   };
 
   const handleShare = async () => {
@@ -69,7 +101,11 @@ export default function StudentLinkParentScreen({ navigation }: any) {
     const nameForShare = entry.studentName || studentName;
     try {
       await Share.share({
-        message: buildShareMessage(entry.code, nameForShare),
+        message: buildShareMessage(
+          entry.code,
+          nameForShare,
+          entry.studentId || studentId
+        ),
         title: 'TutorLink parent link code',
       });
     } catch {
@@ -128,8 +164,10 @@ export default function StudentLinkParentScreen({ navigation }: any) {
               lineHeight: 20,
             }}
           >
-            Generate a demo code, share it, and your parent enters it on the
+            Generate a code, share it, and your parent enters it on the
             web Parent Dashboard to see your name with a fresh progress start.
+            Unused codes last 7 days. After a parent opens it, it stays valid
+            until you generate a new one.
           </Text>
         </View>
 
@@ -160,6 +198,16 @@ export default function StudentLinkParentScreen({ navigation }: any) {
                 }}
               >
                 {entry.code}
+              </Text>
+              <Text
+                style={{
+                  color: '#64748B',
+                  fontSize: 12,
+                  marginTop: 8,
+                  textAlign: 'center',
+                }}
+              >
+                {unusedCodeExpiryHint(entry.expiresInMinutes)}
               </Text>
               <TouchableOpacity
                 onPress={() => void handleShare()}
@@ -199,16 +247,22 @@ export default function StudentLinkParentScreen({ navigation }: any) {
 
           <TouchableOpacity
             onPress={handleGenerate}
+            disabled={actionLoading}
             style={{
               marginTop: 12,
               backgroundColor: colors.PRIMARY_COLOR,
               paddingVertical: 14,
               borderRadius: 14,
               alignItems: 'center',
+              opacity: actionLoading ? 0.7 : 1,
             }}
           >
             <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>
-              {entry ? 'Generate new code' : 'Generate code'}
+              {actionLoading
+                ? 'Generating…'
+                : entry
+                  ? 'Generate new code'
+                  : 'Generate code'}
             </Text>
           </TouchableOpacity>
         </ProfileSectionCard>
@@ -223,7 +277,7 @@ export default function StudentLinkParentScreen({ navigation }: any) {
           },
           {
             step: '4',
-            text: 'Parent sees your name with progress starting at 0%',
+            text: 'Parent sees your sessions and progress on the web dashboard',
           },
         ].map(item => (
           <View

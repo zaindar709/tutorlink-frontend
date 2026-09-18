@@ -37,5 +37,6 @@ export const signInWithGoogle = async () => {
     name: user.displayName ?? '',
     email: user.email ?? '',
     idToken,
+    isNewUser: Boolean(userCredential.additionalUserInfo?.isNewUser),
   };
 };

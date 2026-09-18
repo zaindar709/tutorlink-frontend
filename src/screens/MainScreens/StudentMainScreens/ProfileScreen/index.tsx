@@ -1,10 +1,9 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -23,6 +22,7 @@ import { logout } from '../../../../store/auth/authSlice';
 import { logoutUser } from '../../../../services/auth/authService';
 import { useProfile } from '../../../../hooks/api/useProfile';
 import { getDisplayName } from '../../../../utils/api/bookingHelpers';
+import { getUserId } from '../../../../utils/api/userId';
 import { navigateHomeStack } from '../../../../navigation/navigationRef';
 import ConfirmLogoutModal from '../../../../components/ConfirmLogoutModal';
 import { openParentDashboard } from '../../../../config/parentDashboard';
@@ -71,6 +71,13 @@ const MENU_SECTIONS: MenuSection[] = [
         screen: 'StudentInterestsScreen',
       },
       {
+        title: 'My Progress',
+        description: 'Scores, attendance & weekly analytics',
+        icon: 'chart-line',
+        iconColor: '#7548F5',
+        screen: 'StudentProgressScreen',
+      },
+      {
         title: 'Certificates',
         description: 'Your achievements',
         icon: 'certificate-outline',
@@ -90,6 +97,13 @@ const MENU_SECTIONS: MenuSection[] = [
         icon: 'notebook-outline',
         iconColor: '#F59E0B',
         screen: 'StudentSummariesScreen',
+      },
+      {
+        title: 'Assessments',
+        description: 'Quizzes, tests & assignments',
+        icon: 'clipboard-text-outline',
+        iconColor: '#7548F5',
+        screen: 'StudentAssessmentsScreen',
       },
     ],
   },
@@ -165,17 +179,22 @@ const MENU_SECTIONS: MenuSection[] = [
 ];
 
 export default function ProfileScreen() {
-  const { colors, resp } = useUi();
-  const styles = createStyles(resp);
+  const { resp } = useUi();
+  const styles = useMemo(() => createStyles(resp), [resp]);
   const navigation = useNavigation<any>();
   const dispatch = useDispatch();
   const authUser = useSelector((state: any) => state.auth.user);
   const role = useSelector((state: any) => state.auth.role);
   const isParent = role === 'parent';
-  const { profile, loading, refresh } = useProfile();
+  const { profile, refresh } = useProfile();
+  const skipNextFocusRefresh = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
+      if (skipNextFocusRefresh.current) {
+        skipNextFocusRefresh.current = false;
+        return;
+      }
       void refresh();
     }, [refresh])
   );
@@ -202,18 +221,6 @@ export default function ProfileScreen() {
     navigateHomeStack(screen);
   };
 
-  if (loading && !profile) {
-    return (
-      <GlassScreen
-        scroll={false}
-        edges={['bottom']}
-        contentStyle={[styles.container, styles.centered]}
-      >
-        <ActivityIndicator size="large" color={colors.PRIMARY_COLOR} />
-      </GlassScreen>
-    );
-  }
-
   const authDisplayName = getDisplayName(authUser);
   const displayName =
     profile?.name ||
@@ -233,6 +240,7 @@ export default function ProfileScreen() {
   return (
     <GlassScreen
       scroll={false}
+      animate={false}
       edges={['bottom']}
       contentStyle={styles.container}
     >
@@ -275,6 +283,13 @@ export default function ProfileScreen() {
         ) : (
           <ParentLinkCard
             studentName={displayName}
+            studentId={
+              getUserId(authUser) ||
+              profile?._id ||
+              profile?.id ||
+              profile?.userId ||
+              undefined
+            }
             onOpenDetails={() => navigateTo('StudentLinkParentScreen')}
           />
         )}
@@ -322,10 +337,6 @@ const createStyles = (resp: any) =>
   StyleSheet.create({
     container: {
       flex: 1,
-    },
-    centered: {
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     scrollContent: {
       paddingBottom: resp.dy(24),

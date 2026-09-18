@@ -1,11 +1,25 @@
 import { Globe, Clock, Coins } from 'lucide-react';
 import GlassCard from '../shared/GlassCard';
-import { useState } from 'react';
+import type { ParentSettings } from '../../types/parent.types';
 
-export default function LanguageSettingsPage() {
-  const [language, setLanguage] = useState('English');
-  const [timezone, setTimezone] = useState('Asia/Karachi (PKT)');
-  const [currency, setCurrency] = useState('PKR — Pakistani Rupee');
+interface LanguageSettingsPageProps {
+  settings: ParentSettings;
+  onSave: (patch: Partial<ParentSettings>) => void;
+}
+
+const TIMEZONES = [
+  { value: 'Asia/Karachi', label: 'Asia/Karachi (PKT)' },
+  { value: 'Asia/Dubai', label: 'Asia/Dubai (GST)' },
+  { value: 'UTC', label: 'UTC' },
+];
+
+export default function LanguageSettingsPage({
+  settings,
+  onSave,
+}: LanguageSettingsPageProps) {
+  const language = settings.language === 'ur' ? 'ur' : 'en';
+  const timezone = settings.timezone || 'Asia/Karachi';
+  const currency = settings.currency === 'USD' ? 'USD' : 'PKR';
 
   return (
     <div className="max-w-2xl space-y-4">
@@ -20,18 +34,21 @@ export default function LanguageSettingsPage() {
           </div>
         </header>
         <div className="flex flex-wrap gap-2">
-          {['English', 'Urdu'].map(lang => (
+          {[
+            { id: 'en', label: 'English' },
+            { id: 'ur', label: 'Urdu' },
+          ].map(lang => (
             <button
-              key={lang}
+              key={lang.id}
               type="button"
-              onClick={() => setLanguage(lang)}
+              onClick={() => onSave({ language: lang.id })}
               className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                language === lang
+                language === lang.id
                   ? 'bg-gradient-to-r from-tl-primary-dark to-tl-primary-light text-white'
                   : 'border border-tl-border text-tl-text-muted'
               }`}
             >
-              {lang}
+              {lang.label}
             </button>
           ))}
         </div>
@@ -49,12 +66,14 @@ export default function LanguageSettingsPage() {
         </header>
         <select
           value={timezone}
-          onChange={e => setTimezone(e.target.value)}
+          onChange={e => onSave({ timezone: e.target.value })}
           className="w-full rounded-xl border border-tl-border bg-tl-surface px-3 py-2.5 text-sm text-tl-text outline-none focus:border-tl-primary dark:bg-tl-surface-muted"
         >
-          <option>Asia/Karachi (PKT)</option>
-          <option>Asia/Dubai (GST)</option>
-          <option>UTC</option>
+          {TIMEZONES.map(tz => (
+            <option key={tz.value} value={tz.value}>
+              {tz.label}
+            </option>
+          ))}
         </select>
       </GlassCard>
 
@@ -70,11 +89,11 @@ export default function LanguageSettingsPage() {
         </header>
         <select
           value={currency}
-          onChange={e => setCurrency(e.target.value)}
+          onChange={e => onSave({ currency: e.target.value })}
           className="w-full rounded-xl border border-tl-border bg-tl-surface px-3 py-2.5 text-sm text-tl-text outline-none focus:border-tl-primary dark:bg-tl-surface-muted"
         >
-          <option>PKR — Pakistani Rupee</option>
-          <option>USD — US Dollar</option>
+          <option value="PKR">PKR — Pakistani Rupee</option>
+          <option value="USD">USD — US Dollar</option>
         </select>
       </GlassCard>
     </div>

@@ -40,6 +40,7 @@ const BalanceCard = ({ colors, resp, balance = 0 }: any) => {
 
       <CustomButton
         title="Withdraw Funds"
+        backgroundColor="#fff"
         textColor={colors.PRIMARY_COLOR}
         textStyle={{
           fontWeight: '500',

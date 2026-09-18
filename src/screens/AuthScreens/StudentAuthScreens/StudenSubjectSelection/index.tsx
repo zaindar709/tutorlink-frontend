@@ -8,11 +8,8 @@ import {
 } from 'react-native';
 import { Chip, Menu, IconButton, Icon } from 'react-native-paper';
 import useUi from '../../../../hooks/ui/useUi';
-import CustomButton from '../../../../components/CustomButton';
-import CustomInput from '../../../../components/CustomInput/CustomInput';
 import { createStyles } from './styles';
 import { useSubjectSelection } from './useSubjectSelection';
-import BackButton from '../../../../components/BackButton/BackButton';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { setRole } from '../../../../store/auth/authSlice';
@@ -24,6 +21,14 @@ import { getApiErrorMessage } from '../../../../utils/api/errorHandler';
 import { resetToHome } from '../../../../navigation/navigationRef';
 import { getAuthSession, saveAuthSession } from '../../../../services/storage';
 import { getCurrentFirebaseUser } from '../../../../services/auth/firebaseAuthService';
+import {
+  AuthGlassBackground,
+  AuthGlassHeader,
+  GlassCard,
+  GlassInput,
+  GlassPrimaryButton,
+  AUTH_GLASS,
+} from '../../../../components/AuthGlass';
 
 const classOptions = ['Class 9', 'Class 10', 'Class 11', 'Class 12'];
 
@@ -47,7 +52,6 @@ const StudentSubjectSelection = () => {
   } = useSubjectSelection();
 
   const [menuVisible, setMenuVisible] = useState(false);
-  const searchInputRef = React.useRef<any>(null);
   const openMenu = () => setMenuVisible(true);
   const closeMenu = () => setMenuVisible(false);
 
@@ -111,118 +115,128 @@ const StudentSubjectSelection = () => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <View style={{ marginTop: resp.dy(12) }}>
-        <BackButton onPress={handleBack} />
-      </View>
-
-      <View style={styles.header}>
-        <Text style={styles.title}>What do you want to learn?</Text>
-        <Text style={styles.subtitle}>Select subjects that interest you</Text>
-      </View>
-
-      <CustomInput
-        ref={searchInputRef}
-        placeholder="Search subjects"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        style={styles.searchField}
-        leftIcon={
-          <Icon
-            source="magnify"
-            size={20}
-            color={colors.PLACEHOLDER_TEXTCOLOR as string}
-          />
-        }
-        rightIcon={searchQuery ? <Icon source="close" size={20} /> : undefined}
-        onRightIconPress={() => setSearchQuery('')}
+    <AuthGlassBackground
+      scroll={false}
+      contentStyle={styles.shell}
+    >
+      <AuthGlassHeader
+        title="What do you want to learn?"
+        subtitle="Select subjects that interest you"
+        onBack={handleBack}
       />
 
-      <View style={styles.card}>
-        <View style={styles.chipGrid}>
-          {filteredSubjects.length > 0 ? (
-            filteredSubjects.map(subject => {
-              const isSelected = selectedSubjects.includes(subject);
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <GlassInput
+          placeholder="Search subjects"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.searchField}
+          leftIcon={
+            <Icon
+              source="magnify"
+              size={20}
+              color={AUTH_GLASS.placeholder as string}
+            />
+          }
+          rightIcon={searchQuery ? <Icon source="close" size={20} /> : undefined}
+          onRightIconPress={() => setSearchQuery('')}
+        />
 
-              return (
-                <Chip
-                  key={subject}
-                  mode="outlined"
-                  selected={isSelected}
-                  onPress={() => toggleSubject(subject)}
-                  style={[
-                    styles.subjectChip,
-                    isSelected && styles.subjectChipSelected,
-                  ]}
-                  textStyle={
-                    isSelected
-                      ? styles.subjectTextSelected
-                      : styles.subjectText
+        <GlassCard style={styles.card} contentStyle={styles.cardInner}>
+          <View style={styles.chipGrid}>
+            {filteredSubjects.length > 0 ? (
+              filteredSubjects.map(subject => {
+                const isSelected = selectedSubjects.includes(subject);
+
+                return (
+                  <Chip
+                    key={subject}
+                    mode="outlined"
+                    selected={isSelected}
+                    onPress={() => toggleSubject(subject)}
+                    style={[
+                      styles.subjectChip,
+                      isSelected && styles.subjectChipSelected,
+                    ]}
+                    textStyle={
+                      isSelected
+                        ? styles.subjectTextSelected
+                        : styles.subjectText
+                    }
+                  >
+                    {subject}
+                  </Chip>
+                );
+              })
+            ) : (
+              <Text style={styles.emptyText}>No subjects match your search.</Text>
+            )}
+          </View>
+
+          <Text style={styles.selectionText}>{selectedLabel}</Text>
+        </GlassCard>
+
+        <GlassCard style={styles.classCard} contentStyle={styles.cardInner}>
+          <Text style={styles.classCardTitle}>Select a class</Text>
+
+          <Menu
+            visible={menuVisible}
+            onDismiss={closeMenu}
+            anchor={
+              <TouchableOpacity style={styles.classTrigger} onPress={openMenu}>
+                <Text
+                  style={
+                    selectedClass
+                      ? styles.classTriggerText
+                      : styles.classTriggerPlaceholder
                   }
                 >
-                  {subject}
-                </Chip>
-              );
-            })
-          ) : (
-            <Text style={styles.emptyText}>No subjects match your search.</Text>
-          )}
-        </View>
+                  {selectedClass || 'Select a class'}
+                </Text>
 
-        <Text style={styles.selectionText}>{selectedLabel}</Text>
-      </View>
-
-      <View style={styles.classCard}>
-        <Text style={styles.classCardTitle}>Select a class</Text>
-
-        <Menu
-          visible={menuVisible}
-          onDismiss={closeMenu}
-          anchor={
-            <TouchableOpacity style={styles.classTrigger} onPress={openMenu}>
-              <Text
-                style={
-                  selectedClass
-                    ? styles.classTriggerText
-                    : styles.classTriggerPlaceholder
-                }
-              >
-                {selectedClass || 'Select a class'}
-              </Text>
-
-              <IconButton
-                icon={menuVisible ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                iconColor={colors.PLACEHOLDER_TEXTCOLOR as string}
-                style={styles.menuIcon}
+                <IconButton
+                  icon={menuVisible ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  iconColor={AUTH_GLASS.placeholder as string}
+                  style={styles.menuIcon}
+                />
+              </TouchableOpacity>
+            }
+            style={styles.menuContainer}
+            contentStyle={styles.menuContent}
+          >
+            {classOptions.map(option => (
+              <Menu.Item
+                key={option}
+                onPress={() => {
+                  setSelectedClass(option);
+                  closeMenu();
+                }}
+                title={option}
+                titleStyle={styles.menuItemText}
               />
-            </TouchableOpacity>
-          }
-          style={styles.menuContainer}
-          contentStyle={styles.menuContent}
-        >
-          {classOptions.map(option => (
-            <Menu.Item
-              key={option}
-              onPress={() => {
-                setSelectedClass(option);
-                closeMenu();
-              }}
-              title={option}
-              titleStyle={styles.menuItemText}
-            />
-          ))}
-        </Menu>
-      </View>
+            ))}
+          </Menu>
+        </GlassCard>
+      </ScrollView>
 
-      <CustomButton
-        title="Finish & Explore"
-        onPress={handleFinish}
-        loading={submitting}
-        disabled={isButtonDisabled || submitting}
-        textStyle={{ fontSize: 16 }}
-      />
-    </ScrollView>
+      <View style={styles.ctaWrap}>
+        <GlassPrimaryButton
+          title="Finish & Explore"
+          onPress={() => {
+            void handleFinish();
+          }}
+          loading={submitting}
+          disabled={isButtonDisabled || submitting}
+          textStyle={styles.ctaText}
+        />
+      </View>
+    </AuthGlassBackground>
   );
 };
 

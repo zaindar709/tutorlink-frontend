@@ -33,6 +33,12 @@ export const clearAllAuth = async () => {
     // ignore
   }
   clearCachedAuthToken();
+  try {
+    const { clearCachedMyProfile } = await import('../profile/profileService');
+    clearCachedMyProfile();
+  } catch {
+    // ignore
+  }
   await clearAuthSession();
 };
 

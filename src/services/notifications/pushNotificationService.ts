@@ -437,6 +437,62 @@ export const handleNotificationNavigation = (
       return;
     }
 
+    const assessmentId = data.assessmentId;
+    const attemptId = data.attemptId;
+    const isAssessmentAssigned =
+      type === 'assessment_assigned' ||
+      type === 'assessment_reminder' ||
+      screen === 'StudentAssessmentDetailScreen' ||
+      screen === 'StudentAssessmentsScreen';
+    const isAssessmentGraded =
+      type === 'assessment_graded' || screen === 'StudentAssessmentResultScreen';
+    const isAssessmentSubmitted =
+      type === 'assessment_submitted' ||
+      screen === 'TutorSubmissionsScreen' ||
+      screen === 'TutorGradeAttemptScreen' ||
+      screen === 'TutorAssessmentsScreen';
+
+    if (isAssessmentAssigned) {
+      if (assessmentId) {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'StudentAssessmentDetailScreen',
+          params: { assessmentId },
+        } as never);
+      } else {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'StudentAssessmentsScreen',
+        } as never);
+      }
+      return;
+    }
+
+    if (isAssessmentGraded) {
+      navigationRef.navigate('HomeNavigator' as never, {
+        screen: 'StudentAssessmentResultScreen',
+        params: { assessmentId, attemptId },
+      } as never);
+      return;
+    }
+
+    if (isAssessmentSubmitted) {
+      if (assessmentId && attemptId) {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'TutorGradeAttemptScreen',
+          params: { assessmentId, attemptId },
+        } as never);
+      } else if (assessmentId) {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'TutorSubmissionsScreen',
+          params: { assessmentId },
+        } as never);
+      } else {
+        navigationRef.navigate('HomeNavigator' as never, {
+          screen: 'TutorAssessmentsScreen',
+        } as never);
+      }
+      return;
+    }
+
     if (screen) {
       if (
         [
@@ -492,6 +548,11 @@ export const handleNotificationNavigation = (
       case 'certificate':
         navigationRef.navigate('HomeNavigator' as never, {
           screen: 'StudentCertificatesScreen',
+        } as never);
+        break;
+      case 'welcome':
+        navigationRef.navigate('MyTabs' as never, {
+          screen: 'Home',
         } as never);
         break;
       default:

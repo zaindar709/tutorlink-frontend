@@ -18,10 +18,12 @@ import { GLASS } from '../../theme/glass';
 import GlassPillTabBar from './GlassPillTabBar';
 import { useAppSelector } from '../../store/hooks';
 import { selectUnreadTotal } from '../../store/chat/chatSelectors';
-import { isProfileSuggestionNeeded } from '../../services/profile/profileSuggestionStore';
 import {
-  hasProfileHintBeenShown,
+  fetchLiveProfileCompleted,
   markProfileHintAsShown,
+  parseProfileCompleted,
+  resolveProfileUserId,
+  shouldShowProfileCompletionTooltip,
 } from '../../services/profile/profileCompletionHintStore';
 
 import StudentHome from '../../screens/MainScreens/StudentMainScreens/Home/HomeScreen';
@@ -105,10 +107,9 @@ interface Props {
 }
 
 export const MyTabs = ({ role }: Props) => {
-  const authUser = useAppSelector((state: any) => state.auth.user);
-  const userId = String(
-    authUser?.uid || authUser?.firebaseUid || authUser?.id || authUser?._id || ''
-  );
+  const authUser = useAppSelector(state => state.auth.user);
+  const mongoUserId = resolveProfileUserId(authUser);
+  const authProfileCompleted = parseProfileCompleted(authUser?.profileCompleted);
   const [profileTabLayout, setProfileTabLayout] = useState<{
     x: number;
     y: number;
@@ -119,6 +120,8 @@ export const MyTabs = ({ role }: Props) => {
 
   const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tooltipUserIdRef = useRef<string | null>(mongoUserId);
+  const tooltipStartedRef = useRef(false);
 
   const captureProfileTabLayout = (eventOrLayout: any) => {
     const layout = eventOrLayout?.nativeEvent?.layout || eventOrLayout;
@@ -153,8 +156,9 @@ export const MyTabs = ({ role }: Props) => {
       hideTimerRef.current = null;
     }
     setShowProfileHint(false);
-    if (userId) {
-      await markProfileHintAsShown(userId);
+    const id = tooltipUserIdRef.current || mongoUserId;
+    if (id) {
+      await markProfileHintAsShown(id);
     }
   };
 
@@ -166,7 +170,7 @@ export const MyTabs = ({ role }: Props) => {
   }, []);
 
   useEffect(() => {
-    if (!userId || role === 'parent' || role === null) {
+    if (role === 'parent' || !role) {
       setShowProfileHint(false);
       return;
     }
@@ -174,27 +178,43 @@ export const MyTabs = ({ role }: Props) => {
     let cancelled = false;
 
     const run = async () => {
-      if (!profileTabLayout) {
+      if (!profileTabLayout || tooltipStartedRef.current) {
         return;
       }
 
-      const alreadySeen = await hasProfileHintBeenShown(userId);
-      const needed = await isProfileSuggestionNeeded(role, userId);
+      let userId = mongoUserId;
+      let profileCompleted = authProfileCompleted;
 
-      if (cancelled || alreadySeen || !needed || !profileTabLayout) {
+      const live = await fetchLiveProfileCompleted(role);
+      if (cancelled) return;
+      if (live.userId) userId = live.userId;
+      if (live.profileCompleted !== null) {
+        profileCompleted = live.profileCompleted;
+      }
+
+      tooltipUserIdRef.current = userId;
+      const shouldShow = await shouldShowProfileCompletionTooltip(
+        profileCompleted,
+        userId,
+        [authUser?.uid, authUser?.firebaseUid]
+      );
+
+      if (cancelled || !shouldShow || !profileTabLayout) {
         return;
       }
 
-      // Wait ~1.5s after navigation, then show the tooltip for exactly 4s.
-      showTimerRef.current = setTimeout(async () => {
+      tooltipStartedRef.current = true;
+
+      // Wait for the tab bar to settle after signup/login, then show for 4s.
+      showTimerRef.current = setTimeout(() => {
         if (cancelled) return;
 
         setShowProfileHint(true);
+        if (userId) void markProfileHintAsShown(userId);
 
         if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = setTimeout(async () => {
+        hideTimerRef.current = setTimeout(() => {
           setShowProfileHint(false);
-          if (userId) await markProfileHintAsShown(userId);
         }, 4000);
       }, 1500);
     };
@@ -206,18 +226,20 @@ export const MyTabs = ({ role }: Props) => {
       if (showTimerRef.current) {
         clearTimeout(showTimerRef.current);
         showTimerRef.current = null;
+        tooltipStartedRef.current = false;
       }
       if (hideTimerRef.current) {
         clearTimeout(hideTimerRef.current);
         hideTimerRef.current = null;
       }
     };
-  }, [role, userId, profileTabLayout]);
+  }, [role, profileTabLayout, mongoUserId, authProfileCompleted]);
 
   return (
     <View style={styles.root}>
       <Tab.Navigator
         initialRouteName="Home"
+        detachInactiveScreens={false}
         tabBar={props => (
           <GlassPillTabBar {...props} onProfileTabLayout={captureProfileTabLayout} />
         )}

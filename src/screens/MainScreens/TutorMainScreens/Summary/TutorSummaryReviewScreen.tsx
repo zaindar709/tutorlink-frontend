@@ -38,9 +38,17 @@ const TutorSummaryReviewScreen = () => {
   const summaryId = route.params?.summaryId as string | undefined;
   const sessionId = route.params?.sessionId as string | undefined;
   const dispatch = useAppDispatch();
-  const summary = useAppSelector(s =>
-    summaryId ? s.summary.byId[summaryId] : undefined
-  );
+  const summary = useAppSelector(s => {
+    if (summaryId && s.summary.byId[summaryId]) {
+      return s.summary.byId[summaryId];
+    }
+    if (sessionId) {
+      return Object.values(s.summary.byId).find(
+        item => item.sessionId === sessionId
+      );
+    }
+    return undefined;
+  });
   const statusPayload = useAppSelector(s =>
     sessionId ? s.summary.statusBySession[sessionId] : undefined
   );

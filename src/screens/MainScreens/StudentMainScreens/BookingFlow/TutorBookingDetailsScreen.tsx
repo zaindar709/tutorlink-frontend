@@ -36,7 +36,7 @@ import {
   pickFirstFutureSlot,
 } from '../../../../utils/bookings/bookingStatus';
 import { formatDateParam, getUserId } from '../../../../utils/api/userId';
-import { fetchTutorById } from '../../../../services/tutors/tutorsService';
+import { fetchTutorById, fetchTutorReviews } from '../../../../services/tutors/tutorsService';
 import AppToast from '../../../../components/AppToast/AppToast';
 import {
   invalidateStudentTutorRelationsCache,
@@ -153,6 +153,21 @@ const TutorBookingDetailsScreen = () => {
         }
 
         if (!mounted || !profile) return;
+        const reviewSourceId =
+          profile.userId || profile.id || tutorId || idsToTry[0];
+        if (reviewSourceId) {
+          const liveReviews = await fetchTutorReviews(reviewSourceId);
+          if (liveReviews && mounted) {
+            profile = {
+              ...profile,
+              rating: liveReviews.totalReviews
+                ? liveReviews.rating
+                : profile.rating,
+              totalReviews: liveReviews.totalReviews,
+              reviews: liveReviews.reviews,
+            };
+          }
+        }
         setTutor(profile);
         setSubject(profile.subjects[0] || 'General');
         setMode(profile.teachingMode === 'physical' ? 'physical' : 'online');

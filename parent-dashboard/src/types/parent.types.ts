@@ -3,6 +3,7 @@ export type ParentNavId =
   | 'children'
   | 'sessions'
   | 'progress'
+  | 'payments'
   | 'notifications'
   | 'settings';
 
@@ -23,6 +24,7 @@ export interface LinkedChild {
   name: string;
   grade: string;
   board: string;
+  avatarUrl?: string;
   avatarInitials: string;
   subjects: string[];
   attendanceRate: number;
@@ -33,13 +35,17 @@ export interface LinkedChild {
 
 export interface ParentSession {
   id: string;
+  childId?: string;
   childName: string;
+  tutorId?: string;
   tutorName: string;
   subject: string;
   date: string;
   time: string;
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
   amount: number;
+  startsAt?: string;
+  endsAt?: string;
 }
 
 export interface ParentNotification {
@@ -49,15 +55,19 @@ export interface ParentNotification {
   type: 'session' | 'payment' | 'progress' | 'system' | 'alert';
   read: boolean;
   createdAt: string;
+  studentId?: string;
+  bookingId?: string;
 }
 
 export interface PaymentRecord {
   id: string;
+  childId?: string;
   childName: string;
   description: string;
   amount: number;
   status: 'completed' | 'pending' | 'refunded';
   date: string;
+  bookingId?: string;
 }
 
 export interface ProgressSnapshot {
@@ -110,6 +120,7 @@ export interface ParentProfile {
   email: string;
   phone: string;
   avatarInitials: string;
+  avatarUrl?: string;
 }
 
 export interface ParentSettings {
@@ -123,6 +134,10 @@ export interface ParentSettings {
   shareProgressWithTutors: boolean;
   language: string;
   theme: ThemeMode;
+  timezone?: string;
+  currency?: string;
+  twoFactorEnabled?: boolean;
+  loginAlerts?: boolean;
 }
 
 export interface ParentDashboardData {

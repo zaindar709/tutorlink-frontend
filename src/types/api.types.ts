@@ -3,6 +3,7 @@ export type UserRole = 'student' | 'tutor' | 'parent';
 export interface ApiUser {
   id?: string;
   _id?: string;
+  userId?: string;
   firebaseUid?: string;
   name?: string;
   fullName?: string;
@@ -12,6 +13,8 @@ export interface ApiUser {
   role?: UserRole;
   avatarUrl?: string;
   uid?: string;
+  /** Backend-computed. False after signup until required fields are saved. */
+  profileCompleted?: boolean;
   [key: string]: unknown;
 }
 
@@ -131,6 +134,10 @@ export interface DashboardData {
   /** True when student has at least one accepted session/package with a tutor. */
   hasActiveTutor?: boolean;
   upcomingSessionCount?: number;
+  userId?: string;
+  role?: string;
+  /** Backend-computed profile completeness for the Profile tab tooltip. */
+  profileCompleted?: boolean;
 }
 
 export type BookingStatus =
@@ -421,6 +428,7 @@ export interface WalletDepositPayload {
 export interface StudentProfile {
   _id?: string;
   id?: string;
+  userId?: string;
   name?: string;
   email?: string;
   phoneNumber?: string;
@@ -431,6 +439,7 @@ export interface StudentProfile {
   publicId?: string;
   interests?: string[];
   role?: string;
+  profileCompleted?: boolean;
   displayGrade?: string;
   displayStudentId?: string;
   header?: {
@@ -507,6 +516,9 @@ export interface LinkCodeData {
   expiresAt: string;
   expiresInMinutes: number;
   status: string;
+  studentName?: string;
+  studentId?: string;
+  shareUrl?: string;
 }
 
 export interface RedeemLinkCodePayload {
@@ -533,6 +545,35 @@ export interface StudentSessionHistoryItem {
   startTime?: string;
   endTime?: string;
   rating?: number;
+}
+
+export interface StudentProgressSubject {
+  subject: string;
+  score: number;
+  grade?: string;
+  syllabusCovered?: number;
+  trend: 'up' | 'down' | 'stable';
+  trendDelta?: number;
+  weeklyBars?: number[];
+  sessionsCompleted: number;
+  lastUpdated?: string;
+}
+
+export interface StudentProgressWeek {
+  label: string;
+  score: number;
+}
+
+export interface StudentProgressData {
+  overallProgress: number;
+  attendanceRate: number;
+  sessionsThisMonth: number;
+  completedSessions: number;
+  upcomingSessions: number;
+  subjects: StudentProgressSubject[];
+  weeklyProgress: StudentProgressWeek[];
+  summary: string;
+  tips: string[];
 }
 
 export interface StudentCertificateItem {
@@ -596,4 +637,7 @@ export interface TutorOnboardingStatusData {
   cnicFrontUrl?: string;
   cnicBackUrl?: string;
   degreeCertificateUrl?: string;
+  userId?: string;
+  role?: string;
+  profileCompleted?: boolean;
 }

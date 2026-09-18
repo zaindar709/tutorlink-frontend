@@ -14,6 +14,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import useUi from '../hooks/ui/useUi';
 import { GLASS } from '../theme/glass';
 
+const BUTTON_HEIGHT = 56;
+
 interface CustomButtonProps {
   title: string;
   onPress: () => void;
@@ -49,11 +51,13 @@ const CustomButton: React.FC<CustomButtonProps> = ({
   const styles = createStyles(colors, resp);
   const isDisabled = disabled || loading;
   const resolvedTextColor = String(textColor || colors.WHITE_COLOR);
-  const useGradient = !backgroundColor && !borderWidth;
+  const flatStyle = StyleSheet.flatten(style) as ViewStyle | undefined;
+  const useGradient =
+    !backgroundColor && !borderWidth && !flatStyle?.backgroundColor;
   const resolvedDisabledBackgroundColor = backgroundColor ?? '#C4B5FD';
 
   const content = (
-    <View style={styles.content}>
+    <View style={styles.content} pointerEvents="none">
       {loading ? (
         <ActivityIndicator color={resolvedTextColor} size="small" />
       ) : (
@@ -71,6 +75,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
               { color: textColor || colors.WHITE_COLOR },
               textStyle,
             ]}
+            numberOfLines={1}
           >
             {title}
           </Text>
@@ -92,12 +97,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         onPress={onPress}
         disabled={isDisabled}
         activeOpacity={0.85}
-        style={[
-          styles.button,
-          styles.gradientWrap,
-          isDisabled && styles.disabledButton,
-          style,
-        ]}
+        style={[styles.button, isDisabled && styles.disabledButton, style]}
       >
         <LinearGradient
           colors={
@@ -107,10 +107,9 @@ const CustomButton: React.FC<CustomButtonProps> = ({
           }
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          {content}
-        </LinearGradient>
+          style={styles.gradientFill}
+        />
+        {content}
       </TouchableOpacity>
     );
   }
@@ -142,41 +141,36 @@ const CustomButton: React.FC<CustomButtonProps> = ({
 
 export default CustomButton;
 
-const createStyles = (colors: any, resp: any) =>
+const createStyles = (_colors: any, resp: any) =>
   StyleSheet.create({
     button: {
       width: '100%',
-      minHeight: resp.dy(48),
-      paddingVertical: resp.dy(10),
-      borderRadius: GLASS.radius.lg,
+      height: BUTTON_HEIGHT,
+      borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'stretch',
-      // reduce heavy glow which can visually overflow on small screens
-      ...GLASS.shadow.soft,
       overflow: 'hidden',
-    },
-    gradientWrap: {
-      paddingHorizontal: 0,
-      backgroundColor: 'transparent',
+      flexGrow: 0,
+      flexShrink: 0,
     },
     disabledButton: {
       opacity: 0.64,
     },
-    gradient: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: GLASS.radius.lg,
+    gradientFill: {
+      ...StyleSheet.absoluteFillObject,
+      borderRadius: 18,
     },
     content: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'center',
       gap: 8,
+      zIndex: 1,
+      paddingHorizontal: 16,
     },
     text: {
-      fontSize: resp.df(17),
+      fontSize: resp.df(16),
       fontWeight: '700',
       textAlign: 'center',
       letterSpacing: 0.2,

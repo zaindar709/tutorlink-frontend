@@ -6,6 +6,7 @@ import {
   Settings,
   TrendingUp,
   Users,
+  Wallet,
 } from 'lucide-react';
 import type { ParentNavId, SettingsViewId } from '../types/parent.types';
 
@@ -18,6 +19,7 @@ export const NAV_ITEMS: {
   { id: 'children', label: 'My Children', icon: Users },
   { id: 'sessions', label: 'Sessions', icon: CalendarDays },
   { id: 'progress', label: 'Progress', icon: TrendingUp },
+  { id: 'payments', label: 'Payments', icon: Wallet },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
@@ -27,6 +29,7 @@ export const PAGE_TITLES: Record<ParentNavId, string> = {
   children: 'My Children',
   sessions: 'Sessions',
   progress: 'Learning Progress',
+  payments: 'Payments',
   notifications: 'Notifications',
   settings: 'Settings',
 };
@@ -38,16 +41,10 @@ export const SETTINGS_ITEMS: {
   icon: string;
 }[] = [
   {
-    id: 'profile',
-    label: 'Profile',
-    description: 'Name, email, and contact details',
-    icon: 'user',
-  },
-  {
-    id: 'account',
-    label: 'Account & Security',
-    description: 'Password, 2FA, and login activity',
-    icon: 'shield',
+    id: 'linked-students',
+    label: 'Linked Students',
+    description: 'Paste another code to add a child, or unlink one',
+    icon: 'users',
   },
   {
     id: 'notifications-prefs',
@@ -60,12 +57,6 @@ export const SETTINGS_ITEMS: {
     label: 'Privacy',
     description: 'Data sharing and visibility controls',
     icon: 'lock',
-  },
-  {
-    id: 'linked-students',
-    label: 'Linked Students',
-    description: 'Manage connected child accounts',
-    icon: 'users',
   },
   {
     id: 'appearance',

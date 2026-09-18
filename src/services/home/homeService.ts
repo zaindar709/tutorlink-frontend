@@ -136,6 +136,14 @@ const normalizeDashboard = (raw: DashboardData): DashboardData => {
         (raw.upcomingSessionCount || 0) > 0
     ),
     upcomingSessionCount: Number(raw.upcomingSessionCount || lessons.length || 0),
+    userId: String(raw.userId || '').trim() || raw.userId,
+    role: raw.role,
+    profileCompleted:
+      raw.profileCompleted === true
+        ? true
+        : raw.profileCompleted === false
+          ? false
+          : undefined,
   };
 };
 

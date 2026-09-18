@@ -20,6 +20,8 @@ type Props = {
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   edges?: ('top' | 'bottom' | 'left' | 'right')[];
+  /** Entrance fade. Turn off on hot tabs so first paint is instant. */
+  animate?: boolean;
 };
 
 /** Soft lavender gradient shell for main-app screens. */
@@ -28,8 +30,18 @@ const GlassScreen = ({
   scroll = true,
   contentStyle,
   edges = ['top', 'bottom'],
+  animate = true,
 }: Props) => {
   const scrollRef = useRef<ScrollView | null>(null);
+  const body = animate ? (
+    <Animated.View entering={FadeInDown.duration(360)} style={scroll ? undefined : [styles.flex, contentStyle]}>
+      {children}
+    </Animated.View>
+  ) : scroll ? (
+    <>{children}</>
+  ) : (
+    <View style={[styles.flex, contentStyle]}>{children}</View>
+  );
 
   return (
     <View style={styles.root}>
@@ -56,18 +68,11 @@ const GlassScreen = ({
               showsVerticalScrollIndicator={false}
               contentInsetAdjustmentBehavior="automatic"
             >
-              <Animated.View entering={FadeInDown.duration(360)}>
-                {children}
-              </Animated.View>
+              {body}
             </ScrollView>
           </KeyboardAvoidingView>
         ) : (
-          <Animated.View
-            entering={FadeInDown.duration(360)}
-            style={[styles.flex, contentStyle]}
-          >
-            {children}
-          </Animated.View>
+          body
         )}
       </SafeAreaView>
     </View>

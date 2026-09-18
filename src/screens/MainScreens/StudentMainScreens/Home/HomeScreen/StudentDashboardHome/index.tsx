@@ -30,15 +30,16 @@ import {
   subscribeNotificationInbox,
 } from '../../../../../../services/notifications/notificationInboxStore';
 import { getUserId } from '../../../../../../utils/api/userId';
-import { ApiUser, DashboardLesson } from '../../../../../../types/api.types';
+import { ApiUser, DashboardAiSummary, DashboardLesson } from '../../../../../../types/api.types';
 import { openClassroom } from '../../../../../../services/webrtc/openClassroom';
-import { useAppSelector } from '../../../../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../../../../store/hooks';
 import { canJoinMeeting } from '../../../../../../utils/bookings/bookingStatus';
 import {
   ensureSummarySocket,
   releaseSummarySocketHandler,
 } from '../../../../../../services/summaries/summarySocket';
-import { SummarySocketPayload } from '../../../../../../types/summary.types';
+import { fetchStudentSummariesThunk } from '../../../../../../store/summary/summarySlice';
+import { AiClassSummary, SummarySocketPayload } from '../../../../../../types/summary.types';
 
 /**
  * Student home after hiring a tutor — Today's Schedule + Quick Access + AI summaries.
@@ -51,14 +52,33 @@ const StudentDashboardHome = () => {
   const userName = getDisplayName(user);
   const userId = getUserId(user);
   const styles = useMemo(() => createStyles(resp), [resp]);
+  const dispatch = useAppDispatch();
   const { data: dashboard, loading, error, refresh } = useDashboard();
   const [inboxUnread, setInboxUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const studentListIds = useAppSelector(s => s.summary.studentListIds);
+  const summariesById = useAppSelector(s => s.summary.byId);
+  const publishedFromStore = useMemo(
+    () =>
+      studentListIds
+        .map(id => summariesById[id])
+        .filter(
+          (item): item is AiClassSummary =>
+            Boolean(item && item.status === 'published')
+        ),
+    [studentListIds, summariesById]
+  );
 
   const refreshUnread = useCallback(async () => {
     const count = await getUnreadNotificationCount(userId);
     setInboxUnread(count);
   }, [userId]);
+
+  const loadPublishedSummaries = useCallback(() => {
+    void dispatch(
+      fetchStudentSummariesThunk({ page: 1, limit: 10, status: 'published' })
+    );
+  }, [dispatch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,13 +86,15 @@ const StudentDashboardHome = () => {
         if (payload.status === 'published') {
           void refresh();
           void refreshUnread();
+          loadPublishedSummaries();
         }
       };
       void ensureSummarySocket(onSummaryEvent);
       void refresh();
       void refreshUnread();
+      loadPublishedSummaries();
       return () => releaseSummarySocketHandler(onSummaryEvent);
-    }, [refresh, refreshUnread])
+    }, [refresh, refreshUnread, loadPublishedSummaries])
   );
 
   useEffect(() => subscribeNotificationInbox(() => void refreshUnread()), [
@@ -82,7 +104,27 @@ const StudentDashboardHome = () => {
   const lessons = dashboard?.todaySchedule?.currentLessons || [];
   const featured = lessons.find(l => l.isNextSession) || lessons[0];
   const quick = dashboard?.quickAccess;
-  const summaries = dashboard?.aiSummaries || [];
+  const summaries = useMemo(() => {
+    const merged = new Map<string, DashboardAiSummary>();
+    (dashboard?.aiSummaries || []).forEach(item => {
+      if (item?._id) merged.set(item._id, item);
+    });
+    publishedFromStore.forEach(item => {
+      if (!item._id || merged.has(item._id)) return;
+      merged.set(item._id, {
+        _id: item._id,
+        title: item.title,
+        subject: item.subject,
+        excerpt: item.overview,
+        createdAt: item.publishedAt || item.createdAt || item.updatedAt || '',
+        tutorName: item.tutor?.name,
+        sessionDate: item.sessionDate,
+        sessionId: item.sessionId,
+        bookingId: item.bookingId,
+      });
+    });
+    return Array.from(merged.values());
+  }, [dashboard?.aiSummaries, publishedFromStore]);
   const unreadBadge =
     inboxUnread > 0
       ? inboxUnread
@@ -91,7 +133,7 @@ const StudentDashboardHome = () => {
   const onPullRefresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refresh(), refreshUnread()]);
+      await Promise.all([refresh(), refreshUnread(), Promise.resolve(loadPublishedSummaries())]);
     } finally {
       setRefreshing(false);
     }
@@ -139,13 +181,6 @@ const StudentDashboardHome = () => {
     }
   };
 
-  const comingSoon = (feature: string) => {
-    Alert.alert(
-      feature,
-      `${feature} will unlock once your tutor posts work. Backend endpoints are listed in the dashboard requirements doc.`
-    );
-  };
-
   const quickTiles = [
     {
       key: 'assignments',
@@ -153,7 +188,8 @@ const StudentDashboardHome = () => {
       subtitle: quick?.assignments?.label || `${quick?.assignments?.count ?? 0} new`,
       icon: 'book-open-page-variant',
       tone: 'orange' as const,
-      onPress: () => comingSoon('Assignments'),
+      onPress: () =>
+        navigateHomeStack('StudentAssessmentsScreen', { type: 'assignment' }),
     },
     {
       key: 'quizzes',
@@ -161,7 +197,8 @@ const StudentDashboardHome = () => {
       subtitle: quick?.quizzes?.label || `${quick?.quizzes?.count ?? 0} pending`,
       icon: 'help-circle-outline',
       tone: 'purple' as const,
-      onPress: () => comingSoon('Quizzes'),
+      onPress: () =>
+        navigateHomeStack('StudentAssessmentsScreen', { type: 'quiz' }),
     },
     {
       key: 'tests',
@@ -169,15 +206,19 @@ const StudentDashboardHome = () => {
       subtitle: quick?.tests?.label || `${quick?.tests?.count ?? 0} upcoming`,
       icon: 'check-circle-outline',
       tone: 'green' as const,
-      onPress: () => comingSoon('Tests'),
+      onPress: () =>
+        navigateHomeStack('StudentAssessmentsScreen', { type: 'test' }),
     },
     {
-      key: 'full',
-      title: 'Full Dashboard',
-      subtitle: 'View all',
-      icon: 'calendar-month-outline',
+      key: 'progress',
+      title: 'My Progress',
+      subtitle:
+        (dashboard?.upcomingSessionCount || 0) > 0
+          ? 'View analytics'
+          : 'Track scores',
+      icon: 'chart-line',
       tone: 'blue' as const,
-      onPress: () => leaveHomeStackToTabs('Bookings'),
+      onPress: () => navigateHomeStack('StudentProgressScreen'),
     },
   ];
 

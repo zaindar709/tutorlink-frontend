@@ -227,7 +227,7 @@ const TutorSignupScreen = () => {
         })}
       </View>
 
-      <View style={{ marginTop: 18 }}>
+      <View style={styles.ctaWrap}>
         <GlassPrimaryButton
           title="Create Account"
           onPress={() =>
@@ -338,6 +338,11 @@ const createLocalStyles = () =>
     selectedClassText: {
       color: AUTH_GLASS.title,
       fontWeight: '700',
+    },
+    ctaWrap: {
+      marginTop: 18,
+      width: '100%',
+      flexGrow: 0,
     },
   });
 

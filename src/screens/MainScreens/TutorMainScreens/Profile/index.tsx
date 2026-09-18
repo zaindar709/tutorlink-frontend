@@ -65,6 +65,13 @@ const MENU_SECTIONS: MenuSection[] = [
         screen: 'TutorSummariesScreen',
       },
       {
+        title: 'Assessments',
+        description: 'Quizzes, tests & assignments',
+        icon: 'clipboard-text-outline',
+        iconColor: '#7548F5',
+        screen: 'TutorAssessmentsScreen',
+      },
+      {
         title: 'Payment Methods',
         description: 'JazzCash & Easypaisa',
         icon: 'credit-card-outline',
@@ -183,6 +190,7 @@ const TutorProfileScreen = () => {
   return (
     <GlassScreen
       scroll={false}
+      animate={false}
       edges={['top', 'left', 'right']}
       contentStyle={styles.container}
     >

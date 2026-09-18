@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Alert } from 'react-native';
+import { View, Text, Alert, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useRoute } from '@react-navigation/native';
 import useUi from '../../../../hooks/ui/useUi';
@@ -9,12 +9,12 @@ import useDocumentUpload from '../../../../hooks/tutor/useDocumentUpload';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import UploadBox from '../../../../components/Tutor/DocumentUpload/UploadBox';
 import UploadGuidelines from '../../../../components/Tutor/DocumentUpload/UploadGuidelines';
-import CustomButton from '../../../../components/CustomButton';
 import DocumentPickerField from '../../../../components/Tutor/DocumentPicker';
 import {
   AuthGlassBackground,
   AuthGlassHeader,
   GlassCard,
+  GlassPrimaryButton,
 } from '../../../../components/AuthGlass';
 
 const DocumentUploadScreen = ({ navigation }: any) => {
@@ -78,60 +78,69 @@ const DocumentUploadScreen = ({ navigation }: any) => {
   };
 
   return (
-    <AuthGlassBackground>
+    <AuthGlassBackground scroll={false} contentStyle={styles.shell}>
       <AuthGlassHeader
         title="Document Upload"
         subtitle="Secure & confidential verification — Step 2 of 3"
         onBack={() => navigation.goBack()}
       />
 
-      <GlassCard contentStyle={{ paddingBottom: 8 }}>
-        <View style={styles.headerSection}>
-          <Icon name="file-document-outline" size={34} color="#FFFFFF" />
-        </View>
-
-        <View style={styles.progressBarBackground}>
-          <View style={[styles.progressBarFill, { width: '66%' }]} />
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CNIC / National ID</Text>
-          <Text style={styles.sectionSubtitle}>
-            Upload both sides of your ID card
-          </Text>
-          <View style={styles.uploadBox}>
-            <UploadBox
-              label="CNIC Front Photo"
-              iconName="camera-outline"
-              fileUri={frontImage?.uri}
-              onPress={() => pickImage('front')}
-            />
-            <UploadBox
-              label="CNIC Back Photo"
-              iconName="camera-outline"
-              fileUri={backImage?.uri}
-              onPress={() => pickImage('back')}
-            />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <GlassCard contentStyle={{ paddingBottom: 8 }}>
+          <View style={styles.headerSection}>
+            <Icon name="file-document-outline" size={34} color="#FFFFFF" />
           </View>
-        </View>
 
-        <DocumentPickerField
-          title="Educational Certificate"
-          value={certificate}
-          colors={colors}
-          onPress={pickDocument}
-        />
-        <UploadGuidelines />
-        <View style={{ marginTop: resp.dy(2), marginBottom: resp.dy(8) }}>
-          <CustomButton
-            title="Submit for Verification"
-            textStyle={{ fontSize: resp.df(16) }}
-            disabled={isButtonDisabled || submitting || loading}
-            loading={submitting || loading}
-            onPress={handleSubmit}
+          <View style={styles.progressBarBackground}>
+            <View style={[styles.progressBarFill, { width: '66%' }]} />
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>CNIC / National ID</Text>
+            <Text style={styles.sectionSubtitle}>
+              Upload both sides of your ID card
+            </Text>
+            <View style={styles.uploadBox}>
+              <UploadBox
+                label="CNIC Front Photo"
+                iconName="camera-outline"
+                fileUri={frontImage?.uri}
+                onPress={() => pickImage('front')}
+              />
+              <UploadBox
+                label="CNIC Back Photo"
+                iconName="camera-outline"
+                fileUri={backImage?.uri}
+                onPress={() => pickImage('back')}
+              />
+            </View>
+          </View>
+
+          <DocumentPickerField
+            title="Educational Certificate"
+            value={certificate}
+            colors={colors}
+            onPress={pickDocument}
           />
-        </View>
-      </GlassCard>
+          <UploadGuidelines />
+        </GlassCard>
+      </ScrollView>
+
+      <View style={styles.ctaWrap}>
+        <GlassPrimaryButton
+          title="Submit for Verification"
+          disabled={isButtonDisabled || submitting || loading}
+          loading={submitting || loading}
+          onPress={() => {
+            void handleSubmit();
+          }}
+        />
+      </View>
     </AuthGlassBackground>
   );
 };

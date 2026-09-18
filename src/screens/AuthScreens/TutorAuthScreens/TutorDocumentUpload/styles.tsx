@@ -3,6 +3,24 @@ import { AUTH_GLASS } from '../../../../components/AuthGlass/authGlassTheme';
 
 export const createStyles = (_colors: any, resp: any) =>
   StyleSheet.create({
+    shell: {
+      flex: 1,
+      paddingHorizontal: 22,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
+    scroll: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 12,
+    },
+    ctaWrap: {
+      width: '100%',
+      paddingTop: 10,
+      alignSelf: 'stretch',
+      flexGrow: 0,
+    },
     headerSection: {
       width: resp.dx(75),
       height: resp.dy(75),

@@ -559,7 +559,7 @@ export const completeBooking = async (
 
 export const rateBooking = async (
   bookingId: string,
-  data: { rating: number; review?: string }
+  data: { rating: number; review?: string; liked?: boolean }
 ) => {
   const response = await rateSessionAPI(bookingId, data);
   return response.data.data;

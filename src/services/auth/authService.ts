@@ -23,7 +23,6 @@ import { AxiosError } from 'axios';
 import { warmupApi } from '../api/apiWarmup';
 import { createSpeedTimer, speedDone, speedLog } from '../../utils/debug/speedLog';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
-import { markProfileSuggestionNeeded } from '../profile/profileSuggestionStore';
 
 export type AuthRole = 'student' | 'tutor' | 'parent';
 
@@ -68,6 +67,12 @@ const extractUser = (payload: unknown): ApiUser | null => {
   return null;
 };
 
+const parseProfileCompleted = (value: unknown): boolean | undefined => {
+  if (value === true) return true;
+  if (value === false) return false;
+  return undefined;
+};
+
 const roleConflictError = (actual: string, requested: AuthRole) =>
   new Error(
     `This email is registered as a ${actual}. Use ${actual} login, or sign up with a different email for ${requested}.`
@@ -101,10 +106,12 @@ const buildSession = (
     role,
     user: {
       ...user,
-      id: user.id || user._id,
-      _id: user._id || user.id,
+      id: user.id || user._id || user.userId,
+      _id: user._id || user.id || user.userId,
+      userId: user.userId || user.id || user._id,
       role,
       uid: firebaseUid,
+      profileCompleted: parseProfileCompleted(user.profileCompleted),
     },
   };
 };
@@ -114,7 +121,7 @@ const persistSession = async (
   role: AuthRole,
   firebaseUid?: string,
   firebaseUser?: FirebaseAuthTypes.User | null,
-  options?: { suggestCompleteProfile?: boolean }
+  options?: { sendWelcome?: boolean }
 ): Promise<AuthSession> => {
   let idToken: string;
   try {
@@ -130,17 +137,12 @@ const persistSession = async (
   setCachedAuthToken(idToken);
   await saveAuthSession(session);
 
-  if (options?.suggestCompleteProfile) {
-    const suggestionId =
-      firebaseUid ||
-      String(session.user.uid || session.user.id || session.user._id || '');
-    const normalizedRole = role === 'parent' ? 'student' : role;
-    void markProfileSuggestionNeeded(
-      normalizedRole === 'student' || normalizedRole === 'tutor'
-        ? normalizedRole
-        : 'student',
-      suggestionId
-    );
+  if (options?.sendWelcome) {
+    void import('../notifications/welcomeNotification')
+      .then(({ scheduleSignupWelcome }) =>
+        scheduleSignupWelcome(session.user, role)
+      )
+      .catch(error => console.warn('[Auth] welcome notification failed', error));
   }
 
   void import('../notifications/pushNotificationService')
@@ -467,7 +469,7 @@ export const registerWithEmail = async (
         sessionRole,
         firebaseUser.uid,
         firebaseUser,
-        { suggestCompleteProfile: true }
+        { sendWelcome: true }
       );
       timer.end({ path: 'register', role: sessionRole });
       return session;
@@ -519,7 +521,8 @@ export const loginWithGoogle = async (
   name: string,
   email: string,
   firebaseUid: string,
-  role: AuthRole
+  role: AuthRole,
+  options?: { isNewUser?: boolean }
 ): Promise<AuthSession> => {
   const timer = createSpeedTimer('GOOGLE_LOGIN');
   try {
@@ -544,7 +547,13 @@ export const loginWithGoogle = async (
       throw new Error('Google login succeeded but user profile was empty.');
     }
     const sessionRole = resolveSessionRole(user, role);
-    const session = await persistSession(user, sessionRole, firebaseUid);
+    const session = await persistSession(
+      user,
+      sessionRole,
+      firebaseUid,
+      firebaseUser,
+      { sendWelcome: Boolean(options?.isNewUser) || response.status === 201 }
+    );
     timer.end({ email, role: sessionRole });
     return session;
   } catch (error) {
@@ -568,6 +577,8 @@ export const logoutUser = async () => {
     console.warn('[Auth] push unregister failed', error);
   }
   clearCachedAuthToken();
+  const { clearCachedMyProfile } = await import('../profile/profileService');
+  clearCachedMyProfile();
   await firebaseSignOut();
   await clearAuthSession();
   timer.end();

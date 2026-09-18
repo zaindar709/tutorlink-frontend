@@ -54,6 +54,18 @@ function defaultBars(score: number): number[] {
 }
 
 export default function ProgressPage({ progress }: ProgressPageProps) {
+  if (progress.length === 0) {
+    return (
+      <div className="animate-slide-up rounded-2xl border border-dashed border-tl-border bg-tl-surface px-6 py-16 text-center">
+        <h2 className="text-xl font-extrabold text-tl-text">No progress yet</h2>
+        <p className="mt-2 text-sm text-tl-text-muted">
+          Subject scores for this student will appear after they complete a
+          class.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-slide-up space-y-5">
       <div>

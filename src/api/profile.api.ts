@@ -10,6 +10,7 @@ import {
   StudentPrivacySettings,
   StudentProfile,
   StudentSessionHistoryItem,
+  StudentProgressData,
   StudentSettingsBundle,
   UpdateInterestsPayload,
   UpdateProfilePayload,
@@ -96,18 +97,30 @@ export const getSessionHistoryAPI = (params?: {
     },
   });
 
+export const getStudentProgressAPI = () =>
+  api.get<ApiSuccessResponse<StudentProgressData>>('/api/student/progress');
+
 export const rateSessionAPI = (
   bookingId: string,
-  data: { rating: number; review?: string }
+  data: { rating: number; review?: string; liked?: boolean }
 ) =>
   api.post<
     ApiSuccessResponse<{
       id: string;
       rating: number;
       review?: string;
+      liked?: boolean;
       ratedAt?: string;
     }>
   >(`/api/student/sessions/${bookingId}/rate`, data);
+
+export const getSessionRatingAPI = (bookingId: string) =>
+  api.get<
+    ApiSuccessResponse<{
+      rated: boolean;
+      rating: Record<string, unknown> | null;
+    }>
+  >(`/api/student/sessions/${bookingId}/rate`);
 
 export const getCertificatesAPI = (params?: {
   page?: number;

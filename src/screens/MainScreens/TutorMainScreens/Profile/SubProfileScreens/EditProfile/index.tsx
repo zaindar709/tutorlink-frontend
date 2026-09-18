@@ -21,6 +21,7 @@ import useUi from '../../../../../../hooks/ui/useUi';
 import Images from '../../../../../../assets/images';
 import { ApiUser } from '../../../../../../types/api.types';
 import { setUser } from '../../../../../../store/auth/authSlice';
+import { getAuthSession, saveAuthSession } from '../../../../../../services/storage';
 import {
   loadTutorEditableProfile,
   saveTutorEditableProfile,
@@ -30,6 +31,10 @@ import {
   clearProfileSuggestionNeeded,
 } from '../../../../../../services/profile/profileSuggestionStore';
 import { syncTutorBookingProfile } from '../../../../../../services/profile/tutorProfileSync';
+import {
+  fetchLiveProfileCompleted,
+  parseProfileCompleted,
+} from '../../../../../../services/profile/profileCompletionHintStore';
 
 const MAX_BIO = 500;
 
@@ -200,19 +205,35 @@ const EditProfileScreen = ({ navigation }: any) => {
       }
 
       if (authUser) {
+        const live = await fetchLiveProfileCompleted('tutor');
+        const completed = parseProfileCompleted(live.profileCompleted);
+        const nextUser = {
+          ...authUser,
+          name: payload.fullName,
+          fullName: payload.fullName,
+          phoneNumber: payload.phone || authUser.phoneNumber,
+          phone: payload.phone || authUser.phone,
+          userId: live.userId || authUser.userId,
+          profileCompleted:
+            completed === null ? authUser.profileCompleted : completed,
+        };
         dispatch(
           setUser({
-            user: {
-              ...authUser,
-              name: payload.fullName,
-              fullName: payload.fullName,
-              phoneNumber: payload.phone || authUser.phoneNumber,
-              phone: payload.phone || authUser.phone,
-            },
+            user: nextUser,
             token: authToken || '',
             role: authRole,
           })
         );
+        const session = await getAuthSession();
+        if (session) {
+          await saveAuthSession({
+            ...session,
+            user: {
+              ...session.user,
+              ...nextUser,
+            },
+          });
+        }
       }
 
       showToast('Saved — fee synced for bookings', true);

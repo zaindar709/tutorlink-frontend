@@ -17,3 +17,28 @@ export const getTutorByIdAPI = (tutorId: string) =>
     { timeout: 20000 }
   );
 
+export const getTutorReviewsAPI = (tutorId: string) =>
+  api.get<
+    ApiSuccessResponse<{
+      tutorId?: string;
+      rating?: number;
+      totalReviews?: number;
+      likeCount?: number;
+      items?: Array<{
+        id: string;
+        studentName?: string;
+        studentAvatar?: string;
+        rating: number;
+        comment?: string;
+        review?: string;
+        subject?: string;
+        createdAt?: string;
+        ratedAt?: string;
+        liked?: boolean;
+      }>;
+    }>
+  >(`/api/tutors/${tutorId}/reviews`, {
+    params: { page: 1, limit: 10, sort: 'recent' },
+    timeout: 20000,
+  });
+

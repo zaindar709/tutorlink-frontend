@@ -6,7 +6,6 @@ import {
   Text,
   Alert,
   ActivityIndicator,
-  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -14,7 +13,7 @@ import useUi from '../../../../hooks/ui/useUi';
 import ReviewHeader from '../../../../components/Tutor/ReviewHeader';
 import InterviewInfoCard from '../../../../components/Tutor/InterviewInfoCard';
 import ActionCards from '../../../../components/Tutor/ActionCard';
-import { AuthGlassBackground } from '../../../../components/AuthGlass';
+import { AuthGlassBackground, GlassPrimaryButton } from '../../../../components/AuthGlass';
 import { AUTH_GLASS } from '../../../../components/AuthGlass/authGlassTheme';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import { isTutorApproved } from '../../../../utils/tutor/tutorNavigation';
@@ -125,7 +124,7 @@ const DocumentReviewScreen = () => {
     currentStatus !== 'rejected';
 
   return (
-    <AuthGlassBackground>
+    <AuthGlassBackground scroll={false} contentStyle={styles.shell}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -182,15 +181,12 @@ const DocumentReviewScreen = () => {
                   you.
                 </Text>
 
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleGoToDashboard}
-                  style={styles.dashboardButton}
-                >
-                  <Text style={styles.dashboardButtonText}>
-                    Open Tutor Dashboard
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.ctaWrap}>
+                  <GlassPrimaryButton
+                    title="Open Tutor Dashboard"
+                    onPress={handleGoToDashboard}
+                  />
+                </View>
               </View>
             ) : underReview ? (
               <View style={styles.statusCard}>
@@ -245,39 +241,21 @@ const DocumentReviewScreen = () => {
               <ActionCards />
             </View>
 
-            {/* ==========================================
-                CHECK APPROVAL BUTTON
-
-                This becomes the 3rd action:
-                1. Schedule Interview
-                2. Video Call
-                3. Check Approval Status
-            ========================================== */}
-
-            {showWaitingActions ? (
-              <View style={styles.approvalContainer}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={handleCheckApproval}
-                  style={styles.approvalButton}
-                >
-                  <Text style={styles.approvalButtonText}>
-                    Check Approval Status
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-
-            {/* ==========================================
-                INFO
-            ========================================== */}
-
             <Text style={styles.infoText}>
               Approved tutors appear in student search automatically.
             </Text>
           </>
         )}
       </ScrollView>
+
+      {showWaitingActions ? (
+        <View style={styles.ctaWrap}>
+          <GlassPrimaryButton
+            title="Check Approval Status"
+            onPress={handleCheckApproval}
+          />
+        </View>
+      ) : null}
     </AuthGlassBackground>
   );
 };
@@ -290,16 +268,20 @@ export default DocumentReviewScreen;
 
 const createStyles = (colors:any, resp:any) =>
   StyleSheet.create({
+    shell: {
+      flex: 1,
+      paddingHorizontal: 22,
+      paddingTop: 8,
+      paddingBottom: 12,
+    },
     scrollView: {
       flex: 1,
       width: '100%',
     },
 
     content: {
-      flexGrow: 1,
       width: '100%',
-      paddingHorizontal: resp.dx(16),
-      paddingBottom: resp.dy(40),
+      paddingBottom: resp.dy(16),
     },
 
     loaderContainer: {
@@ -353,62 +335,11 @@ const createStyles = (colors:any, resp:any) =>
     // APPROVED DASHBOARD BUTTON
     // -------------------------------------------------
 
-    dashboardButton: {
+    ctaWrap: {
       width: '100%',
-      height: resp.dy(50),
-      marginTop: resp.dy(14),
-
-      borderRadius: resp.dx(12),
-
-      backgroundColor: colors.PRIMARY_COLOR,
-
-      alignItems: 'center',
-      justifyContent: 'center',
+      marginTop: resp.dy(16),
+      flexGrow: 0,
     },
-
-    dashboardButtonText: {
-      fontSize: resp.df(14),
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-
-    // -------------------------------------------------
-    // CHECK APPROVAL BUTTON
-    // -------------------------------------------------
-
-    approvalContainer: {
-      width: '100%',
-      marginTop: resp.dy(20),
-    },
-
-    approvalButton: {
-      width: '100%',
-      minHeight: resp.dy(52),
-
-      borderRadius: resp.dx(14),
-
-      backgroundColor: '#EEF2FF',
-
-      borderWidth: 1,
-      borderColor: '#D9E0FF',
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      paddingHorizontal: resp.dx(16),
-      paddingVertical: resp.dy(12),
-    },
-
-    approvalButtonText: {
-      fontSize: resp.df(14),
-      fontWeight: '700',
-      color: colors.PRIMARY_COLOR,
-      textAlign: 'center',
-    },
-
-    // -------------------------------------------------
-    // INFO TEXT
-    // -------------------------------------------------
 
     infoText: {
       width: '100%',

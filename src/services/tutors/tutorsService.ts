@@ -1,5 +1,6 @@
-import { getTutorByIdAPI, searchTutorsAPI } from '../../api/tutors.api';
+import { getTutorByIdAPI, getTutorReviewsAPI, searchTutorsAPI } from '../../api/tutors.api';
 import { TutorProfile, TutorSearchPayload } from '../../types/api.types';
+import type { TutorReview } from '../../types/bookingFlow.types';
 
 /** Walk response and collect the most likely tutor array. */
 const extractTutorList = (payload: unknown): Record<string, unknown>[] => {
@@ -275,4 +276,43 @@ export const searchTutors = async (
   }
 
   return [];
+};
+
+export type TutorReviewsPayload = {
+  rating: number;
+  totalReviews: number;
+  likeCount: number;
+  reviews: TutorReview[];
+};
+
+export const fetchTutorReviews = async (
+  tutorId: string
+): Promise<TutorReviewsPayload | null> => {
+  try {
+    const response = await getTutorReviewsAPI(tutorId);
+    const data = (response.data?.data || response.data) as Record<
+      string,
+      unknown
+    >;
+    const items = Array.isArray(data.items) ? data.items : [];
+    return {
+      rating: Number(data.rating || 0) || 0,
+      totalReviews: Number(data.totalReviews || items.length) || 0,
+      likeCount: Number(data.likeCount || 0) || 0,
+      reviews: items.map((raw, index) => {
+        const item = raw as Record<string, unknown>;
+        return {
+          id: String(item.id || index),
+          studentName: String(item.studentName || 'Student'),
+          studentAvatar: String(item.studentAvatar || ''),
+          rating: Number(item.rating || 0) || 0,
+          comment: String(item.comment || item.review || ''),
+          createdAt: String(item.createdAt || item.ratedAt || ''),
+          subject: item.subject ? String(item.subject) : undefined,
+        };
+      }),
+    };
+  } catch {
+    return null;
+  }
 };

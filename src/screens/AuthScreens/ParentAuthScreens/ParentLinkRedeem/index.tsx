@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import CustomButton from '../../../../components/CustomButton';
 import {
   AuthGlassBackground,
   AuthGlassHeader,
   GlassCard,
   GlassInput,
+  GlassPrimaryButton,
 } from '../../../../components/AuthGlass';
 import { redeemParentLinkCode } from '../../../../services/profile/profileService';
 import { getApiErrorMessage } from '../../../../utils/api/errorHandler';
@@ -62,9 +62,12 @@ const ParentLinkRedeemScreen = () => {
         />
 
         <View style={styles.buttonWrap}>
-          <CustomButton
+          <GlassPrimaryButton
             title={loading ? 'Linking...' : 'Redeem Code'}
-            onPress={handleRedeem}
+            onPress={() => {
+              void handleRedeem();
+            }}
+            loading={loading}
             disabled={loading}
           />
         </View>

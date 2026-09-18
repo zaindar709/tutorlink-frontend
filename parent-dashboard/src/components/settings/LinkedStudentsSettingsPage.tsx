@@ -1,47 +1,25 @@
-import { Link2, Unlink } from 'lucide-react';
+import { Unlink } from 'lucide-react';
 import type { LinkedChild } from '../../types/parent.types';
 import GlassCard from '../shared/GlassCard';
 import Badge from '../shared/Badge';
-import { useState } from 'react';
+import AddChildCodeCard from '../shared/AddChildCodeCard';
 
 interface LinkedStudentsSettingsPageProps {
   children: LinkedChild[];
-  onUnlink?: () => void;
+  onUnlink?: (studentId: string) => Promise<boolean> | boolean | void;
+  onLink?: (
+    code: string
+  ) => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 export default function LinkedStudentsSettingsPage({
   children,
   onUnlink,
+  onLink,
 }: LinkedStudentsSettingsPageProps) {
-  const [code, setCode] = useState('');
-
   return (
     <div className="max-w-3xl space-y-6">
-      <GlassCard className="p-6">
-        <h4 className="font-bold text-tl-text">Linked from student app</h4>
-        <p className="mt-1 text-sm text-tl-text-muted">
-          Codes are generated on the student Profile tab. To switch students,
-          unlink below and enter a new code on the home gate.
-        </p>
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="text"
-            value={code}
-            onChange={e => setCode(e.target.value.toUpperCase())}
-            placeholder="Already linked — use Unlink to change"
-            disabled
-            className="flex-1 rounded-xl border border-tl-border bg-tl-surface px-4 py-2.5 text-sm outline-none opacity-60 dark:bg-tl-surface-muted"
-          />
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-tl-primary-dark to-tl-primary-light px-5 py-2.5 text-sm font-semibold text-white opacity-50"
-          >
-            <Link2 className="h-4 w-4" />
-            Link Student
-          </button>
-        </div>
-      </GlassCard>
+      {onLink ? <AddChildCodeCard onLink={onLink} /> : null}
 
       <div className="space-y-3">
         {children.map(child => (
@@ -58,7 +36,13 @@ export default function LinkedStudentsSettingsPage({
             <Badge variant="success">Active</Badge>
             <button
               type="button"
-              onClick={onUnlink}
+              onClick={() => {
+                if (
+                  window.confirm(`Unlink ${child.name} from this parent account?`)
+                ) {
+                  void onUnlink?.(child.id);
+                }
+              }}
               className="rounded-xl border border-red-200 p-2 text-tl-red transition hover:bg-red-50 dark:border-red-900 dark:hover:bg-red-950/20"
               aria-label={`Unlink ${child.name}`}
             >

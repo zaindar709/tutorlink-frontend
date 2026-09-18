@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   fetchCertificates,
   fetchSessionHistory,
+  fetchStudentProgress,
   getCertificateDownloadUrl,
   rateCompletedSession,
 } from '../../services/profile/profileService';
 import {
   StudentCertificateItem,
+  StudentProgressData,
   StudentSessionHistoryItem,
 } from '../../types/api.types';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
@@ -103,4 +105,30 @@ export const useCertificates = (filter: 'all' | 'recent' = 'all') => {
   };
 
   return { certificates, loading, error, refresh: load, download };
+};
+
+export const useStudentProgress = () => {
+  const [data, setData] = useState<StudentProgressData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const progress = await fetchStudentProgress();
+      setData(progress);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return { data, loading, error, refresh: load };
 };

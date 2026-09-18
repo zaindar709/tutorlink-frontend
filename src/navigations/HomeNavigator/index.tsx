@@ -1,4 +1,3 @@
-import { StyleSheet } from 'react-native';
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import EditProfileScreen from '../../screens/MainScreens/TutorMainScreens/Profile/SubProfileScreens/EditProfile';
@@ -18,6 +17,7 @@ import StudentInterestsScreen from '../../screens/MainScreens/StudentMainScreens
 import StudentCertificatesScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/Certificates';
 import StudentLinkParentScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/LinkParentAccount';
 import StudentSessionHistoryScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/SessionHistory';
+import StudentProgressScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/Progress';
 import StudentNotificationsScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/Notifications';
 import StudentNotificationInboxScreen from '../../screens/MainScreens/StudentMainScreens/Home/NotificationInbox';
 import StudentPrivacySecurityScreen from '../../screens/MainScreens/StudentMainScreens/Profile/SubProfileScreens/PrivacySecurity';
@@ -37,6 +37,14 @@ import StudentSummariesScreen from '../../screens/MainScreens/StudentMainScreens
 import StudentSummaryDetailScreen from '../../screens/MainScreens/StudentMainScreens/Summary/StudentSummaryDetailScreen';
 import TutorSummariesScreen from '../../screens/MainScreens/TutorMainScreens/Summary/TutorSummariesScreen';
 import TutorSummaryReviewScreen from '../../screens/MainScreens/TutorMainScreens/Summary/TutorSummaryReviewScreen';
+import StudentAssessmentsScreen from '../../screens/MainScreens/StudentMainScreens/Assessment/StudentAssessmentsScreen';
+import StudentAssessmentDetailScreen from '../../screens/MainScreens/StudentMainScreens/Assessment/StudentAssessmentDetailScreen';
+import StudentTakeAssessmentScreen from '../../screens/MainScreens/StudentMainScreens/Assessment/StudentTakeAssessmentScreen';
+import StudentAssessmentResultScreen from '../../screens/MainScreens/StudentMainScreens/Assessment/StudentAssessmentResultScreen';
+import TutorAssessmentsScreen from '../../screens/MainScreens/TutorMainScreens/Assessment/TutorAssessmentsScreen';
+import TutorAssessmentEditorScreen from '../../screens/MainScreens/TutorMainScreens/Assessment/TutorAssessmentEditorScreen';
+import TutorSubmissionsScreen from '../../screens/MainScreens/TutorMainScreens/Assessment/TutorSubmissionsScreen';
+import TutorGradeAttemptScreen from '../../screens/MainScreens/TutorMainScreens/Assessment/TutorGradeAttemptScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -98,6 +106,10 @@ const HomeNavigator = () => {
       <Stack.Screen
         name="StudentSessionHistoryScreen"
         component={StudentSessionHistoryScreen}
+      />
+      <Stack.Screen
+        name="StudentProgressScreen"
+        component={StudentProgressScreen}
       />
       <Stack.Screen
         name="StudentNotificationsScreen"
@@ -175,11 +187,42 @@ const HomeNavigator = () => {
         name="TutorSummaryReviewScreen"
         component={TutorSummaryReviewScreen}
       />
+      <Stack.Screen
+        name="StudentAssessmentsScreen"
+        component={StudentAssessmentsScreen}
+      />
+      <Stack.Screen
+        name="StudentAssessmentDetailScreen"
+        component={StudentAssessmentDetailScreen}
+      />
+      <Stack.Screen
+        name="StudentTakeAssessmentScreen"
+        component={StudentTakeAssessmentScreen}
+        options={{ gestureEnabled: false }}
+      />
+      <Stack.Screen
+        name="StudentAssessmentResultScreen"
+        component={StudentAssessmentResultScreen}
+      />
+      <Stack.Screen
+        name="TutorAssessmentsScreen"
+        component={TutorAssessmentsScreen}
+      />
+      <Stack.Screen
+        name="TutorAssessmentEditorScreen"
+        component={TutorAssessmentEditorScreen}
+      />
+      <Stack.Screen
+        name="TutorSubmissionsScreen"
+        component={TutorSubmissionsScreen}
+      />
+      <Stack.Screen
+        name="TutorGradeAttemptScreen"
+        component={TutorGradeAttemptScreen}
+      />
     </Stack.Navigator>
   );
 };
 
 export default HomeNavigator;
-
-const styles = StyleSheet.create({});
 

@@ -112,6 +112,7 @@ export const submitTutorRatingThunk = createAsyncThunk<
     await rateBookingRequest(payload.bookingId, {
       rating: payload.rating,
       review: payload.review,
+      liked: payload.liked,
     });
   } catch (error) {
     const msg = getBookingErrorMessage(error);

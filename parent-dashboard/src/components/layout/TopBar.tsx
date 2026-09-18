@@ -67,7 +67,8 @@ export default function TopBar({
               type="button"
               onClick={onLogout}
               className="flex h-10 w-10 items-center justify-center rounded-xl border border-tl-border bg-tl-surface text-tl-text-muted transition-all duration-300 hover:-translate-y-0.5 hover:border-red-200 hover:text-tl-red dark:bg-tl-surface-muted"
-              aria-label="Log out"
+              aria-label="Clear linked students"
+              title="Clear linked students"
             >
               <LogOut className="h-4 w-4" />
             </button>
@@ -79,7 +80,7 @@ export default function TopBar({
             </div>
             <div>
               <p className="text-xs font-semibold text-tl-text">{profileName}</p>
-              <p className="text-[10px] text-tl-text-muted">Parent account</p>
+              <p className="text-[10px] text-tl-text-muted">Linked by code</p>
             </div>
           </div>
         </div>

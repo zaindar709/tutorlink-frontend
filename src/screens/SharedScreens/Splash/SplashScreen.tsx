@@ -28,6 +28,7 @@ import {
 import { openParentDashboard } from '../../../config/parentDashboard';
 import { clearAuthSession } from '../../../services/storage';
 import { warmupApi } from '../../../services/api/apiWarmup';
+import { scheduleFirstInstallWelcome } from '../../../services/notifications/welcomeNotification';
 
 /** Min splash time — auth restore runs in parallel during this window. */
 const SPLASH_MIN_MS = 1300;
@@ -171,6 +172,7 @@ export default function SplashScreen() {
         index: 0,
         routes: [{ name: 'AuthNavigator' }],
       });
+      scheduleFirstInstallWelcome(2200);
     };
 
     void navigateAfterSplash();

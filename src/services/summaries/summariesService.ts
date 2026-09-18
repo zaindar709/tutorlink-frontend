@@ -39,6 +39,53 @@ const normalizeParticipant = (raw: unknown) => {
   };
 };
 
+const extractPayload = (payload: unknown): unknown => {
+  const root = asRecord(payload);
+  if (!root) return payload;
+  if (root.data !== undefined) {
+    const nested = asRecord(root.data);
+    if (nested && nested.data !== undefined && !Array.isArray(nested.data)) {
+      return nested.data;
+    }
+    return root.data;
+  }
+  return payload;
+};
+
+const VALID_STATUS: SummaryStatus[] = [
+  'not_started',
+  'processing',
+  'generated',
+  'under_review',
+  'published',
+  'failed',
+];
+
+const asStatus = (value: unknown, fallback: SummaryStatus): SummaryStatus => {
+  const raw = String(value || '').trim();
+  return VALID_STATUS.includes(raw as SummaryStatus)
+    ? (raw as SummaryStatus)
+    : fallback;
+};
+
+const parseStatusPayload = (
+  raw: unknown,
+  fallbackSessionId: string,
+  fallbackStatus: SummaryStatus = 'not_started'
+): SummaryStatusPayload => {
+  const body = asRecord(extractPayload(raw)) || asRecord(raw) || {};
+  const summaryId = String(
+    body.summaryId || body._id || body.id || ''
+  ).trim();
+  return {
+    sessionId: String(body.sessionId || body.bookingId || fallbackSessionId),
+    summaryId: summaryId || undefined,
+    status: asStatus(body.status, fallbackStatus),
+    updatedAt: body.updatedAt ? String(body.updatedAt) : undefined,
+    message: body.message ? String(body.message) : undefined,
+  };
+};
+
 export const normalizeSummary = (raw: unknown): AiClassSummary | null => {
   const b = asRecord(raw);
   if (!b) return null;
@@ -175,9 +222,11 @@ export const getSummaryErrorMessage = (error: unknown): string => {
 };
 
 const unwrapSummary = (payload: unknown): AiClassSummary => {
-  const root = asRecord(payload);
-  const data = root?.data ?? payload;
-  const normalized = normalizeSummary(data);
+  const data = extractPayload(payload);
+  const normalized =
+    normalizeSummary(data) ||
+    normalizeSummary(asRecord(data)?.summary) ||
+    normalizeSummary(payload);
   if (!normalized) {
     throw new Error('Summary data is unavailable');
   }
@@ -186,14 +235,18 @@ const unwrapSummary = (payload: unknown): AiClassSummary => {
 
 const unwrapList = (payload: unknown): SummaryListResult => {
   const root = asRecord(payload);
-  const data = asRecord(root?.data) || root;
+  const data = asRecord(extractPayload(payload)) || asRecord(root?.data) || root;
   const itemsRaw = Array.isArray(data?.items)
     ? data!.items
-    : Array.isArray(data?.data)
-      ? (data!.data as unknown[])
-      : Array.isArray(payload)
-        ? (payload as unknown[])
-        : [];
+    : Array.isArray(data?.summaries)
+      ? (data!.summaries as unknown[])
+      : Array.isArray(data?.data)
+        ? (data!.data as unknown[])
+        : Array.isArray(extractPayload(payload))
+          ? (extractPayload(payload) as unknown[])
+          : Array.isArray(payload)
+            ? (payload as unknown[])
+            : [];
   const items = itemsRaw
     .map(normalizeSummary)
     .filter((x): x is AiClassSummary => Boolean(x));
@@ -215,13 +268,7 @@ export const endSessionForSummary = async (
 ): Promise<SummaryStatusPayload> => {
   try {
     const res = await endSessionForSummaryAPI(sessionId, data);
-    const body = asRecord(res.data.data) || {};
-    return {
-      sessionId: String(body.sessionId || sessionId),
-      summaryId: body.summaryId ? String(body.summaryId) : undefined,
-      status:
-        (String(body.status || 'processing') as SummaryStatus) || 'processing',
-    };
+    return parseStatusPayload(res.data, sessionId, 'processing');
   } catch (err) {
     // Idempotent publish conflict — recover via status poll.
     if (err instanceof AxiosError) {
@@ -275,18 +322,41 @@ export const fetchSessionSummary = async (
   return unwrapSummary(res.data);
 };
 
+const statusFromSessionSummary = async (
+  sessionId: string
+): Promise<SummaryStatusPayload | null> => {
+  try {
+    const summary = await fetchSessionSummary(sessionId);
+    return {
+      sessionId: summary.sessionId || sessionId,
+      summaryId: summary._id,
+      status: summary.status,
+      updatedAt: summary.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const fetchSummaryStatus = async (
   sessionId: string
 ): Promise<SummaryStatusPayload> => {
-  const res = await getSummaryStatusAPI(sessionId);
-  const body = asRecord(res.data.data) || {};
-  return {
-    sessionId: String(body.sessionId || sessionId),
-    summaryId: body.summaryId ? String(body.summaryId) : undefined,
-    status: String(body.status || 'not_started') as SummaryStatus,
-    updatedAt: body.updatedAt ? String(body.updatedAt) : undefined,
-    message: body.message ? String(body.message) : undefined,
-  };
+  try {
+    const res = await getSummaryStatusAPI(sessionId);
+    const parsed = parseStatusPayload(res.data, sessionId, 'processing');
+    if (parsed.summaryId && parsed.status !== 'not_started') {
+      return parsed;
+    }
+    const fromSummary = await statusFromSessionSummary(sessionId);
+    return fromSummary || parsed;
+  } catch (err) {
+    if (err instanceof AxiosError && err.response?.status === 404) {
+      const fromSummary = await statusFromSessionSummary(sessionId);
+      if (fromSummary) return fromSummary;
+      return { sessionId, status: 'processing' };
+    }
+    throw err;
+  }
 };
 
 export const fetchSummaryById = async (
@@ -329,12 +399,7 @@ export const retrySummary = async (
   sessionId: string
 ): Promise<SummaryStatusPayload> => {
   const res = await retrySummaryAPI(sessionId);
-  const body = asRecord(res.data.data) || {};
-  return {
-    sessionId: String(body.sessionId || sessionId),
-    summaryId: body.summaryId ? String(body.summaryId) : undefined,
-    status: String(body.status || 'processing') as SummaryStatus,
-  };
+  return parseStatusPayload(res.data, sessionId, 'processing');
 };
 
 export const statusCopy = (status: SummaryStatus): string => {

@@ -11,6 +11,7 @@ import {
   GlassPrimaryButton,
   AUTH_GLASS,
 } from '../../../components/AuthGlass';
+import { scheduleFirstInstallWelcome } from '../../../services/notifications/welcomeNotification';
 
 export default function OnboardingScreens({
   onComplete,
@@ -31,6 +32,7 @@ export default function OnboardingScreens({
 
   const handleComplete = () => {
     onComplete?.();
+    scheduleFirstInstallWelcome();
     (navigation as any).replace('RoleSelectionScreen');
   };
 

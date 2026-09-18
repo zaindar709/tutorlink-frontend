@@ -302,6 +302,14 @@ api.interceptors.response.use(
       !isOnAuthFlowScreen()
     ) {
       clearCachedAuthToken();
+      try {
+        const { clearCachedMyProfile } = await import(
+          '../services/profile/profileService'
+        );
+        clearCachedMyProfile();
+      } catch {
+        // ignore
+      }
       await clearAuthSession();
       store.dispatch(logout());
       resetToAuth();

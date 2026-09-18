@@ -21,8 +21,10 @@ export const useGoogleAuth = (role: AuthRole) => {
     dispatch(setLoading(true));
 
     try {
-      const { firebaseUid, name, email } = await signInWithGoogle();
-      const session = await loginWithGoogle(name, email, firebaseUid, role);
+      const { firebaseUid, name, email, isNewUser } = await signInWithGoogle();
+      const session = await loginWithGoogle(name, email, firebaseUid, role, {
+        isNewUser,
+      });
 
       dispatch(
         setUser({

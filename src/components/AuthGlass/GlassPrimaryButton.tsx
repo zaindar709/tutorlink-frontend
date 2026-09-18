@@ -74,7 +74,12 @@ const GlassPrimaryButton = ({
             {icon ? (
               <Icon source={icon} size={20} color="#fff" />
             ) : null}
-            <Text style={[styles.text, textStyle]}>{title}</Text>
+            <Text
+              style={[styles.text, icon ? styles.textWithIcon : null, textStyle]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
           </>
         )}
       </LinearGradient>
@@ -85,18 +90,21 @@ const GlassPrimaryButton = ({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    alignSelf: 'center',
+    height: 56,
+    alignSelf: 'stretch',
     borderRadius: 18,
+    overflow: 'hidden',
+    flexGrow: 0,
+    flexShrink: 0,
     shadowColor: '#7548F5',
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
     marginVertical: 6,
   },
   gradient: {
-    height: 56,
-    borderRadius: 18,
+    ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -104,9 +112,11 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+  },
+  textWithIcon: {
     marginLeft: 8,
   },
 });

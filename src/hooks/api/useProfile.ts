@@ -4,6 +4,7 @@ import {
   fetchLinkedParents,
   fetchMyProfile,
   generateParentLinkCode,
+  peekCachedMyProfile,
   redeemParentLinkCode,
   unlinkParent,
   updateInterests,
@@ -19,23 +20,39 @@ import {
   UpdateProfilePayload,
 } from '../../types/api.types';
 import { getApiErrorMessage } from '../../utils/api/errorHandler';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { setUser } from '../../store/auth/authSlice';
+import { parseProfileCompleted } from '../../services/profile/profileCompletionHintStore';
 
 export const useProfile = () => {
-  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const dispatch = useAppDispatch();
+  const authUser = useAppSelector(state => state.auth.user);
+  const authToken = useAppSelector(state => state.auth.token);
+  const authRole = useAppSelector(state => state.auth.role);
+  const [profile, setProfile] = useState<StudentProfile | null>(
+    () => peekCachedMyProfile()
+  );
   const [linkCode, setLinkCode] = useState<LinkCodeData | null>(null);
-  const [linkedParents, setLinkedParents] = useState<LinkedParent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [linkedParents, setLinkedParents] = useState<LinkedParent[]>(
+    () => peekCachedMyProfile()?.parentLinkCard?.linkedParents || []
+  );
+  const [loading, setLoading] = useState(() => !peekCachedMyProfile());
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
-    setLoading(true);
+    const cached = peekCachedMyProfile();
+    if (cached) {
+      setProfile(cached);
+      setLinkedParents(cached.parentLinkCard?.linkedParents || []);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const data = await fetchMyProfile();
       setProfile(data);
-      // Prefer parents embedded in GET /api/profile/me — avoid extra 404 noise
-      // when GET /api/profile/linked-parents is not deployed yet.
       setLinkedParents(data.parentLinkCard?.linkedParents || []);
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -48,12 +65,36 @@ export const useProfile = () => {
     void loadProfile();
   }, [loadProfile]);
 
+  const mergeProfileIntoAuth = useCallback(
+    (updated: StudentProfile) => {
+      if (!authUser || !authRole) return;
+      const completed = parseProfileCompleted(updated.profileCompleted);
+      dispatch(
+        setUser({
+          user: {
+            ...authUser,
+            name: updated.name || authUser.name,
+            phoneNumber: updated.phoneNumber || authUser.phoneNumber,
+            avatarUrl: updated.avatarUrl || authUser.avatarUrl,
+            userId: updated.userId || authUser.userId,
+            profileCompleted:
+              completed === null ? authUser.profileCompleted : completed,
+          },
+          token: authToken || '',
+          role: authRole,
+        })
+      );
+    },
+    [authRole, authToken, authUser, dispatch]
+  );
+
   const saveProfile = useCallback(async (payload: UpdateProfilePayload) => {
     setActionLoading(true);
     setError(null);
     try {
       const updated = await updateProfile(payload);
       setProfile(updated);
+      mergeProfileIntoAuth(updated);
       return true;
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -61,7 +102,7 @@ export const useProfile = () => {
     } finally {
       setActionLoading(false);
     }
-  }, []);
+  }, [mergeProfileIntoAuth]);
 
   const uploadAvatar = useCallback(
     async (file: { uri: string; type?: string; name?: string }) => {
@@ -71,6 +112,7 @@ export const useProfile = () => {
         const avatarUrl = await uploadProfileAvatar(file);
         const updated = await updateProfile({ avatarUrl });
         setProfile(updated);
+        mergeProfileIntoAuth(updated);
         return avatarUrl;
       } catch (err) {
         setError(getApiErrorMessage(err));
@@ -79,7 +121,7 @@ export const useProfile = () => {
         setActionLoading(false);
       }
     },
-    []
+    [mergeProfileIntoAuth]
   );
 
   const loadInterests = useCallback(async () => {
@@ -96,15 +138,17 @@ export const useProfile = () => {
     setError(null);
     try {
       const result = await updateInterests(payload);
-      setProfile(prev =>
-        prev
-          ? {
-              ...prev,
-              interests: result.interests,
-              grade: result.grade || prev.grade,
-            }
-          : prev
-      );
+      const refreshed = await fetchMyProfile({ force: true }).catch(() => null);
+      setProfile(prev => {
+        const next = refreshed || prev;
+        if (!next) return prev;
+        return {
+          ...next,
+          interests: result.interests,
+          grade: result.grade || next.grade,
+        };
+      });
+      if (refreshed) mergeProfileIntoAuth(refreshed);
       return true;
     } catch (err) {
       setError(getApiErrorMessage(err));
@@ -112,7 +156,7 @@ export const useProfile = () => {
     } finally {
       setActionLoading(false);
     }
-  }, []);
+  }, [mergeProfileIntoAuth]);
 
   const generateLinkCode = useCallback(async () => {
     setActionLoading(true);

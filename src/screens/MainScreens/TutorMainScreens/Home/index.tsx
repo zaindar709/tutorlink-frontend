@@ -35,6 +35,7 @@ import { ApiUser } from '../../../../types/api.types';
 import { getBookingErrorMessage } from '../../../../utils/bookings/bookingErrors';
 import { openClassroom } from '../../../../services/webrtc/openClassroom';
 import { fetchTutorSummariesThunk } from '../../../../store/summary/summarySlice';
+import { fetchTutorAssessmentsThunk } from '../../../../store/assessment/assessmentSlice';
 import { ensureSummarySocket } from '../../../../services/summaries/summarySocket';
 import { formatDateParam } from '../../../../utils/api/userId';
 
@@ -51,6 +52,8 @@ export default function DashboardScreen() {
   const styles = useMemo(() => createStyles(colors, resp), [colors, resp]);
   const tutorSummaryIds = useAppSelector(s => s.summary.tutorListIds);
   const summariesById = useAppSelector(s => s.summary.byId);
+  const tutorAssessmentIds = useAppSelector(s => s.assessment.tutorIds);
+  const assessmentsById = useAppSelector(s => s.assessment.byId);
   const pendingSummaries = useMemo(
     () =>
       tutorSummaryIds
@@ -62,6 +65,16 @@ export default function DashboardScreen() {
         ),
     [tutorSummaryIds, summariesById]
   );
+  const dashboardAssessments = useMemo(() => {
+    const items = tutorAssessmentIds
+      .map(id => assessmentsById[id])
+      .filter((a): a is NonNullable<typeof a> => Boolean(a));
+    const pending = items.filter(a => (a.pendingGradingCount || 0) > 0);
+    return (pending.length ? pending : items.filter(a => a.status !== 'archived')).slice(
+      0,
+      3
+    );
+  }, [tutorAssessmentIds, assessmentsById]);
 
   // Monthly packages create many future weekday rows; Active holds all of them.
   // "Today's sessions" must only show bookings whose session date is today.
@@ -76,6 +89,7 @@ export default function DashboardScreen() {
     React.useCallback(() => {
       void ensureSummarySocket();
       void dispatch(fetchTutorSummariesThunk({ page: 1, limit: 20 }));
+      void dispatch(fetchTutorAssessmentsThunk({ page: 1, limit: 20 }));
     }, [dispatch])
   );
 
@@ -327,6 +341,59 @@ export default function DashboardScreen() {
                 </Text>
                 <Text style={[styles.viewAll, { marginTop: 8 }]}>
                   Review Summary ›
+                </Text>
+              </TouchableOpacity>
+            ) : null
+          )
+        )}
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Assessments</Text>
+          <TouchableOpacity
+            onPress={() => navigateHomeStack('TutorAssessmentsScreen')}
+          >
+            <Text style={styles.viewAll}>View all</Text>
+          </TouchableOpacity>
+        </View>
+        {dashboardAssessments.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <MaterialCommunityIcons
+              name="clipboard-text-outline"
+              size={26}
+              color={GLASS.accent}
+            />
+            <Text style={styles.emptyTitle}>No assessments yet</Text>
+            <Text style={styles.emptySub}>
+              Create a quiz, test or assignment for students you already teach.
+            </Text>
+          </View>
+        ) : (
+          dashboardAssessments.map(item =>
+            item ? (
+              <TouchableOpacity
+                key={item._id}
+                style={styles.requestCard}
+                activeOpacity={0.9}
+                onPress={() =>
+                  item.status === 'draft'
+                    ? navigateHomeStack('TutorAssessmentEditorScreen', {
+                        assessmentId: item._id,
+                      })
+                    : navigateHomeStack('TutorSubmissionsScreen', {
+                        assessmentId: item._id,
+                      })
+                }
+              >
+                <Text style={styles.requestName}>{item.title}</Text>
+                <Text style={styles.requestMeta}>
+                  {item.type}
+                  {item.subject ? ` · ${item.subject}` : ''}
+                  {item.pendingGradingCount
+                    ? ` · ${item.pendingGradingCount} to grade`
+                    : ` · ${item.status}`}
+                </Text>
+                <Text style={[styles.viewAll, { marginTop: 8 }]}>
+                  {item.status === 'draft' ? 'Continue editing ›' : 'View submissions ›'}
                 </Text>
               </TouchableOpacity>
             ) : null

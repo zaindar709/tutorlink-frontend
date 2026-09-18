@@ -1,4 +1,4 @@
-import { Download, Eye, Share2 } from 'lucide-react';
+import { Eye, Share2 } from 'lucide-react';
 import type { ParentSettings } from '../../types/parent.types';
 import GlassCard from '../shared/GlassCard';
 import Toggle from '../shared/Toggle';
@@ -58,16 +58,10 @@ export default function PrivacySettingsPage({
             <p className="text-sm text-tl-text-muted">Export or manage stored information</p>
           </div>
         </header>
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-xl border border-tl-border p-3 text-left transition hover:border-violet-300"
-        >
-          <Download className="h-5 w-5 text-tl-primary" />
-          <div>
-            <p className="text-sm font-semibold text-tl-text">Download my data</p>
-            <p className="text-xs text-tl-text-muted">Get a copy of your account information</p>
-          </div>
-        </button>
+        <p className="text-sm text-tl-text-muted">
+          This portal opens with a student code, not a parent account. Account
+          data export is not available here.
+        </p>
       </GlassCard>
     </div>
   );

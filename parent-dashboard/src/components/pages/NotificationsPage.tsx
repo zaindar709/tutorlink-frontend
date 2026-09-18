@@ -2,10 +2,8 @@ import { useMemo, useState } from 'react';
 import {
   AlertCircle,
   Bell,
-  CheckCheck,
   CreditCard,
   GraduationCap,
-  Trash2,
   TrendingUp,
 } from 'lucide-react';
 import type { ParentNotification } from '../../types/parent.types';
@@ -18,9 +16,6 @@ const filters = ['All', 'Unread', 'Sessions', 'Payments', 'Progress'] as const;
 
 interface NotificationsPageProps {
   notifications: ParentNotification[];
-  onMarkRead: (id: string) => void;
-  onMarkAllRead: () => void;
-  onDelete: (id: string) => void;
 }
 
 const typeIcon = {
@@ -41,9 +36,6 @@ const typeColor = {
 
 export default function NotificationsPage({
   notifications,
-  onMarkRead,
-  onMarkAllRead,
-  onDelete,
 }: NotificationsPageProps) {
   const [filter, setFilter] = useState<(typeof filters)[number]>('All');
 
@@ -64,18 +56,10 @@ export default function NotificationsPage({
           <h3 className="text-lg font-bold text-tl-text">
             {unread > 0 ? `${unread} unread notification${unread > 1 ? 's' : ''}` : 'All caught up'}
           </h3>
-          <p className="text-sm text-tl-text-muted">Stay updated on sessions, payments, and progress</p>
+          <p className="text-sm text-tl-text-muted">
+            Alerts for this student. Notifications are read-only on the parent portal.
+          </p>
         </div>
-        {unread > 0 ? (
-          <button
-            type="button"
-            onClick={onMarkAllRead}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-tl-primary-dark to-tl-primary-light px-4 py-2.5 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5"
-          >
-            <CheckCheck className="h-4 w-4" />
-            Mark all read
-          </button>
-        ) : null}
       </GlassCard>
 
       <div className="flex flex-wrap gap-2">
@@ -131,29 +115,10 @@ export default function NotificationsPage({
                         <Badge variant="default">{item.type}</Badge>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="mt-3">
                       <span className="text-xs text-tl-text-muted">
                         {formatRelativeTime(item.createdAt)}
                       </span>
-                      <div className="flex gap-2">
-                        {!item.read ? (
-                          <button
-                            type="button"
-                            onClick={() => onMarkRead(item.id)}
-                            className="text-xs font-semibold text-tl-primary hover:underline"
-                          >
-                            Mark read
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => onDelete(item.id)}
-                          className="text-tl-text-muted hover:text-tl-red"
-                          aria-label="Delete notification"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>

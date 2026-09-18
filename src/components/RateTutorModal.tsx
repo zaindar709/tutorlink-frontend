@@ -20,6 +20,7 @@ import {
 import { upsertBookingLocal } from '../store/booking/bookingSlice';
 import { getUserId } from '../utils/api/userId';
 import type { Booking } from '../types/api.types';
+import { getSessionRatingAPI } from '../api/profile.api';
 /**
  * Opens after a student ends a live class — stars + like, saved via Redux.
  */
@@ -44,12 +45,42 @@ export default function RateTutorModal() {
   }, [dispatch, hydrated]);
 
   useEffect(() => {
-    if (pending) {
+    if (!pending) {
       setRating(5);
       setLiked(true);
       setReview('');
+      return;
     }
-  }, [pending?.bookingId]);
+    setRating(5);
+    setLiked(true);
+    setReview('');
+
+    if (booking?.studentRating || booking?.ratedAt) {
+      dispatch(closeRateTutorModal());
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await getSessionRatingAPI(pending.bookingId);
+        const payload = response.data?.data;
+        if (!cancelled && payload?.rated) {
+          dispatch(closeRateTutorModal());
+        }
+      } catch {
+        // Show the modal if the lookup fails.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    pending?.bookingId,
+    booking?.studentRating,
+    booking?.ratedAt,
+    dispatch,
+  ]);
 
   const visible = Boolean(pending);
 

@@ -18,6 +18,7 @@ type Props = {
   onRetry?: () => void;
   onContinue?: () => void;
   continueLabel?: string;
+  hint?: string;
 };
 
 const SummaryProcessingCard: React.FC<Props> = ({
@@ -25,6 +26,7 @@ const SummaryProcessingCard: React.FC<Props> = ({
   onRetry,
   onContinue,
   continueLabel = 'Go to Dashboard',
+  hint = 'Your tutor will review it before it is shared with you.',
 }) => {
   const pulse = useSharedValue(0.55);
 
@@ -57,9 +59,7 @@ const SummaryProcessingCard: React.FC<Props> = ({
       <Text style={styles.title}>Preparing Your Learning Summary</Text>
       <SummaryStatusBadge status={status} />
       <Text style={styles.body}>{statusCopy(status)}</Text>
-      <Text style={styles.hint}>
-        Your tutor will review it before it is shared with you.
-      </Text>
+      <Text style={styles.hint}>{hint}</Text>
 
       {status === 'failed' && onRetry ? (
         <TouchableOpacity style={styles.retryBtn} onPress={onRetry}>

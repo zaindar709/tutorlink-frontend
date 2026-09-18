@@ -27,3 +27,13 @@ export const updateTutorMeAPI = (data: TutorProfileUpdatePayload) =>
     '/api/tutor/me',
     data
   );
+
+export const getTutorMeAPI = () =>
+  api.get<ApiSuccessResponse<TutorOnboardingStatusData & Record<string, unknown>>>(
+    '/api/tutor/me'
+  );
+
+export const getTutorProfileAPI = () =>
+  api.get<ApiSuccessResponse<TutorOnboardingStatusData & Record<string, unknown>>>(
+    '/api/tutor/profile'
+  );

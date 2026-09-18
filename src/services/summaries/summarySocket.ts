@@ -1,6 +1,11 @@
 import { connectChatSocket, getChatSocket } from '../chat/chatSocket';
 import { store } from '../../store/store';
-import { applySummarySocketEvent } from '../../store/summary/summarySlice';
+import {
+  applySummarySocketEvent,
+  fetchStudentSummariesThunk,
+  fetchSummaryByIdThunk,
+  fetchTutorSummariesThunk,
+} from '../../store/summary/summarySlice';
 import { SummarySocketPayload, SummaryStatus } from '../../types/summary.types';
 import { upsertNotification } from '../notifications/notificationInboxStore';
 import { getUserId } from '../../utils/api/userId';
@@ -16,27 +21,62 @@ const SUMMARY_EVENTS = [
   'summary-failed',
 ] as const;
 
-let bound = false;
-const externalHandlers = new Set<SummaryHandler>();
+type SummaryEventName = (typeof SUMMARY_EVENTS)[number];
 
-const normalizePayload = (raw: unknown): SummarySocketPayload | null => {
+const EVENT_STATUS: Record<SummaryEventName, SummaryStatus> = {
+  'summary-processing': 'processing',
+  'summary-generated': 'generated',
+  'summary-under-review': 'under_review',
+  'summary-published': 'published',
+  'summary-failed': 'failed',
+};
+
+let boundSocket: ReturnType<typeof getChatSocket> = null;
+const externalHandlers = new Set<SummaryHandler>();
+const listeners = new Map<SummaryEventName, (raw: unknown) => void>();
+
+const normalizePayload = (
+  raw: unknown,
+  event: SummaryEventName
+): SummarySocketPayload | null => {
   if (!raw || typeof raw !== 'object') return null;
   const p = raw as Record<string, unknown>;
-  const sessionId = String(p.sessionId || '').trim();
+  const nested =
+    p.data && typeof p.data === 'object'
+      ? (p.data as Record<string, unknown>)
+      : p;
+    const sessionId = String(nested.sessionId || nested.bookingId || '').trim();
   if (!sessionId) return null;
+  const rawStatus = String(nested.status || '').trim() as SummaryStatus;
+  const status = (
+    [
+      'not_started',
+      'processing',
+      'generated',
+      'under_review',
+      'published',
+      'failed',
+    ] as SummaryStatus[]
+  ).includes(rawStatus)
+    ? rawStatus
+    : EVENT_STATUS[event];
   return {
     sessionId,
-    summaryId: p.summaryId ? String(p.summaryId) : undefined,
-    status: String(p.status || 'processing') as SummaryStatus,
-    title: p.title ? String(p.title) : undefined,
-    subject: p.subject ? String(p.subject) : undefined,
-    code: p.code ? String(p.code) : undefined,
-    message: p.message ? String(p.message) : undefined,
+    summaryId: nested.summaryId
+      ? String(nested.summaryId)
+      : nested._id
+        ? String(nested._id)
+        : undefined,
+    status,
+    title: nested.title ? String(nested.title) : undefined,
+    subject: nested.subject ? String(nested.subject) : undefined,
+    code: nested.code ? String(nested.code) : undefined,
+    message: nested.message ? String(nested.message) : undefined,
   };
 };
 
-const handleEvent = async (raw: unknown) => {
-  const payload = normalizePayload(raw);
+const handleEvent = async (raw: unknown, event: SummaryEventName) => {
+  const payload = normalizePayload(raw, event);
   if (!payload) return;
 
   store.dispatch(applySummarySocketEvent(payload));
@@ -46,7 +86,17 @@ const handleEvent = async (raw: unknown) => {
   const role = store.getState().auth.role;
   const recipientUserId = getUserId(user) || undefined;
 
+  if (
+    payload.summaryId &&
+    (role === 'tutor' || payload.status === 'published')
+  ) {
+    void store.dispatch(fetchSummaryByIdThunk(payload.summaryId));
+  }
+
   if (payload.status === 'published') {
+    void store.dispatch(
+      fetchStudentSummariesThunk({ page: 1, limit: 30, status: 'published' })
+    );
     void upsertNotification({
       id: `ai-summary-published-${payload.summaryId || payload.sessionId}`,
       title: 'AI Session Summary Ready',
@@ -67,6 +117,10 @@ const handleEvent = async (raw: unknown) => {
         screen: 'StudentSummaryDetailScreen',
       },
     });
+  }
+
+  if (payload.status === 'generated' || payload.status === 'under_review') {
+    void store.dispatch(fetchTutorSummariesThunk({ page: 1, limit: 40 }));
   }
 
   if (payload.status === 'generated' && role === 'tutor') {
@@ -112,6 +166,21 @@ const handleEvent = async (raw: unknown) => {
   }
 };
 
+const attachListeners = (socket: NonNullable<ReturnType<typeof getChatSocket>>) => {
+  SUMMARY_EVENTS.forEach(event => {
+    let listener = listeners.get(event);
+    if (!listener) {
+      listener = (raw: unknown) => {
+        void handleEvent(raw, event);
+      };
+      listeners.set(event, listener);
+    }
+    socket.off(event, listener);
+    socket.on(event, listener);
+  });
+  boundSocket = socket;
+};
+
 /**
  * Reuses the existing chat Socket.io connection (same host/auth).
  * Does not create a second socket client.
@@ -121,17 +190,13 @@ export const ensureSummarySocket = async (
 ): Promise<void> => {
   if (onEvent) externalHandlers.add(onEvent);
 
-  const socket = (await connectChatSocket({})) || getChatSocket();
+  let socket = getChatSocket();
+  if (!socket) {
+    socket = (await connectChatSocket({})) || getChatSocket();
+  }
   if (!socket) return;
 
-  if (bound) return;
-  bound = true;
-
-  SUMMARY_EVENTS.forEach(event => {
-    socket.on(event, (payload: unknown) => {
-      void handleEvent(payload);
-    });
-  });
+  attachListeners(socket);
 };
 
 export const releaseSummarySocketHandler = (onEvent?: SummaryHandler) => {

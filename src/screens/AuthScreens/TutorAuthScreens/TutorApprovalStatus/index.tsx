@@ -11,8 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { InteractionManager } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import useUi from '../../../../hooks/ui/useUi';
-import CustomButton from '../../../../components/CustomButton';
-import { AuthGlassBackground, AuthGlassHeader } from '../../../../components/AuthGlass';
+import { AuthGlassBackground, AuthGlassHeader, GlassPrimaryButton } from '../../../../components/AuthGlass';
 import { AUTH_GLASS } from '../../../../components/AuthGlass/authGlassTheme';
 import { useTutorOnboarding } from '../../../../hooks/tutor/useTutorOnboarding';
 import { isTutorApproved } from '../../../../utils/tutor/tutorNavigation';
@@ -208,32 +207,22 @@ const TutorApprovalStatusScreen = () => {
             </View>
 
             {approved ? (
-              <CustomButton
-                title="Go to Tutor Dashboard"
-                onPress={goToDashboard}
-                style={{
-                  marginTop: resp.dy(20),
-                  alignSelf: 'center',
-                  width: '92%',
-                  shadowColor: 'transparent',
-                  elevation: 0,
-                }}
-              />
+              <View style={styles.ctaWrap}>
+                <GlassPrimaryButton
+                  title="Go to Tutor Dashboard"
+                  onPress={goToDashboard}
+                />
+              </View>
             ) : (
-              <CustomButton
-                title="Refresh Status"
-                onPress={onRefresh}
-                loading={loading}
-                backgroundColor="#EEF2FF"
-                textColor={colors.PRIMARY_COLOR as string}
-                style={{
-                  marginTop: resp.dy(20),
-                  alignSelf: 'center',
-                  width: '92%',
-                  shadowColor: 'transparent',
-                  elevation: 0,
-                }}
-              />
+              <View style={styles.ctaWrap}>
+                <GlassPrimaryButton
+                  title="Refresh Status"
+                  onPress={() => {
+                    void onRefresh();
+                  }}
+                  loading={loading}
+                />
+              </View>
             )}
 
             {!approved && status?.onboardingStatus !== 'rejected' ? (
@@ -336,6 +325,11 @@ const createStyles = (colors: any, resp: any) =>
       fontSize: resp.df(12),
       color: AUTH_GLASS.muted,
       lineHeight: resp.dy(18),
+    },
+    ctaWrap: {
+      width: '100%',
+      marginTop: resp.dy(20),
+      flexGrow: 0,
     },
   });
 

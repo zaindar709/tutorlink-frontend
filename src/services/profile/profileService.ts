@@ -13,6 +13,7 @@ import {
   getNotificationSettingsAPI,
   getPrivacySettingsAPI,
   getSessionHistoryAPI,
+  getStudentProgressAPI,
   rateSessionAPI,
   redeemLinkCodeAPI,
   unlinkParentAPI,
@@ -34,6 +35,8 @@ import {
   StudentPrivacySettings,
   StudentProfile,
   StudentSessionHistoryItem,
+  StudentProgressData,
+  StudentProgressSubject,
   StudentSettingsBundle,
   UpdateInterestsPayload,
   UpdateProfilePayload,
@@ -78,6 +81,13 @@ const normalizeProfile = (raw: unknown): StudentProfile | null => {
     publicId: String(
       data.publicId || data.displayStudentId || header.displayStudentId || ''
     ),
+    userId: String(data.userId || data._id || data.id || ''),
+    profileCompleted:
+      data.profileCompleted === true
+        ? true
+        : data.profileCompleted === false
+          ? false
+          : undefined,
     interests: Array.isArray(data.interests)
       ? (data.interests as string[])
       : [],
@@ -93,10 +103,55 @@ const normalizeProfile = (raw: unknown): StudentProfile | null => {
   };
 };
 
-export const fetchMyProfile = async (): Promise<StudentProfile> => {
+let memoryProfile: StudentProfile | null = null;
+let memoryProfileAt = 0;
+const PROFILE_CACHE_TTL_MS = 20_000;
+
+export const peekCachedMyProfile = () => memoryProfile;
+
+export const rememberMyProfile = (profile: StudentProfile | null) => {
+  memoryProfile = profile;
+  memoryProfileAt = profile ? Date.now() : 0;
+};
+
+export const clearCachedMyProfile = () => {
+  memoryProfile = null;
+  memoryProfileAt = 0;
+};
+
+const isMyProfileCacheFresh = () =>
+  Boolean(
+    memoryProfile && Date.now() - memoryProfileAt < PROFILE_CACHE_TTL_MS
+  );
+
+export const fetchMyProfile = async (
+  opts?: { force?: boolean }
+): Promise<StudentProfile> => {
+  if (!opts?.force && isMyProfileCacheFresh() && memoryProfile) {
+    return memoryProfile;
+  }
   const response = await getMyProfileAPI();
   const profile = normalizeProfile(extractData(response.data));
   if (!profile) throw new Error('Profile is unavailable');
+  rememberMyProfile(profile);
+
+  void getAuthSession().then(session => {
+    if (
+      !session ||
+      (profile.profileCompleted !== true && profile.profileCompleted !== false)
+    ) {
+      return;
+    }
+    void saveAuthSession({
+      ...session,
+      user: {
+        ...session.user,
+        userId: profile.userId || session.user.userId,
+        profileCompleted: profile.profileCompleted,
+      },
+    });
+  });
+
   return profile;
 };
 
@@ -106,6 +161,7 @@ export const updateProfile = async (
   const response = await updateMyProfileAPI(payload);
   const profile = normalizeProfile(extractData(response.data));
   if (!profile) throw new Error('Failed to update profile');
+  rememberMyProfile(profile);
 
   const session = await getAuthSession();
   if (session) {
@@ -118,6 +174,13 @@ export const updateProfile = async (
         avatarUrl: profile.avatarUrl || session.user.avatarUrl,
         grade: profile.grade || session.user.grade,
         interests: profile.interests || session.user.interests,
+        userId: profile.userId || session.user.userId,
+        profileCompleted:
+          profile.profileCompleted === true
+            ? true
+            : profile.profileCompleted === false
+              ? false
+              : session.user.profileCompleted,
       },
     });
   }
@@ -256,6 +319,148 @@ export const fetchSessionHistory = async (params?: {
   );
   if (Array.isArray(data)) return data as StudentSessionHistoryItem[];
   return Array.isArray(data?.items) ? data.items : [];
+};
+
+const num = (value: unknown, fallback = 0) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
+const scoreToGrade = (score: number) => {
+  if (score >= 90) return 'A+';
+  if (score >= 85) return 'A';
+  if (score >= 80) return 'B+';
+  if (score >= 75) return 'B';
+  if (score >= 70) return 'C+';
+  if (score <= 0) return '—';
+  return 'C';
+};
+
+export const emptyStudentProgress = (): StudentProgressData => ({
+  overallProgress: 0,
+  attendanceRate: 0,
+  sessionsThisMonth: 0,
+  completedSessions: 0,
+  upcomingSessions: 0,
+  subjects: [],
+  weeklyProgress: [],
+  summary: 'Book a class to start tracking your learning progress.',
+  tips: [
+    'Complete sessions to fill subject scores.',
+    'Attendance and weekly charts update after each class.',
+  ],
+});
+
+const normalizeStudentProgress = (raw: unknown): StudentProgressData => {
+  const data = asRecord(raw);
+  const subjectsRaw = Array.isArray(data.subjects)
+    ? data.subjects
+    : Array.isArray(data.progress)
+      ? data.progress
+      : [];
+  const subjects: StudentProgressSubject[] = subjectsRaw.map(item => {
+    const row = asRecord(item);
+    const score = num(row.score);
+    const bars = Array.isArray(row.weeklyBars)
+      ? row.weeklyBars.map(v => num(v)).slice(0, 5)
+      : [0, 0, 0, 0, 0];
+    while (bars.length < 5) bars.push(0);
+    const trendRaw = String(row.trend || 'stable');
+    const trend =
+      trendRaw === 'up' || trendRaw === 'down' ? trendRaw : 'stable';
+    return {
+      subject: String(row.subject || 'Subject'),
+      score,
+      grade: String(row.grade || '') || scoreToGrade(score),
+      syllabusCovered: num(row.syllabusCovered, score),
+      trend,
+      trendDelta: num(row.trendDelta),
+      weeklyBars: bars,
+      sessionsCompleted: num(row.sessionsCompleted),
+      lastUpdated: String(row.lastUpdated || ''),
+    };
+  });
+  const weeks = Array.isArray(data.weeklyProgress)
+    ? data.weeklyProgress.map(item => {
+        const row = asRecord(item);
+        return { label: String(row.label || ''), score: num(row.score) };
+      })
+    : [];
+  return {
+    overallProgress: num(data.overallProgress, num(data.avgScore)),
+    attendanceRate: num(data.attendanceRate),
+    sessionsThisMonth: num(data.sessionsThisMonth),
+    completedSessions: num(data.completedSessions),
+    upcomingSessions: num(data.upcomingSessions),
+    subjects,
+    weeklyProgress: weeks,
+    summary: String(
+      data.summary ||
+        (subjects.length
+          ? 'Keep going — your scores update after each completed class.'
+          : emptyStudentProgress().summary)
+    ),
+    tips: Array.isArray(data.tips)
+      ? data.tips.map(t => String(t))
+      : emptyStudentProgress().tips,
+  };
+};
+
+const progressFromHistory = (
+  sessions: StudentSessionHistoryItem[]
+): StudentProgressData => {
+  const completed = sessions.filter(s => s.status === 'completed');
+  const missed = sessions.filter(s => s.status === 'missed');
+  const attendanceDenom = completed.length + missed.length;
+  const subjects = Array.from(
+    new Set(completed.map(s => s.subject).filter(Boolean))
+  ).map(subject => {
+    const count = completed.filter(s => s.subject === subject).length;
+    return {
+      subject,
+      score: 0,
+      grade: '—',
+      syllabusCovered: 0,
+      trend: 'stable' as const,
+      trendDelta: 0,
+      weeklyBars: [0, 0, 0, 0, 0],
+      sessionsCompleted: count,
+      lastUpdated: completed.find(s => s.subject === subject)?.date || '',
+    };
+  });
+  return {
+    overallProgress: 0,
+    attendanceRate: attendanceDenom
+      ? Math.round((100 * completed.length) / attendanceDenom)
+      : 0,
+    sessionsThisMonth: completed.length,
+    completedSessions: completed.length,
+    upcomingSessions: 0,
+    subjects,
+    weeklyProgress: [],
+    summary:
+      completed.length === 0
+        ? 'No completed classes yet. Progress stays at 0% until you finish a session.'
+        : `${completed.length} class${completed.length === 1 ? '' : 'es'} completed. Subject scores fill in after quizzes or session summaries.`,
+    tips: emptyStudentProgress().tips,
+  };
+};
+
+export const fetchStudentProgress = async (): Promise<StudentProgressData> => {
+  try {
+    const response = await getStudentProgressAPI();
+    return normalizeStudentProgress(extractData(response.data));
+  } catch (error) {
+    const status =
+      error instanceof AxiosError ? error.response?.status : undefined;
+    if (status === 401 || status === 403) throw error;
+    try {
+      const history = await fetchSessionHistory({ status: 'all', limit: 50 });
+      return progressFromHistory(history);
+    } catch {
+      return emptyStudentProgress();
+    }
+  }
 };
 
 export const rateCompletedSession = async (
