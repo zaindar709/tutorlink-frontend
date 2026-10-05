@@ -4,6 +4,7 @@ import {
   createAssessment,
   deleteAssessment,
   fetchAssessmentById,
+  fetchAttempt,
   fetchEligibleStudents,
   fetchStudentAssessments,
   fetchStudentResult,
@@ -142,6 +143,28 @@ const upsert = (state: AssessmentState, item: Assessment) => {
   state.byId[item._id] = item;
 };
 
+const mergeAttempt = (
+  prev: AssessmentAttempt | null,
+  next: AssessmentAttempt
+): AssessmentAttempt => ({
+  ...prev,
+  ...next,
+  answers: next.answers?.length ? next.answers : prev?.answers || [],
+  questions: next.questions?.length ? next.questions : prev?.questions,
+  files: next.files?.length ? next.files : prev?.files,
+});
+
+const applyAttempt = (state: AssessmentState, attempt: AssessmentAttempt) => {
+  state.currentAttempt = mergeAttempt(state.currentAttempt, attempt);
+  const existing = attempt.assessmentId ? state.byId[attempt.assessmentId] : undefined;
+  if (!existing) return;
+  state.byId[existing._id] = {
+    ...existing,
+    lastAttemptId: attempt._id || existing.lastAttemptId,
+    questions: attempt.questions?.length ? attempt.questions : existing.questions,
+  };
+};
+
 export const fetchTutorAssessmentsThunk = createAsyncThunk(
   'assessment/tutorList',
   async (params: AssessmentListParams | undefined, { rejectWithValue }) => {
@@ -244,14 +267,19 @@ export const startAttemptThunk = createAsyncThunk(
 export const fetchAttemptThunk = createAsyncThunk(
   'assessment/fetchAttempt',
   async (
-    { assessmentId, attemptId }: { assessmentId: string; attemptId: string },
+    {
+      assessmentId,
+      attemptId,
+      preferResult = true,
+    }: { assessmentId: string; attemptId: string; preferResult?: boolean },
     { rejectWithValue }
   ) => {
     try {
+      if (!preferResult) {
+        return await fetchAttempt(assessmentId, attemptId);
+      }
       return await fetchStudentResult(assessmentId, attemptId).catch(() =>
-        import('../../services/assessments/assessmentsService').then(m =>
-          m.fetchAttempt(assessmentId, attemptId)
-        )
+        fetchAttempt(assessmentId, attemptId)
       );
     } catch (err) {
       return rejectWithValue(getAssessmentErrorMessage(err));
@@ -305,7 +333,7 @@ export const uploadAttemptFileThunk = createAsyncThunk(
     }: {
       assessmentId: string;
       attemptId: string;
-      file: { uri: string; name?: string; type?: string };
+      file: { uri: string; name?: string; type?: string; size?: number };
     },
     { rejectWithValue }
   ) => {
@@ -474,27 +502,27 @@ const assessmentSlice = createSlice({
       })
       .addCase(startAttemptThunk.fulfilled, (state, action) => {
         state.mutating = false;
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
       })
       .addCase(startAttemptThunk.rejected, failed)
       .addCase(fetchAttemptThunk.fulfilled, (state, action) => {
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
         state.detailLoading = false;
       })
       .addCase(saveAnswersThunk.fulfilled, (state, action) => {
-        if (action.payload) state.currentAttempt = action.payload;
+        if (action.payload) applyAttempt(state, action.payload);
       })
-      .addCase(submitAttemptThunk.pending, state => {
+      .addCase(submitAttemptThunk.pending, (state) => {
         state.mutating = true;
         pending(state);
       })
       .addCase(submitAttemptThunk.fulfilled, (state, action) => {
         state.mutating = false;
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
       })
       .addCase(submitAttemptThunk.rejected, failed)
       .addCase(uploadAttemptFileThunk.fulfilled, (state, action) => {
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
       })
       .addCase(fetchSubmissionsThunk.fulfilled, (state, action) => {
         state.submissions = action.payload;
@@ -510,7 +538,7 @@ const assessmentSlice = createSlice({
         state.detailLoading = true;
       })
       .addCase(fetchSubmissionAttemptThunk.fulfilled, (state, action) => {
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
         state.detailLoading = false;
       })
       .addCase(fetchSubmissionAttemptThunk.rejected, failed)
@@ -520,7 +548,7 @@ const assessmentSlice = createSlice({
       })
       .addCase(gradeAttemptThunk.fulfilled, (state, action) => {
         state.mutating = false;
-        state.currentAttempt = action.payload;
+        applyAttempt(state, action.payload);
       })
       .addCase(gradeAttemptThunk.rejected, failed);
   },

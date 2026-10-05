@@ -131,6 +131,7 @@ export type AttemptFile = {
   url: string;
   mimeType?: string;
   size?: number;
+  uploadedAt?: string;
 };
 
 export type AssessmentAttempt = {
@@ -149,9 +150,13 @@ export type AssessmentAttempt = {
   maxScore: number;
   needsManualGrading?: boolean;
   late?: boolean;
+  locked?: boolean;
+  correctAnswersVisible?: boolean;
   feedback?: string;
   files?: AttemptFile[];
   questionResults?: AttemptQuestionResult[];
+  /** Shuffled question order from POST/GET attempt. Prefer over GET /:id. */
+  questions?: AssessmentQuestion[];
 };
 
 export type AttemptQuestionResult = {
@@ -211,7 +216,12 @@ export type CreateAssessmentPayload = {
     rubric?: string;
   }>;
   assignedStudentIds?: string[];
-  status?: 'draft' | 'published';
+};
+
+export type AssignAssessmentResult = {
+  assignedCount: number;
+  added: number;
+  assignedStudentIds: string[];
 };
 
 export type AssessmentListParams = {

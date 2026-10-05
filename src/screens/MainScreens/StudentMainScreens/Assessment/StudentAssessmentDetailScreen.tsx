@@ -65,22 +65,22 @@ const StudentAssessmentDetailScreen = () => {
     });
   };
 
+  const remaining =
+    item?.remainingAttempts ??
+    Math.max(0, (item?.attemptsAllowed ?? 1) - (item?.attemptsUsed ?? 0));
   const canStart =
     item &&
     item.status === 'published' &&
-    item.studentStatus !== 'submitted' &&
     item.studentStatus !== 'grading' &&
-    item.studentStatus !== 'graded' &&
-    (item.studentStatus === 'in_progress' ||
-      item.remainingAttempts == null ||
-      item.remainingAttempts > 0 ||
-      (item.attemptsUsed ?? 0) < item.attemptsAllowed);
+    (item.studentStatus === 'in_progress' || remaining > 0);
+  const isResume = item?.studentStatus === 'in_progress';
 
   const showResult =
     item &&
     (item.studentStatus === 'submitted' ||
       item.studentStatus === 'grading' ||
-      item.studentStatus === 'graded');
+      item.studentStatus === 'graded' ||
+      Boolean(item.lastAttemptId && item.studentStatus !== 'not_started' && item.studentStatus !== 'in_progress'));
 
   return (
     <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
@@ -122,7 +122,13 @@ const StudentAssessmentDetailScreen = () => {
           ) : null}
           {canStart ? (
             <CustomButton
-              title={item.type === 'assignment' ? 'Open assignment' : 'Start'}
+              title={
+                isResume
+                  ? 'Continue'
+                  : item.type === 'assignment'
+                    ? 'Open assignment'
+                    : 'Start'
+              }
               onPress={() => void start()}
               loading={mutating}
             />
@@ -155,7 +161,7 @@ const styles = StyleSheet.create({
   title: { color: GLASS.textPrimary, fontWeight: '800', fontSize: 22 },
   body: { color: GLASS.textSecondary, lineHeight: 20, fontSize: 14 },
   card: {
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 18,

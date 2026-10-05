@@ -181,7 +181,7 @@ const TutorGradeAttemptScreen = () => {
           <View style={styles.card}>
             <Text style={styles.name}>{attempt.student?.name || 'Student'}</Text>
             <Text style={styles.meta}>
-              {attempt.status.replace('_', ' ')}
+              {String(attempt.status || '').replace(/_/g, ' ')}
               {attempt.late ? ' · Late' : ''}
               {attempt.submittedAt
                 ? ` · ${new Date(attempt.submittedAt).toLocaleString()}`
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   pad: { padding: 16 },
   content: { padding: 16, paddingBottom: 48, gap: 12 },
   card: {
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 18,

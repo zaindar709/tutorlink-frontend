@@ -19,7 +19,7 @@ export default function AuthSelectionScreen() {
 
   const { role } = route.params || {};
   const roleLabel =
-    role === 'tutor' ? 'Tutor' : role === 'parent' ? 'Parent' : 'Student';
+    role === 'tutor' ? 'Tutor' : role === 'parent' ? 'Parent' : 'S ntudent';
 
   // Parent auth is web-only — bounce to browser immediately.
   React.useEffect(() => {

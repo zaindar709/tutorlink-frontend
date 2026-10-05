@@ -149,8 +149,39 @@ const normalizeDashboard = (raw: DashboardData): DashboardData => {
 
 export const fetchDashboard = async (): Promise<DashboardData> => {
   const response = await getDashboardAPI();
-  if (!response.data.data) {
+  const json = response.data as {
+    success?: boolean;
+    message?: string;
+    code?: string;
+    data?: DashboardData;
+  };
+  if (json?.success === false) {
+    const err = new Error(json.message || 'Dashboard failed') as Error & {
+      code?: string;
+    };
+    err.code = json.code;
+    throw err;
+  }
+  if (!json?.data) {
     throw new Error('Dashboard data is unavailable');
   }
-  return normalizeDashboard(response.data.data);
+  return normalizeDashboard(json.data);
+};
+
+export const shouldShowScheduleHome = (data?: DashboardData | null) =>
+  Boolean(
+    data?.hasActiveTutor ||
+      (data?.upcomingSessionCount || 0) > 0 ||
+      (data?.todaySchedule?.currentLessons || []).length > 0
+  );
+
+export const primaryJoinLesson = (
+  data?: DashboardData | null
+): DashboardLesson | null => {
+  const lessons = data?.todaySchedule?.currentLessons || [];
+  return (
+    lessons.find(l => l.isNextSession && l.canJoinRoom !== false) ||
+    lessons.find(l => l.canJoinRoom !== false) ||
+    null
+  );
 };

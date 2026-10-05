@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     borderColor: GLASS.cardBorder,
     borderStyle: 'dashed',
     padding: 20,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'transparent',
   },
   title: { color: GLASS.textPrimary, fontWeight: '800', fontSize: 15 },
   sub: { color: GLASS.textSecondary, marginTop: 6, lineHeight: 19, fontSize: 13 },

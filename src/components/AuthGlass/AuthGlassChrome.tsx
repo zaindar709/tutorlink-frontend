@@ -9,6 +9,7 @@ type HeaderProps = {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  showBack?: boolean;
 };
 
 export const AuthGlassHeader = ({
@@ -16,10 +17,11 @@ export const AuthGlassHeader = ({
   title,
   subtitle,
   onBack,
+  showBack = true,
 }: HeaderProps) => {
   return (
     <View style={styles.header}>
-      {onBack ? (
+      {showBack && onBack ? (
         <TouchableOpacity style={styles.backRow} onPress={onBack}>
           <IconButton
             icon="arrow-left"
@@ -35,7 +37,10 @@ export const AuthGlassHeader = ({
       <Text style={styles.brand}>{brand}</Text>
       <View style={styles.brandAccent} />
       <Text style={styles.title}>{title}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+
+      {subtitle ? (
+        <Text style={styles.subtitle}>{subtitle}</Text>
+      ) : null}
     </View>
   );
 };

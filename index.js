@@ -10,6 +10,11 @@ import {
   registerNotifeeBackgroundEvents,
 } from './src/services/notifications/pushNotificationService';
 
+const silent = () => {};
+console.log = silent;
+console.debug = silent;
+console.info = silent;
+
 // Must run before the app component mounts (background / quit delivery).
 registerBackgroundMessageHandler();
 registerNotifeeBackgroundEvents();

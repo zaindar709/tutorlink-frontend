@@ -57,7 +57,9 @@ export const AssessmentCard = ({
         </Text>
       </View>
       <View style={styles.right}>
-        <Text style={styles.status}>{rightLabel || status.replace('_', ' ')}</Text>
+        <Text style={styles.status}>
+          {rightLabel || String(status || '').replace(/_/g, ' ')}
+        </Text>
         <MaterialCommunityIcons name="chevron-right" size={20} color={GLASS.textMuted} />
       </View>
     </TouchableOpacity>
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 18,

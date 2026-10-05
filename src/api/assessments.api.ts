@@ -5,6 +5,7 @@ import {
   AssessmentAttempt,
   AssessmentListParams,
   AssessmentListResult,
+  AssignAssessmentResult,
   CreateAssessmentPayload,
   EligibleStudent,
   GradeQuestionPayload,
@@ -13,17 +14,26 @@ import {
 
 const BASE = '/api/assessments';
 
+const listParams = (params?: AssessmentListParams) => {
+  if (!params) return undefined;
+  const { type, ...rest } = params;
+  return {
+    ...rest,
+    ...(type && type !== 'all' ? { type } : {}),
+  };
+};
+
 export const createAssessmentAPI = (data: CreateAssessmentPayload) =>
   api.post<ApiSuccessResponse<Assessment>>(BASE, data);
 
 export const getTutorAssessmentsAPI = (params?: AssessmentListParams) =>
   api.get<ApiSuccessResponse<AssessmentListResult>>(`${BASE}/tutor`, {
-    params,
+    params: listParams(params),
   });
 
 export const getStudentAssessmentsAPI = (params?: AssessmentListParams) =>
   api.get<ApiSuccessResponse<AssessmentListResult>>(`${BASE}/student`, {
-    params,
+    params: listParams(params),
   });
 
 export const getEligibleStudentsAPI = () =>
@@ -39,10 +49,10 @@ export const deleteAssessmentAPI = (id: string) =>
   api.delete<ApiSuccessResponse<{ deleted: boolean }>>(`${BASE}/${id}`);
 
 export const publishAssessmentAPI = (id: string) =>
-  api.post<ApiSuccessResponse<Assessment>>(`${BASE}/${id}/publish`);
+  api.post<ApiSuccessResponse<Assessment>>(`${BASE}/${id}/publish`, {});
 
 export const assignAssessmentAPI = (id: string, studentIds: string[]) =>
-  api.post<ApiSuccessResponse<Assessment>>(`${BASE}/${id}/assign`, {
+  api.post<ApiSuccessResponse<AssignAssessmentResult>>(`${BASE}/${id}/assign`, {
     studentIds,
   });
 
@@ -73,7 +83,13 @@ export const gradeAttemptAPI = (
   );
 
 export const startAttemptAPI = (id: string) =>
-  api.post<ApiSuccessResponse<AssessmentAttempt>>(`${BASE}/${id}/attempts`);
+  api.post<ApiSuccessResponse<AssessmentAttempt>>(`${BASE}/${id}/attempts`, {});
+
+export const submitAttemptAPI = (id: string, attemptId: string) =>
+  api.post<ApiSuccessResponse<AssessmentAttempt>>(
+    `${BASE}/${id}/attempts/${attemptId}/submit`,
+    {}
+  );
 
 export const getAttemptAPI = (id: string, attemptId: string) =>
   api.get<ApiSuccessResponse<AssessmentAttempt>>(
@@ -88,11 +104,6 @@ export const saveAttemptAnswersAPI = (
   api.patch<ApiSuccessResponse<AssessmentAttempt>>(
     `${BASE}/${id}/attempts/${attemptId}`,
     { answers }
-  );
-
-export const submitAttemptAPI = (id: string, attemptId: string) =>
-  api.post<ApiSuccessResponse<AssessmentAttempt>>(
-    `${BASE}/${id}/attempts/${attemptId}/submit`
   );
 
 export const uploadAttemptFileAPI = (

@@ -32,6 +32,7 @@ import {
   AttemptStatus,
   CreateAssessmentPayload,
   EligibleStudent,
+  AssignAssessmentResult,
   GradeQuestionPayload,
   LatePolicy,
   QuestionType,
@@ -227,9 +228,23 @@ export const normalizeAttempt = (raw: unknown): AssessmentAttempt | null => {
   if (!id) return null;
   const statusRaw = asString(body.status, 'in_progress');
   const answersRaw = Array.isArray(body.answers) ? body.answers : [];
+  const nested = asRecord(body.assessment);
+  const assessmentId = asString(
+    body.assessmentId ||
+      nested?._id ||
+      (typeof body.assessment === 'string' ? body.assessment : '')
+  );
+  const questionsRaw = Array.isArray(nested?.questions)
+    ? nested.questions
+    : Array.isArray(body.questions)
+      ? body.questions
+      : [];
+  const questions = questionsRaw
+    .map((q, i) => normalizeQuestion(q, i))
+    .filter(Boolean) as AssessmentQuestion[];
   return {
     _id: id,
-    assessmentId: asString(body.assessmentId || body.assessment),
+    assessmentId,
     studentId: asString(body.studentId) || person(body.student)?._id,
     student: person(body.student),
     status: ATTEMPT.includes(statusRaw as AttemptStatus)
@@ -242,9 +257,11 @@ export const normalizeAttempt = (raw: unknown): AssessmentAttempt | null => {
     answers: answersRaw.map(normalizeAnswer).filter(Boolean) as AttemptAnswer[],
     score: body.score != null ? asNumber(body.score) : undefined,
     percentage: body.percentage != null ? asNumber(body.percentage) : undefined,
-    maxScore: asNumber(body.maxScore || body.totalMarks),
+    maxScore: asNumber(body.maxScore || body.totalMarks || nested?.totalMarks),
     needsManualGrading: asBool(body.needsManualGrading),
     late: asBool(body.late),
+    locked: asBool(body.locked, statusRaw !== 'in_progress'),
+    correctAnswersVisible: asBool(body.correctAnswersVisible),
     feedback: body.feedback ? String(body.feedback) : undefined,
     files: Array.isArray(body.files)
       ? body.files.map((f, i) => {
@@ -255,6 +272,7 @@ export const normalizeAttempt = (raw: unknown): AssessmentAttempt | null => {
             url: asString(file.url || file.path),
             mimeType: file.mimeType ? String(file.mimeType) : undefined,
             size: file.size != null ? asNumber(file.size) : undefined,
+            uploadedAt: file.uploadedAt ? String(file.uploadedAt) : undefined,
           };
         })
       : undefined,
@@ -273,6 +291,7 @@ export const normalizeAttempt = (raw: unknown): AssessmentAttempt | null => {
           };
         })
       : undefined,
+    questions: questions.length ? questions : undefined,
   };
 };
 
@@ -297,30 +316,33 @@ export const getAssessmentErrorMessage = (error: unknown): string => {
     const msg = asString(data?.message);
     switch (code) {
       case 'UNAUTHORIZED':
-        return 'Please sign in again.';
+        return msg || 'Please sign in again.';
       case 'FORBIDDEN':
-        return 'You do not have access to this assessment.';
+        return msg || 'You do not have access to this assessment.';
       case 'NOT_ASSIGNED':
-        return 'This assessment is not assigned to you.';
+        return msg || 'This assessment is not assigned to you.';
       case 'NOT_ACTIVE':
-        return 'This assessment is not open yet.';
+        return msg || 'This assessment is not open yet.';
       case 'DEADLINE_PASSED':
-        return 'The deadline has passed.';
+        return msg || 'The deadline has passed.';
       case 'NO_ATTEMPTS_LEFT':
-        return 'You have no attempts remaining.';
+        return msg || 'You have no attempts remaining.';
       case 'ALREADY_SUBMITTED':
-        return 'This attempt is already submitted.';
+        return msg || 'This attempt is already submitted.';
       case 'ATTEMPT_LOCKED':
-        return 'This attempt is locked and cannot be changed.';
+        return msg || 'This attempt is locked and cannot be changed.';
       case 'INVALID_MARKS':
-        return 'Awarded marks must be between 0 and the question marks.';
+        return msg || 'Awarded marks must be between 0 and the question marks.';
       case 'VALIDATION_ERROR':
         return msg || 'Please check the fields and try again.';
       case 'ASSESSMENT_NOT_FOUND':
-        return 'Assessment not found.';
+        return msg || 'Assessment not found.';
       default:
+        if (error.response?.status === 401) {
+          return msg || 'Please sign in again.';
+        }
         if (error.response?.status === 404) {
-          return 'Assessments are not available on the server yet.';
+          return msg || 'Assessments are not available on the server yet.';
         }
         return msg || error.message || 'Something went wrong.';
     }
@@ -329,8 +351,26 @@ export const getAssessmentErrorMessage = (error: unknown): string => {
   return 'Something went wrong.';
 };
 
+const withoutClientTrustFields = (
+  data: Partial<CreateAssessmentPayload>
+): Partial<CreateAssessmentPayload> => {
+  const {
+    status: _status,
+    tutorId: _tutorId,
+    studentId: _studentId,
+    ...rest
+  } = data as Partial<CreateAssessmentPayload> & {
+    status?: string;
+    tutorId?: string;
+    studentId?: string;
+  };
+  return rest;
+};
+
 export const createAssessment = async (data: CreateAssessmentPayload) => {
-  const res = await createAssessmentAPI(data);
+  const res = await createAssessmentAPI(
+    withoutClientTrustFields(data) as CreateAssessmentPayload
+  );
   const item = normalizeAssessment(res.data);
   if (!item) throw new Error('Could not create assessment.');
   return item;
@@ -340,7 +380,7 @@ export const updateAssessment = async (
   id: string,
   data: Partial<CreateAssessmentPayload>
 ) => {
-  const res = await updateAssessmentAPI(id, data);
+  const res = await updateAssessmentAPI(id, withoutClientTrustFields(data));
   const item = normalizeAssessment(res.data);
   if (!item) throw new Error('Could not update assessment.');
   return item;
@@ -388,11 +428,20 @@ export const publishAssessment = async (id: string) => {
   return item;
 };
 
-export const assignAssessment = async (id: string, studentIds: string[]) => {
+export const assignAssessment = async (
+  id: string,
+  studentIds: string[]
+): Promise<AssignAssessmentResult> => {
   const res = await assignAssessmentAPI(id, studentIds);
-  const item = normalizeAssessment(res.data);
-  if (!item) throw new Error('Could not assign assessment.');
-  return item;
+  const rec = asRecord(extractPayload(res.data)) || asRecord(res.data) || {};
+  const assigned = Array.isArray(rec.assignedStudentIds)
+    ? rec.assignedStudentIds.map(String)
+    : studentIds;
+  return {
+    assignedCount: asNumber(rec.assignedCount, assigned.length),
+    added: asNumber(rec.added, assigned.length),
+    assignedStudentIds: assigned,
+  };
 };
 
 export const deleteAssessment = async (id: string) => {
@@ -467,12 +516,31 @@ export const submitAttempt = async (assessmentId: string, attemptId: string) => 
   return item;
 };
 
+const ALLOWED_ATTEMPT_FILES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+]);
+
 export const uploadAttemptFile = async (
   assessmentId: string,
   attemptId: string,
-  file: { uri: string; name?: string; type?: string }
+  file: { uri: string; name?: string; type?: string; size?: number }
 ) => {
-  const res = await uploadAttemptFileAPI(assessmentId, attemptId, file);
+  const mime = String(file.type || '').toLowerCase();
+  if (mime && !ALLOWED_ATTEMPT_FILES.has(mime)) {
+    throw new Error('Only JPEG, PNG, WebP, or PDF files are allowed.');
+  }
+  if (file.size != null && file.size > 10 * 1024 * 1024) {
+    throw new Error('File must be 10MB or smaller.');
+  }
+  const res = await uploadAttemptFileAPI(assessmentId, attemptId, {
+    uri: file.uri,
+    name: file.name,
+    type: mime || 'application/octet-stream',
+  });
   const item = normalizeAttempt(res.data);
   if (!item) throw new Error('Could not upload file.');
   return item;

@@ -33,7 +33,6 @@ import { getUserId } from '../../../../../../utils/api/userId';
 import { ApiUser, DashboardAiSummary, DashboardLesson } from '../../../../../../types/api.types';
 import { openClassroom } from '../../../../../../services/webrtc/openClassroom';
 import { useAppDispatch, useAppSelector } from '../../../../../../store/hooks';
-import { canJoinMeeting } from '../../../../../../utils/bookings/bookingStatus';
 import {
   ensureSummarySocket,
   releaseSummarySocketHandler,
@@ -140,27 +139,7 @@ const StudentDashboardHome = () => {
   };
 
   const joinLesson = (lesson: DashboardLesson) => {
-    const bookingLike = {
-      _id: lesson._id,
-      status: lesson.status || 'accepted',
-      meetingLink: lesson.meetingLink,
-      startTime: lesson.startTime,
-      endTime: lesson.endTime,
-      date: lesson.date,
-      subject: lesson.subject,
-      tutor: lesson.tutor
-        ? {
-            _id: lesson.tutor._id,
-            name: lesson.tutor.name,
-            avatarUrl: lesson.tutor.avatarUrl,
-          }
-        : '',
-      student: authUser?._id || authUser?.id || '',
-      packageId: lesson.packageId,
-      mode: lesson.mode,
-    };
-
-    if (!canJoinMeeting(bookingLike as never)) {
+    if (lesson.canJoinRoom === false) {
       Alert.alert(
         'Classroom unavailable',
         'This class is not ready to join yet. Check back near the scheduled time.'
@@ -168,11 +147,32 @@ const StudentDashboardHome = () => {
       return;
     }
 
-    const opened = openClassroom(bookingLike as never, {
-      user: authUser,
-      role: 'student',
-      autoStart: true,
-    });
+    const opened = openClassroom(
+      {
+        _id: lesson._id,
+        status: lesson.status || 'accepted',
+        meetingLink: lesson.meetingLink,
+        startTime: lesson.startTime,
+        endTime: lesson.endTime,
+        date: lesson.date,
+        subject: lesson.subject,
+        tutor: lesson.tutor
+          ? {
+              _id: lesson.tutor._id,
+              name: lesson.tutor.name,
+              avatarUrl: lesson.tutor.avatarUrl,
+            }
+          : '',
+        student: authUser?._id || authUser?.id || '',
+        packageId: lesson.packageId,
+        mode: lesson.mode,
+      } as never,
+      {
+        user: authUser,
+        role: 'student',
+        autoStart: true,
+      }
+    );
     if (!opened) {
       Alert.alert(
         'Unable to join',

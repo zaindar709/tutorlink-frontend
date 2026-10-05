@@ -46,12 +46,18 @@ const StudentTakeAssessmentScreen = () => {
   const [now, setNow] = useState(Date.now());
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const questions = assessment?.questions || [];
+  const questions = attempt?.questions?.length
+    ? attempt.questions
+    : assessment?.questions || [];
   const answers = attempt?.answers || [];
+  const expiredHandled = useRef(false);
 
   useEffect(() => {
+    if (!assessmentId || !attemptId) return;
     void dispatch(fetchAssessmentThunk(assessmentId));
-    void dispatch(fetchAttemptThunk({ assessmentId, attemptId }));
+    void dispatch(
+      fetchAttemptThunk({ assessmentId, attemptId, preferResult: false })
+    );
   }, [assessmentId, attemptId, dispatch]);
 
   useEffect(() => {
@@ -69,13 +75,46 @@ const StudentTakeAssessmentScreen = () => {
 
   const remainingMs = useMemo(() => {
     if (!attempt?.expiresAt) return null;
-    return new Date(attempt.expiresAt).getTime() - now;
+    const t = new Date(attempt.expiresAt).getTime();
+    if (Number.isNaN(t)) return null;
+    return t - now;
   }, [attempt?.expiresAt, now]);
 
+  const goToResults = useCallback(() => {
+    void clearLocalAnswers(attemptId);
+    navigation.replace('StudentAssessmentResultScreen', {
+      assessmentId,
+      attemptId,
+    });
+  }, [assessmentId, attemptId, navigation]);
+
+  useEffect(() => {
+    if (!attempt || attempt._id !== attemptId) return;
+    if (attempt.status === 'in_progress') return;
+    goToResults();
+  }, [attempt, attemptId, goToResults]);
+
+  useEffect(() => {
+    if (
+      remainingMs == null ||
+      remainingMs > 0 ||
+      expiredHandled.current ||
+      attempt?.status !== 'in_progress'
+    ) {
+      return;
+    }
+    expiredHandled.current = true;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    void dispatch(submitAttemptThunk({ assessmentId, attemptId })).finally(() => {
+      goToResults();
+    });
+  }, [remainingMs, attempt?.status, assessmentId, attemptId, dispatch, goToResults]);
+
   const persist = useCallback(
-    (next: AttemptAnswer[]) => {
+    (next: AttemptAnswer[], syncRemote = true) => {
       dispatch(setCurrentAttemptAnswers(next));
       void saveLocalAnswers(attemptId, next);
+      if (!syncRemote) return;
       if (saveTimer.current) clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(() => {
         void dispatch(saveAnswersThunk({ assessmentId, attemptId, answers: next }));
@@ -84,14 +123,14 @@ const StudentTakeAssessmentScreen = () => {
     [assessmentId, attemptId, dispatch]
   );
 
+  const findAnswer = (qid: string) => answers.find(a => a.questionId === qid);
+
   const setAnswer = (patch: Partial<AttemptAnswer>) => {
-    const q = questions[index];
-    if (!q) return;
+    const q = questions[Math.min(index, Math.max(0, questions.length - 1))];
+    if (!q || attempt?.locked || attempt?.status !== 'in_progress') return;
     const rest = answers.filter(a => a.questionId !== q._id);
     persist([...rest, { questionId: q._id, ...findAnswer(q._id), ...patch }]);
   };
-
-  const findAnswer = (qid: string) => answers.find(a => a.questionId === qid);
 
   const submit = () => {
     Alert.alert('Submit?', 'You cannot change answers after submitting.', [
@@ -110,6 +149,11 @@ const StudentTakeAssessmentScreen = () => {
                   assessmentId,
                   attemptId,
                 });
+              } else if (
+                String(res.payload || '').toLowerCase().includes('already submitted') ||
+                String(res.payload || '').toLowerCase().includes('locked')
+              ) {
+                goToResults();
               } else {
                 Alert.alert('Submit failed', String(res.payload || 'Try again.'));
               }
@@ -126,13 +170,38 @@ const StudentTakeAssessmentScreen = () => {
         type: [types.pdf, types.images],
         allowMultiSelection: false,
       });
-      await dispatch(
+      const mime = String(file.type || '').toLowerCase();
+      const allowed = [
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'application/pdf',
+      ];
+      if (mime && !allowed.includes(mime)) {
+        Alert.alert('File not allowed', 'Use a JPEG, PNG, WebP, or PDF file.');
+        return;
+      }
+      const size = Number((file as { size?: number }).size || 0);
+      if (size > 10 * 1024 * 1024) {
+        Alert.alert('File too large', 'Files must be 10MB or smaller.');
+        return;
+      }
+      const result = await dispatch(
         uploadAttemptFileThunk({
           assessmentId,
           attemptId,
-          file: { uri: file.uri, name: file.name ?? 'file', type: file.type ?? undefined },
+          file: {
+            uri: file.uri,
+            name: file.name ?? 'file',
+            type: file.type ?? undefined,
+            size,
+          },
         })
       );
+      if (uploadAttemptFileThunk.rejected.match(result)) {
+        Alert.alert('Upload failed', String(result.payload || 'Try again.'));
+      }
     } catch {
       /* cancelled */
     }
@@ -149,7 +218,7 @@ const StudentTakeAssessmentScreen = () => {
     );
   }
 
-  if (!assessment || !attempt) {
+  if (!attempt || attempt._id !== attemptId) {
     return (
       <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
         <ProfileSubHeader navigation={navigation} title="Attempt" />
@@ -160,7 +229,7 @@ const StudentTakeAssessmentScreen = () => {
     );
   }
 
-  const q = questions[index];
+  const q = questions[Math.min(index, Math.max(0, questions.length - 1))];
   const current = q ? findAnswer(q._id) : undefined;
   const timedOut = remainingMs != null && remainingMs <= 0;
   const clock =
@@ -174,7 +243,7 @@ const StudentTakeAssessmentScreen = () => {
     <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
       <ProfileSubHeader
         navigation={navigation}
-        title={review ? 'Review' : assessment.title}
+        title={review ? 'Review' : assessment?.title || 'Attempt'}
       />
       {clock ? (
         <Text style={[styles.timer, timedOut && { color: GLASS.error }]}>
@@ -182,9 +251,9 @@ const StudentTakeAssessmentScreen = () => {
         </Text>
       ) : null}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {review || assessment.type === 'assignment' ? (
+        {review || assessment?.type === 'assignment' ? (
           <>
-            {assessment.type === 'assignment' ? (
+            {assessment?.type === 'assignment' ? (
               <View style={styles.card}>
                 <Text style={styles.prompt}>{assessment.instructions || assessment.description}</Text>
                 <TextInput
@@ -192,9 +261,10 @@ const StudentTakeAssessmentScreen = () => {
                   multiline
                   placeholder="Write your response"
                   placeholderTextColor={GLASS.placeholder}
-                  value={current?.text || findAnswer(questions[0]?._id || 'assignment')?.text || ''}
+                  value={current?.text || findAnswer(questions[0]?._id || '')?.text || ''}
                   onChangeText={text => {
-                    const qid = questions[0]?._id || 'assignment';
+                    const qid = questions[0]?._id;
+                    if (!qid) return;
                     const rest = answers.filter(a => a.questionId !== qid);
                     persist([...rest, { questionId: qid, text }]);
                   }}
@@ -238,7 +308,7 @@ const StudentTakeAssessmentScreen = () => {
               title="Submit"
               onPress={submit}
               loading={mutating}
-              disabled={timedOut && assessment.latePolicy === 'reject'}
+              disabled={timedOut && assessment?.latePolicy === 'reject'}
             />
           </>
         ) : q ? (
@@ -338,7 +408,7 @@ const styles = StyleSheet.create({
   option: {
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(117, 72, 245, 0.06)',
     borderRadius: 14,
     padding: 14,
   },
@@ -357,7 +427,7 @@ const styles = StyleSheet.create({
   },
   navRow: { flexDirection: 'row', gap: 10, marginTop: 8 },
   card: {
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 16,

@@ -15,7 +15,7 @@ const REMINDER_HORIZON_DAYS = 14;
 /**
  * Local inbox backup for class-start reminders (student device).
  * System tray pushes for student + tutor still come from backend FCM
- * (see docs/BACKEND_MONTHLY_WEEKDAY_TUITION.md). Notifee tray is not wired
+ * Monthly weekday packages create many future session rows.
  * in this app build — inbox + FCM cover the product requirement.
  */
 export const scheduleLocalSessionReminders = async (

@@ -9,7 +9,10 @@ import {
   AssessmentLoadingState,
 } from '../../../../components/Assessment';
 import { useAppDispatch, useAppSelector } from '../../../../store/hooks';
-import { fetchAttemptThunk } from '../../../../store/assessment/assessmentSlice';
+import {
+  fetchAssessmentThunk,
+  fetchAttemptThunk,
+} from '../../../../store/assessment/assessmentSlice';
 import { leaveHomeStackToTabs } from '../../../../navigation/navigationRef';
 import CustomButton from '../../../../components/CustomButton';
 
@@ -26,32 +29,54 @@ const StudentAssessmentResultScreen = () => {
   useFocusEffect(
     useCallback(() => {
       if (assessmentId && attemptId) {
+        void dispatch(fetchAssessmentThunk(assessmentId));
         void dispatch(fetchAttemptThunk({ assessmentId, attemptId }));
       }
     }, [assessmentId, attemptId, dispatch])
   );
 
-  const pending =
+  const waitingForGrade = Boolean(
     attempt &&
-    (attempt.status === 'submitted' ||
-      attempt.status === 'grading' ||
-      attempt.needsManualGrading);
+      (attempt.status === 'grading' ||
+        (attempt.needsManualGrading && attempt.status !== 'graded') ||
+        attempt.status === 'submitted')
+  );
+  const showScore = Boolean(
+    attempt &&
+      attempt.status !== 'in_progress' &&
+      (attempt.status === 'graded' ||
+        (attempt.score != null &&
+          assessment?.showResultImmediately &&
+          !attempt.needsManualGrading &&
+          attempt.status !== 'grading'))
+  );
+  const showCorrect = Boolean(
+    attempt &&
+      (attempt.correctAnswersVisible ||
+        (assessment?.showCorrectAnswers && attempt.status === 'graded'))
+  );
+
+  const ready = Boolean(attempt && attempt._id === attemptId);
 
   return (
     <GlassScreen scroll={false} edges={['top', 'left', 'right']}>
       <ProfileSubHeader navigation={navigation} title="Result" />
-      {!attempt && error ? (
+      {!assessmentId || !attemptId ? (
+        <View style={styles.pad}>
+          <AssessmentErrorState message="This result link is incomplete." />
+        </View>
+      ) : !ready && error ? (
         <View style={styles.pad}>
           <AssessmentErrorState message={error} />
         </View>
-      ) : !attempt ? (
+      ) : !ready ? (
         <View style={styles.pad}>
           <AssessmentLoadingState />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.kicker}>{assessment?.title || 'Assessment'}</Text>
-          {pending && attempt.score == null ? (
+          {waitingForGrade || !showScore ? (
             <View style={styles.card}>
               <Text style={styles.title}>Submitted</Text>
               <Text style={styles.body}>
@@ -78,17 +103,17 @@ const StudentAssessmentResultScreen = () => {
               <Text style={styles.body}>{attempt.feedback}</Text>
             </View>
           ) : null}
-          {(attempt.questionResults || []).map(qr => (
+          {(showScore ? attempt.questionResults || [] : []).map(qr => (
             <View key={qr.questionId} style={styles.card}>
               <Text style={styles.section}>{qr.prompt}</Text>
               <Text style={styles.body}>Your answer: {qr.studentAnswer || '—'}</Text>
-              {qr.correctAnswer ? (
+              {showCorrect && qr.correctAnswer ? (
                 <Text style={styles.body}>Correct: {qr.correctAnswer}</Text>
               ) : null}
               <Text style={styles.meta}>
                 {qr.awardedMarks} / {qr.maxMarks}
               </Text>
-              {qr.explanation ? (
+              {showCorrect && qr.explanation ? (
                 <Text style={styles.body}>{qr.explanation}</Text>
               ) : null}
             </View>
@@ -110,7 +135,7 @@ const styles = StyleSheet.create({
   meta: { color: GLASS.primary, fontWeight: '800', marginTop: 6 },
   section: { fontWeight: '800', color: GLASS.textPrimary },
   card: {
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 18,

@@ -91,7 +91,7 @@ const TutorSubmissionsScreen = () => {
         </View>
       ) : error && submissions.length === 0 ? (
         <View style={styles.pad}>
-          <AssessmentErrorState message={error} onRetry={load} />
+          <AssessmentErrorState message={error} onRetry={() => load()} />
         </View>
       ) : (
         <FlatList
@@ -165,7 +165,7 @@ const SubmissionRow = ({
     >
       <Text style={styles.name}>{item.student.name}</Text>
       <Text style={styles.meta}>
-        {item.status.replace('_', ' ')}
+        {String(item.status || '').replace(/_/g, ' ')}
         {item.late ? ' · Late' : ''}
         {item.submittedAt ? ` · ${fmt(item.submittedAt)}` : ''}
       </Text>
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   kicker: { color: GLASS.primary, fontWeight: '800', fontSize: 12 },
   meta: { color: GLASS.textSecondary, marginTop: 4, fontSize: 13 },
   card: {
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
     borderRadius: 18,

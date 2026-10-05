@@ -66,8 +66,7 @@ const combineIso = (date: string, time: string) => {
 };
 
 export const draftToPayload = (
-  draft: AssessmentDraft,
-  status: 'draft' | 'published'
+  draft: AssessmentDraft
 ): CreateAssessmentPayload => {
   const questions = draft.questions.map((q, order) => ({
     _id: q._id,
@@ -104,7 +103,6 @@ export const draftToPayload = (
     latePolicy: draft.latePolicy,
     questions,
     assignedStudentIds: draft.assignedStudentIds,
-    status,
   };
 };
 
@@ -113,6 +111,9 @@ const validateDraft = (draft: AssessmentDraft, step: number): string | null => {
     if (!draft.title.trim()) return 'Add a title.';
     if (!draft.subject.trim()) return 'Select a subject.';
     if (!draft.dueDate) return 'Set a due date.';
+    if (draft.type !== 'assignment' && !(Number(draft.durationMinutes) > 0)) {
+      return 'Set a duration in minutes.';
+    }
   }
   if (step >= 1 && draft.type !== 'assignment') {
     if (!draft.questions.length) return 'Add at least one question.';
@@ -176,7 +177,7 @@ const TutorAssessmentEditorScreen = () => {
       Alert.alert('Check fields', err);
       return;
     }
-    const payload = draftToPayload(editor, status);
+    const payload = draftToPayload(editor);
     const saved = await dispatch(
       saveAssessmentThunk({ id: editor._id, data: payload })
     );
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(117, 72, 245, 0.07)',
   },
   chipOn: { backgroundColor: GLASS.primarySoft, borderColor: GLASS.primary },
   chipText: { color: GLASS.textPrimary, fontWeight: '700', fontSize: 12, textTransform: 'capitalize' },
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
   qCard: {
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
-    backgroundColor: GLASS.cardBgStrong,
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: 16,
     padding: 12,
     gap: 8,
@@ -696,13 +697,13 @@ const styles = StyleSheet.create({
     borderColor: GLASS.cardBorder,
     borderRadius: 14,
     padding: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.42)',
   },
   toggle: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.42)',
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,

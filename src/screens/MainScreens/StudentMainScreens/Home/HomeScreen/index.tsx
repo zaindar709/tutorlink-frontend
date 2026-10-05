@@ -6,6 +6,7 @@ import { useDashboard } from '../../../../../hooks/api/useDashboard';
 import { useStudentTutorRelations } from '../../../../../hooks/api/useStudentTutorRelations';
 import { GlassScreen } from '../../../../../components/Glass';
 import { GLASS } from '../../../../../theme/glass';
+import { shouldShowScheduleHome } from '../../../../../services/home/homeService';
 
 type Props = {
   onFindTutorPress?: () => void;
@@ -21,11 +22,7 @@ const StudentHome: React.FC<Props> = ({ onFindTutorPress }) => {
   const { bookings, loading: relationsLoading } = useStudentTutorRelations();
 
   const hasHiredTutor = useMemo(() => {
-    if (dashboard?.hasActiveTutor) return true;
-    if ((dashboard?.upcomingSessionCount || 0) > 0) return true;
-    if ((dashboard?.todaySchedule?.currentLessons?.length || 0) > 0) {
-      return true;
-    }
+    if (shouldShowScheduleHome(dashboard)) return true;
     return bookings.some(b => {
       const status = String(b.status || '').toLowerCase();
       return status === 'accepted' || status === 'confirmed';

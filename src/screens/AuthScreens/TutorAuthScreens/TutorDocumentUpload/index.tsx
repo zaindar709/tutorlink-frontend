@@ -83,6 +83,7 @@ const DocumentUploadScreen = ({ navigation }: any) => {
         title="Document Upload"
         subtitle="Secure & confidential verification — Step 2 of 3"
         onBack={() => navigation.goBack()}
+         showBack={false}
       />
 
       <ScrollView

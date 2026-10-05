@@ -193,8 +193,8 @@ export default function SettingsPage({ settings, onUpdate }: SettingsPageProps) 
           </p>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          See <code className="text-tl-primary">docs/BACKEND_API.md</code> for
-          full API specification.
+          Use an admin Firebase account. All admin APIs require a Bearer ID
+          token.
         </p>
 
         <button

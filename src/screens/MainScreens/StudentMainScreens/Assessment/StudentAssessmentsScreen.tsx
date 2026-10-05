@@ -102,7 +102,7 @@ const StudentAssessmentsScreen = () => {
         </View>
       ) : error && items.length === 0 ? (
         <View style={styles.pad}>
-          <AssessmentErrorState message={error} onRetry={load} />
+          <AssessmentErrorState message={error} onRetry={() => load()} />
         </View>
       ) : (
         <FlatList
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 12,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(117, 72, 245, 0.07)',
     borderWidth: 1,
     borderColor: GLASS.cardBorder,
   },
